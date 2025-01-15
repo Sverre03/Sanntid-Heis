@@ -40,6 +40,7 @@ func listenToServer(address string) {
 		}
 		fmt.Println(string(buffer[0:n_bytes]))
 	}
+
 }
 
 func writeToServer(address string) {
@@ -67,7 +68,7 @@ func writeToServer(address string) {
 }
 
 func main() {
-	go listenToServer(":30000")
+	go listenToServer(fmt.Sprintf(":%d", Port))
 	go writeToServer(fmt.Sprintf("%s:%d", ServerIP, Port))
 
 	time.Sleep(100 * time.Second)

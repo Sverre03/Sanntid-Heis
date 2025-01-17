@@ -10,8 +10,11 @@ const ServerIP string = "localhost" // "10.100.23.204"
 const Port string = "34933"
 const LocalPort string = "20011"
 
-func UDPListenToServer(address string) {
-	addr, err := net.ResolveUDPAddr("udp", address)
+// UDPListenToServer takes a port and listens to udp messages on it
+// It prints anything it hears to the terminal
+// If any error occurs, it returns without doing anything, printing an error message
+func UDPListenToServer(port int) {
+	addr, err := net.ResolveUDPAddr("udp", string(port))
 	if err != nil {
 		fmt.Println("Error resolving UDP address:", err)
 		return
@@ -29,12 +32,15 @@ func UDPListenToServer(address string) {
 		n_bytes, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			fmt.Println("Error reading from UDP:", err)
+			return
 		}
 		fmt.Println("Received message:", string(buffer[0:n_bytes]))
 	}
 }
 
-func UDPWriteToServer(address string) {
+// UDPWriteToServer takes an address and message and tries to send the message to it over udp
+// if any error occurs, it returns without doing anything
+func UDPWriteToServer(address, message string) {
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		fmt.Println("Error resolving UDP address:", err)
@@ -49,7 +55,7 @@ func UDPWriteToServer(address string) {
 	defer conn.Close()
 
 	for {
-		_, err = conn.Write([]byte("Group54"))
+		_, err = conn.Write([]byte(message))
 		if err != nil {
 			fmt.Println("Error writing to UDP:", err)
 			continue
@@ -58,8 +64,11 @@ func UDPWriteToServer(address string) {
 	}
 }
 
-func TCPClient() {
-	address := fmt.Sprintf("%s:%s", ServerIP, Port)
+// TCPCLient creates a TCP client that tries to connect to the given ip and port 
+// if the connection fails, it will return, printing an error message
+// if the connection was successful, it will terminate the connection as soon as it receives a message 
+func TCPClient(ip string, port int) {
+	address := fmt.Sprintf("%s:%s", ip, port)
 	addr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		fmt.Println("Error resolving TCP address:", err)
@@ -87,6 +96,8 @@ func TCPClient() {
 	fmt.Println("Received message:", string(buffer[0:data]))
 }
 
+
+// sends a fixed message to the sanntid server, requesting that it connects back to you
 func requestConnectionFromServer() {
 	address := fmt.Sprintf("%s:%s", ServerIP, Port)
 	addr, err := net.ResolveTCPAddr("tcp", address)
@@ -107,6 +118,7 @@ func requestConnectionFromServer() {
 	}
 }
 
+// takes a conn object, listens and sends a message  
 func handleClientConnection(conn net.Conn) {
 	defer conn.Close()
 
@@ -175,7 +187,7 @@ func TCPServer() {
 // }
 
 func main() {
-	TCPServer()
+	TCPServer(ServerIP, Port)
 	// go UDPListenToServer(fmt.Sprintf(":%s", LocalPort))
 	// go UDPWriteToServer(fmt.Sprintf("%s:%s", ServerIP, LocalPort))
 

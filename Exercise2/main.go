@@ -9,6 +9,8 @@ import (
 const ServerIP string = "localhost" // "10.100.23.204"
 const Port string = "34933"
 const LocalPort string = "20011"
+const WritePort string = "20000" // "20011" // Choose 20011 for both write and read when not working from home
+const ReadPort string = "20001"  // "20011" // Choose 20011 when not working from home
 
 func UDPListenToServer(address string) {
 	addr, err := net.ResolveUDPAddr("udp", address)
@@ -74,17 +76,34 @@ func TCPClient() {
 	defer conn.Close()
 
 	buffer := make([]byte, 1024)
-	_, err = conn.Write([]byte("Hello TCP"))
-	if err != nil {
-		fmt.Println("Error writing to TCP:", err)
-	}
 
 	data, err := conn.Read(buffer)
 	if err != nil {
 		fmt.Println("Error reading from TCP:", err)
 		return
 	}
-	fmt.Println("Received message:", string(buffer[0:data]))
+	fmt.Println("Received welcome message:", string(buffer[0:data]))
+
+	go func() {
+		for {
+			data, err = conn.Read(buffer)
+			if err != nil {
+				fmt.Println("Error reading from TCP:", err)
+				return
+			}
+
+			fmt.Println("Received message:", string(buffer[0:data]))
+		}
+	}()
+
+	for {
+		_, err = conn.Write([]byte("Hello TCP"))
+		if err != nil {
+			fmt.Println("Error writing to TCP:", err)
+			return
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func requestConnectionFromServer() {
@@ -111,16 +130,26 @@ func handleClientConnection(conn net.Conn) {
 	defer conn.Close()
 
 	buffer := make([]byte, 1024)
-	_, err := conn.Read(buffer)
-	if err != nil {
-		fmt.Println("Error reading from client:", err)
-		return
-	}
-	fmt.Println("Received message from client:", string(buffer))
 
-	_, err = conn.Write([]byte("Test"))
+	_, err := conn.Write([]byte("Welcome to TCP Server!\x00"))
 	if err != nil {
 		fmt.Println("Error writing to client:", err)
+		return
+	}
+
+	for {
+		_, err = conn.Read(buffer)
+		if err != nil {
+			fmt.Println("Error reading from client:", err)
+			return
+		}
+		fmt.Println("Received message from client:", string(buffer))
+
+		_, err = conn.Write([]byte("Hello from TCP Server!\x00"))
+		if err != nil {
+			fmt.Println("Error writing to client:", err)
+			return
+		}
 	}
 }
 
@@ -175,9 +204,12 @@ func TCPServer() {
 // }
 
 func main() {
-	TCPServer()
-	// go UDPListenToServer(fmt.Sprintf(":%s", LocalPort))
-	// go UDPWriteToServer(fmt.Sprintf("%s:%s", ServerIP, LocalPort))
+	// TCPServer()
+	go TCPServer()
+	time.Sleep(1 * time.Second)
+	TCPClient()
+	// go UDPListenToServer(fmt.Sprintf("%s:%s", ServerIP, ReadPort))
+	// go UDPWriteToServer(fmt.Sprintf("%s:%s", ServerIP, WritePort))
 
 	// time.Sleep(100 * time.Second)
 }

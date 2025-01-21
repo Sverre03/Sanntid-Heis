@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const bufferSize = 1024
+
 const ServerIP string = "localhost" // "10.100.23.204"
 const Port string = "34933"
 const LocalPort string = "20011"
@@ -30,13 +32,13 @@ func UDPListenToServer(port string) {
 	defer conn.Close()
 
 	for {
-		buffer := make([]byte, 1024)
+		buffer := make([]byte, bufferSize)
 		n_bytes, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			fmt.Println("Error reading from UDP:", err)
 			return
 		}
-		fmt.Println("Received message:", string(buffer[0:n_bytes]))
+		fmt.Println("Received message from server:", string(buffer[0:n_bytes]))
 	}
 }
 
@@ -62,7 +64,7 @@ func UDPWriteToServer(address, message string) {
 			fmt.Println("Error writing to UDP:", err)
 			continue
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 	}
 }
 
@@ -84,7 +86,7 @@ func TCPClient() {
 	}
 	defer conn.Close()
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, bufferSize)
 
 	data, err := conn.Read(buffer)
 	if err != nil {
@@ -140,7 +142,7 @@ func requestConnectionFromServer() {
 func handleClientConnection(conn net.Conn) {
 	defer conn.Close()
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, bufferSize)
 
 	_, err := conn.Write([]byte("Welcome to TCP Server!\x00"))
 	if err != nil {
@@ -190,37 +192,13 @@ func TCPServer() {
 	}
 }
 
-// conn, err := listener.Accept()
-
-// if err != nil {
-// 	fmt.Println(err)
-// }
-
-// defer conn.Close()
-
-// _, err = conn.Write([]byte("Test"))
-
-// if err != nil {
-// 	fmt.Println(err)
-// }
-// buffer := make([]byte, 1024)
-
-// _, err = conn.Read(buffer)
-
-// if err != nil {
-// 	fmt.Println(err)
-// }
-
-// fmt.Println("We received something! ", string(buffer[:]))
-// }
-
 func main() {
 	// TCPServer()
-	go TCPServer()
-	time.Sleep(1 * time.Second)
-	TCPClient()
+	// go TCPServer()
+	// time.Sleep(1 * time.Second)
+	// TCPClient()
 	// go UDPListenToServer(fmt.Sprintf("%s:%s", ServerIP, ReadPort))
-	// go UDPWriteToServer(fmt.Sprintf("%s:%s", ServerIP, WritePort))
+	// go UDPWriteToServer(fmt.Sprintf("%s:%s", ServerIP, WritePort), "Hello UDP")
 
 	// time.Sleep(100 * time.Second)
 }

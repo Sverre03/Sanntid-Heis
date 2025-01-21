@@ -127,7 +127,7 @@ Pencil and paper is encouraged! Drawing a diagram/graph of the message pathways 
 
 By the end of this exercise, you should be able to send some data structure (struct, record, etc) from one machine to another. How you achieve this (in terms of network topology, protocol, serialization) does not matter, but you should try to keep it as close to your (preliminary) design as possible.
 
-Some basic network modules already exist for several programming langu10.100.23.204ages. Use whatever you find useful - extend, modify, or delete as you see fit.
+Some basic network modules already exist for several programming languages. Use whatever you find useful - extend, modify, or delete as you see fit.
 
  - C network module (https://github.com/TTK4145/Network-c)
  - D network module (https://github.com/TTK4145/Network-D)

@@ -1,53 +1,52 @@
 package main
 
 import (
-    "fmt"
-    "time"
+	"elevio"
+	"fmt"
+	"fsm"
+	"time"
+	"timer"
 )
 
 func main() {
-    fmt.Println("Started!")
+	fmt.Println("Started!")
 
-    inputPollRateMs := 25
+	inputPollRateMs := 25
 
-    input := elevioGetInputDevice()
+	elevio.Init("localhost:15657", 4)
 
-    if input.FloorSensor() == -1 {
-        fsmOnInitBetweenFloors()
-    }
+	prevRequestButton := make([][]bool, elevio.NumFloors)
+	for i := range prevRequestButton {
+		prevRequestButton[i] = make([]bool, elevio.NumButtons)
+	}
 
-    prevRequestButton := make([][]int, N_FLOORS)
-    for i := range prevRequestButton {
-        prevRequestButton[i] = make([]int, N_BUTTONS)
-    }
+	prevFloorSensor := -1
 
-    prevFloorSensor := -1
+	for {
+		// Request button
+		for f := 0; f < elevio.NumFloors; f++ {
+			for b := 0; b < elevio.NumButtons; b++ {
+				v := elevio.GetButton(elevio.ButtonType(b), f)
+				if v && v != prevRequestButton[f][b] {
+					fsm.FsmOnRequestButtonPress(f, elevio.ButtonType(b))
+				}
+				prevRequestButton[f][b] = v
+			}
+		}
 
-    for {
-        // Request button
-        for f := 0; f < N_FLOORS; f++ {
-            for b := 0; b < N_BUTTONS; b++ {
-                v := input.RequestButton(f, b)
-                if v != 0 && v != prevRequestButton[f][b] {
-                    fsmOnRequestButtonPress(f, b)
-                }
-                prevRequestButton[f][b] = v
-            }
-        }
+		// Floor sensor
+		f := elevio.GetFloor()
+		if f != -1 && f != prevFloorSensor {
+			fsm.FsmOnFloorArrival(f)
+		}
+		prevFloorSensor = f
 
-        // Floor sensor
-        f := input.FloorSensor()
-        if f != -1 && f != prevFloorSensor {
-            fsmOnFloorArrival(f)
-        }
-        prevFloorSensor = f
+		// Timer
+		if timer.TimerTimedOut() {
+			timer.TimerStop()
+			fsm.FsmOnDoorTimeout()
+		}
 
-        // Timer
-        if timerTimedOut() {
-            timerStop()
-            fsmOnDoorTimeout()
-        }
-
-        time.Sleep(time.Duration(inputPollRateMs) * time.Millisecond)
-    }
+		time.Sleep(time.Duration(inputPollRateMs) * time.Millisecond)
+	}
 }

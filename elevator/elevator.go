@@ -1,7 +1,7 @@
 package elevator
 
 import (
-	"Driver-go/elevio"
+	"elevio"
 	"fmt"
 )
 

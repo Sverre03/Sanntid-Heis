@@ -19,7 +19,7 @@ The elevator algorithm is based on preferring to continue in the direction of tr
    - Stop if there is a request in the direction of travel at this floor 
    - Stop if there are no further requests in this direction
  - Clear requests at floor:  
-   This function comes in two variants. We can either assume that anyone waiting for the elevator gets on the elevator regardless of which direction it is traveling in, or that they only get on the elevator if the elevator is going to travel in the direction the passenger desires. (Most people would expect the first behaviour, but there are elevators that only clear the requests "in the direction of travel". I believe the one outside EL6 behaves like this.)
+   This function comes in two variants. We can either assume that anyone waiting for the elevator gets on the elevator regardless of which direction it is traveling in, or that they only get on the elevator if the elevator is going to travel in the direction the passenger desires. (Most people would expect the first behavior, but there are elevators that only clear the requests "in the direction of travel". I believe the one outside EL6 behaves like this.)
    - Always clear the request for getting off the elevator and the request for entering the elevator in the direction of travel
    - Either:
      - A: Always clear the request for entering the elevator in the opposite direction
@@ -37,7 +37,7 @@ Running this program
    - The executable is called `ttk4145demoelevator`
  - Start the elevator server or simulator before starting this demo program
 
-The config file [elevator.con](elevator.con) can be edited to change the behaviour of the elevator. The elevator program must be restarted in order for the saved changes to take effect.
+The config file [elevator.con](elevator.con) can be edited to change the behavior of the elevator. The elevator program must be restarted in order for the saved changes to take effect.
 
 
 Implementation notes
@@ -47,7 +47,7 @@ The standard disclaimer of "some parts of this were written in less than 10 minu
 
 The request buttons are called "Hall" and "Cab", as opposed to "external" and "internal" (or "Call" and "Command"), as I believe this is the correct terminology.
 
-The "state-machine-state" is called "behaviour", as the full state of the elevator also includes direction, floor, and active requests. "Behaviour" just seems like a more precise name: An elevator that is "moving" is doing a different kind of thing (or "verbing a different verb", if you like) than an elevator that is "being idle".
+The "state-machine-state" is called "behavior", as the full state of the elevator also includes direction, floor, and active requests. "Behavior" just seems like a more precise name: An elevator that is "moving" is doing a different kind of thing (or "verbing a different verb", if you like) than an elevator that is "being idle".
 
 `fsm.c` and `timer.c` have local state. `fsm.c` because it is a state machine (so it needs state), `timer.c` because it needs to share state with the "outside world" (because it is a timer). It is possible to circumvent this by lifting the elevator state out of `fsm.c` (by passing the current state and returning the new state from each of the fsm functions), and including the "doorCloseTime" in the elevator state. (But to make the fsm functions completely pure, you'd also have to return the "list-of-output-actions" along with the new state, but this is a giant hassle in C. I chose to stick to the more imperative C-like way of doing it, rather than trying to do functional programming in C)
 

@@ -1,4 +1,4 @@
-module elevatoralgogo
+module example
 
 go 1.22.1
 

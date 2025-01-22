@@ -27,7 +27,7 @@ in {
         assert(elevatorStates.values.map!(a => isInBounds(a.floor)).all,
             "Some elevator is at an invalid floor");
         assert(elevatorStates.values
-                .filter!(a => a.behaviour == ElevatorBehaviour.moving)
+                .filter!(a => a.behavior == ElevatorBehavior.moving)
                 .map!(a => isInBounds(a.floor + a.direction))
                 .all,
             "Some elevator is moving away from an end floor");
@@ -159,7 +159,7 @@ State[] initialStates(LocalElevatorState[string] states){
 
 void performInitialMove(ref State s, ref Req[2][] reqs){
     debug(optimal_hall_requests) writefln("initial move: %s", s);
-    final switch(s.state.behaviour) with(ElevatorBehaviour){    
+    final switch(s.state.behavior) with(ElevatorBehavior){    
     case doorOpen:
         debug(optimal_hall_requests) writefln!("  '%s' closing door at floor %d")(s.id, s.state.floor);
         s.time += doorOpenDuration.msecs/2;
@@ -196,10 +196,10 @@ void performSingleMove(ref State s, ref Req[2][] reqs){
         }
     };
     
-    final switch(s.state.behaviour) with(ElevatorBehaviour){
+    final switch(s.state.behavior) with(ElevatorBehavior){
     case moving:
         if(e.shouldStop){
-            s.state.behaviour = doorOpen;
+            s.state.behavior = doorOpen;
             s.time += doorOpenDuration.msecs;
             e.clearReqsAtFloor(onClearRequest);
             debug(optimal_hall_requests) writefln!("  '%s' stopping at %d")(s.id, s.state.floor);
@@ -215,14 +215,14 @@ void performSingleMove(ref State s, ref Req[2][] reqs){
             if(e.anyRequestsAtFloor){
                 e.clearReqsAtFloor(onClearRequest);
                 s.time += doorOpenDuration.msecs;
-                s.state.behaviour = doorOpen;
+                s.state.behavior = doorOpen;
                 debug(optimal_hall_requests) writefln!("  '%s' taking req in opposite dirn at %d")(s.id, s.state.floor);
             } else {
-                s.state.behaviour = idle;
+                s.state.behavior = idle;
                 debug(optimal_hall_requests) writefln!("  '%s' idling at %d")(s.id, s.state.floor);
             }
         } else {
-            s.state.behaviour = moving;
+            s.state.behavior = moving;
             s.state.floor += s.state.direction;
             s.time += travelDuration.msecs;
             debug(optimal_hall_requests) writefln!("  '%s' departing %s to %d")(s.id, s.state.direction, s.state.floor);
@@ -278,9 +278,9 @@ unittest {
     // Elevator 1 is idle one floor away, other elevators have several cab orders
     // Should give the order to the idle elevator
     LocalElevatorState[string] states = [
-        "1" : LocalElevatorState(ElevatorBehaviour.idle,     0, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
-        "2" : LocalElevatorState(ElevatorBehaviour.doorOpen, 3, Dirn.down, [1, 0, 0, 0].to!(bool[])),
-        "3" : LocalElevatorState(ElevatorBehaviour.moving,   2, Dirn.up,   [1, 0, 0, 1].to!(bool[])),
+        "1" : LocalElevatorState(ElevatorBehavior.idle,     0, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
+        "2" : LocalElevatorState(ElevatorBehavior.doorOpen, 3, Dirn.down, [1, 0, 0, 0].to!(bool[])),
+        "3" : LocalElevatorState(ElevatorBehavior.moving,   2, Dirn.up,   [1, 0, 0, 1].to!(bool[])),
     ];
 
     bool[2][] hallreqs = [
@@ -303,8 +303,8 @@ unittest {
     // Two elevators moving from each "end" toward the middle floors
     // Elevators should stop at the closest order, even if it is in the "wrong" direction
     LocalElevatorState[string] states = [
-        "1" : LocalElevatorState(ElevatorBehaviour.idle, 0, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
-        "2" : LocalElevatorState(ElevatorBehaviour.idle, 3, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
+        "1" : LocalElevatorState(ElevatorBehavior.idle, 0, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
+        "2" : LocalElevatorState(ElevatorBehavior.idle, 3, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
     ];
 
     bool[2][] hallreqs = [
@@ -324,8 +324,8 @@ unittest {
     
     // Change E1 idle->moving, stop->up. E1 is closer, but otherwise same scenario
     states = [
-        "1" : LocalElevatorState(ElevatorBehaviour.moving, 0, Dirn.up,   [0, 0, 0, 0].to!(bool[])), 
-        "2" : LocalElevatorState(ElevatorBehaviour.idle,   3, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
+        "1" : LocalElevatorState(ElevatorBehavior.moving, 0, Dirn.up,   [0, 0, 0, 0].to!(bool[])), 
+        "2" : LocalElevatorState(ElevatorBehavior.idle,   3, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
     ];
 
     optimal = optimalHallRequests(hallreqs, states);
@@ -338,8 +338,8 @@ unittest {
     // Add cab order to E1, so that it has to continue upward anyway
     // Changes scenario, now E1 skips order in "wrong" direction because there is work ahead in that dirn
     states = [
-        "1" : LocalElevatorState(ElevatorBehaviour.idle,   0, Dirn.stop, [0, 0, 1, 0].to!(bool[])),
-        "2" : LocalElevatorState(ElevatorBehaviour.idle,   3, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
+        "1" : LocalElevatorState(ElevatorBehavior.idle,   0, Dirn.stop, [0, 0, 1, 0].to!(bool[])),
+        "2" : LocalElevatorState(ElevatorBehavior.idle,   3, Dirn.stop, [0, 0, 0, 0].to!(bool[])),
     ];
 
     optimal = optimalHallRequests(hallreqs, states);
@@ -353,8 +353,8 @@ unittest {
     // Two elevators are the same number of floors away from an order, but one is moving toward it
     // Should give the order to the moving elevator
     LocalElevatorState[string] states = [
-        "27" : LocalElevatorState(ElevatorBehaviour.moving,   1,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
-        "20" : LocalElevatorState(ElevatorBehaviour.doorOpen, 1,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
+        "27" : LocalElevatorState(ElevatorBehavior.moving,   1,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
+        "20" : LocalElevatorState(ElevatorBehavior.doorOpen, 1,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
     ];
 
     bool[2][] hallreqs = [
@@ -379,8 +379,8 @@ unittest {
     scope(exit) clearRequestType = prev;
     
     LocalElevatorState[string] states = [
-        "1" : LocalElevatorState(ElevatorBehaviour.moving,  3,  Dirn.down, [1, 0, 0, 0].to!(bool[])),
-        "2" : LocalElevatorState(ElevatorBehaviour.idle,    3,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
+        "1" : LocalElevatorState(ElevatorBehavior.moving,  3,  Dirn.down, [1, 0, 0, 0].to!(bool[])),
+        "2" : LocalElevatorState(ElevatorBehavior.idle,    3,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
     ];
 
     bool[2][] hallreqs = [
@@ -401,9 +401,9 @@ unittest {
 unittest {
     // Two identical elevators. Assignment should always be to the lexicographically lowest ID
     LocalElevatorState[string] states = [
-        "1" : LocalElevatorState(ElevatorBehaviour.moving,  1,  Dirn.up,   [1, 0, 0, 0].to!(bool[])),
-        "2" : LocalElevatorState(ElevatorBehaviour.idle,    1,  Dirn.stop, [1, 0, 0, 0].to!(bool[])),
-        "3" : LocalElevatorState(ElevatorBehaviour.idle,    1,  Dirn.stop, [1, 0, 0, 0].to!(bool[])),
+        "1" : LocalElevatorState(ElevatorBehavior.moving,  1,  Dirn.up,   [1, 0, 0, 0].to!(bool[])),
+        "2" : LocalElevatorState(ElevatorBehavior.idle,    1,  Dirn.stop, [1, 0, 0, 0].to!(bool[])),
+        "3" : LocalElevatorState(ElevatorBehavior.idle,    1,  Dirn.stop, [1, 0, 0, 0].to!(bool[])),
     ];
 
     bool[2][] hallreqs = [
@@ -432,7 +432,7 @@ unittest {
     scope(exit) clearRequestType = prev;
     
     auto states = initialStates([
-        "one" : LocalElevatorState(ElevatorBehaviour.idle,  0,  Dirn.stop,   [0, 0, 0, 0].to!(bool[])),
+        "one" : LocalElevatorState(ElevatorBehavior.idle,  0,  Dirn.stop,   [0, 0, 0, 0].to!(bool[])),
     ]);
 
     auto hallreqs = [
@@ -458,8 +458,8 @@ unittest {
     scope(exit) clearRequestType = prev;
     
     LocalElevatorState[string] states = [
-        "one" : LocalElevatorState(ElevatorBehaviour.idle,    0,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
-        "two" : LocalElevatorState(ElevatorBehaviour.idle,    3,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
+        "one" : LocalElevatorState(ElevatorBehavior.idle,    0,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
+        "two" : LocalElevatorState(ElevatorBehavior.idle,    3,  Dirn.down, [0, 0, 0, 0].to!(bool[])),
     ];
 
     bool[2][] hallreqs = [

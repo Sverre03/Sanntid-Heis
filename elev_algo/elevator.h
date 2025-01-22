@@ -6,7 +6,7 @@ typedef enum {
     EB_Idle,
     EB_DoorOpen,
     EB_Moving
-} ElevatorBehaviour;
+} ElevatorBehavior;
 
 typedef enum {
     // Assume everyone waiting for the elevator gets on the elevator, even if 
@@ -22,7 +22,7 @@ typedef struct {
     int                     floor;
     Dirn                    dirn;
     int                     requests[N_FLOORS][N_BUTTONS];
-    ElevatorBehaviour       behaviour;
+    ElevatorBehavior       behavior;
     
     struct {
         ClearRequestVariant clearRequestVariant;

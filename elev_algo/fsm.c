@@ -38,7 +38,7 @@ static void setAllLights(Elevator es){
 void fsm_onInitBetweenFloors(void){
     outputDevice.motorDirection(D_Down);
     elevator.dirn = D_Down;
-    elevator.behaviour = EB_Moving;
+    elevator.behavior = EB_Moving;
 }
 
 
@@ -46,7 +46,7 @@ void fsm_onRequestButtonPress(int btn_floor, Button btn_type){
     printf("\n\n%s(%d, %s)\n", __FUNCTION__, btn_floor, elevio_button_toString(btn_type));
     elevator_print(elevator);
     
-    switch(elevator.behaviour){
+    switch(elevator.behavior){
     case EB_DoorOpen:
         if(requests_shouldClearImmediately(elevator, btn_floor, btn_type)){
             timer_start(elevator.config.doorOpenDuration_s);
@@ -61,10 +61,10 @@ void fsm_onRequestButtonPress(int btn_floor, Button btn_type){
         
     case EB_Idle:    
         elevator.requests[btn_floor][btn_type] = 1;
-        DirnBehaviourPair pair = requests_chooseDirection(elevator);
+        DirnBehaviorPair pair = requests_chooseDirection(elevator);
         elevator.dirn = pair.dirn;
-        elevator.behaviour = pair.behaviour;
-        switch(pair.behaviour){
+        elevator.behavior = pair.behavior;
+        switch(pair.behavior){
         case EB_DoorOpen:
             outputDevice.doorLight(1);
             timer_start(elevator.config.doorOpenDuration_s);
@@ -98,7 +98,7 @@ void fsm_onFloorArrival(int newFloor){
     
     outputDevice.floorIndicator(elevator.floor);
     
-    switch(elevator.behaviour){
+    switch(elevator.behavior){
     case EB_Moving:
         if(requests_shouldStop(elevator)){
             outputDevice.motorDirection(D_Stop);
@@ -106,7 +106,7 @@ void fsm_onFloorArrival(int newFloor){
             elevator = requests_clearAtCurrentFloor(elevator);
             timer_start(elevator.config.doorOpenDuration_s);
             setAllLights(elevator);
-            elevator.behaviour = EB_DoorOpen;
+            elevator.behavior = EB_DoorOpen;
         }
         break;
     default:
@@ -124,13 +124,13 @@ void fsm_onDoorTimeout(void){
     printf("\n\n%s()\n", __FUNCTION__);
     elevator_print(elevator);
     
-    switch(elevator.behaviour){
+    switch(elevator.behavior){
     case EB_DoorOpen:;
-        DirnBehaviourPair pair = requests_chooseDirection(elevator);
+        DirnBehaviorPair pair = requests_chooseDirection(elevator);
         elevator.dirn = pair.dirn;
-        elevator.behaviour = pair.behaviour;
+        elevator.behavior = pair.behavior;
         
-        switch(elevator.behaviour){
+        switch(elevator.behavior){
         case EB_DoorOpen:
             timer_start(elevator.config.doorOpenDuration_s);
             elevator = requests_clearAtCurrentFloor(elevator);

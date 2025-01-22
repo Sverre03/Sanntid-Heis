@@ -11,8 +11,8 @@ const _pollRate = 20 * time.Millisecond
 
 var _initialized bool = false
 
-const NumFloors int = 4
-const NumButtons int = 3
+var NumFloors int = 4
+var NumButtons int = 3
 
 var _mtx sync.Mutex
 var _conn net.Conn
@@ -191,4 +191,30 @@ func toBool(a byte) bool {
 		b = true
 	}
 	return b
+}
+
+func ButtonToString(button ButtonType) string {
+	switch button {
+	case BT_HallUp:
+		return "HallUp"
+	case BT_HallDown:
+		return "HallDown"
+	case BT_Cab:
+		return "Cab"
+	default:
+		return "Unknown"
+	}
+}
+
+func MotorDirectionToString(dir MotorDirection) string {
+	switch dir {
+	case MD_Up:
+		return "Up"
+	case MD_Down:
+		return "Down"
+	case MD_Stop:
+		return "Stop"
+	default:
+		return "Unknown"
+	}
 }

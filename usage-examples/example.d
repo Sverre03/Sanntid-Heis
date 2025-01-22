@@ -9,7 +9,7 @@ enum Dirn : int {
     up      = 1
 }
 
-enum ElevatorBehaviour {
+enum ElevatorBehavior {
     idle,
     moving,
     doorOpen,
@@ -17,7 +17,7 @@ enum ElevatorBehaviour {
 
 
 struct ElevatorState {
-    ElevatorBehaviour   behaviour;
+    ElevatorBehavior   behavior;
     int                 floor;
     Dirn                direction;
     bool[]              cabRequests;
@@ -32,8 +32,8 @@ void main(){
     auto input = HRAInput(
         [[false,false],[true,false],[false,false],[false,true]],
         [
-            "one" : ElevatorState(ElevatorBehaviour.moving, 2, Dirn.up,   [false,false,true,true]),
-            "two" : ElevatorState(ElevatorBehaviour.idle,   0, Dirn.stop, [false,false,false,false]),
+            "one" : ElevatorState(ElevatorBehavior.moving, 2, Dirn.up,   [false,false,true,true]),
+            "two" : ElevatorState(ElevatorBehavior.idle,   0, Dirn.stop, [false,false,false,false]),
         ]
     );
     writefln!("Input: %s")(input.jsonEncode);

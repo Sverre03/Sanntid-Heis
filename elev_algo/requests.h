@@ -6,12 +6,12 @@
 
 typedef struct {
     Dirn                dirn;
-    ElevatorBehaviour   behaviour;
-} DirnBehaviourPair;
+    ElevatorBehavior   behavior;
+} DirnBehaviorPair;
 
 
 
-DirnBehaviourPair requests_chooseDirection(Elevator e) __attribute__((pure));
+DirnBehaviorPair requests_chooseDirection(Elevator e) __attribute__((pure));
 
 int requests_shouldStop(Elevator e) __attribute__((pure));
 

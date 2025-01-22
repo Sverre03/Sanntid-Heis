@@ -5,23 +5,26 @@ import (
 	"fmt"
 )
 
-type ElevatorBehaviour int
+const _numFloors = 4
+const _numButtons = 3
+
+type ElevatorBehavior int
 
 const (
-	EB_Idle ElevatorBehaviour = iota
+	EB_Idle ElevatorBehavior = iota
 	EB_DoorOpen
 	EB_Moving
 )
 
 type Elevator struct {
-	Floor         int
-	Dir           elevio.MotorDirection
-	Behaviour     ElevatorBehaviour
-	RequestMatrix [elevio.NumFloors][elevio.NumButtons]bool
-	ID            string
+	Floor    int
+	Dir      elevio.MotorDirection
+	Behavior ElevatorBehavior
+	Requests [_numFloors][_numButtons]bool
+	ID       string
 }
 
-var ElevatorBehaviourToString = map[ElevatorBehaviour]string{
+var ElevatorBehaviorToString = map[ElevatorBehavior]string{
 	EB_Idle:     "Idle",
 	EB_DoorOpen: "DoorOpen",
 	EB_Moving:   "Moving",
@@ -29,15 +32,16 @@ var ElevatorBehaviourToString = map[ElevatorBehaviour]string{
 
 func NewElevator(ID string) Elevator {
 	return Elevator{
-		Floor:     -1,
-		Dir:       elevio.MD_Stop,
-		Behaviour: EB_Idle,
-		ID:        ID,
+		Behavior: EB_Idle,
+		Floor:    -1,
+		Dir:      elevio.MD_Stop,
+		Requests: [_numFloors][_numButtons]bool{},
+		ID:       ID,
 	}
 }
 
 func PrintElevator(e Elevator) {
-	behaviour := ElevatorBehaviourToString[e.Behaviour]
+	behavior := ElevatorBehaviorToString[e.Behavior]
 	dir := "Stop"
 	if e.Dir == elevio.MD_Up {
 		dir = "Up"
@@ -47,12 +51,12 @@ func PrintElevator(e Elevator) {
 	fmt.Printf("Elevator ID: %s\n", e.ID)
 	fmt.Printf("Floor: %d\n", e.Floor)
 	fmt.Printf("Direction: %s\n", dir)
-	fmt.Printf("Behaviour: %s\n", behaviour)
+	fmt.Printf("Behavior: %s\n", behavior)
 	fmt.Println("Request Matrix:")
-	for floor := len(e.RequestMatrix) - 1; floor >= 0; floor-- {
+	for floor := len(e.Requests) - 1; floor >= 0; floor-- {
 		fmt.Printf("Floor %d: ", floor)
-		for btn := 0; btn < len(e.RequestMatrix[floor]); btn++ {
-			if e.RequestMatrix[floor][btn] {
+		for btn := 0; btn < len(e.Requests[floor]); btn++ {
+			if e.Requests[floor][btn] {
 				fmt.Print("# ")
 			} else {
 				fmt.Print("- ")

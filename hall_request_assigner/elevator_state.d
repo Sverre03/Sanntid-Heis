@@ -21,7 +21,7 @@ enum Dirn : int {
     up      = 1
 }
 
-enum ElevatorBehaviour {
+enum ElevatorBehavior {
     idle,
     moving,
     doorOpen,
@@ -29,7 +29,7 @@ enum ElevatorBehaviour {
 
 
 struct LocalElevatorState {
-    ElevatorBehaviour   behaviour;
+    ElevatorBehavior   behavior;
     int                 floor;
     Dirn                direction;
     bool[]              cabRequests;
@@ -40,7 +40,7 @@ struct LocalElevatorState {
 
 
 struct ElevatorState {
-    ElevatorBehaviour   behaviour;
+    ElevatorBehavior   behavior;
     int                 floor;
     Dirn                direction;
     bool[3][]           requests;
@@ -51,7 +51,7 @@ struct ElevatorState {
 
 LocalElevatorState local(ElevatorState e){
     return LocalElevatorState(
-        e.behaviour,
+        e.behavior,
         e.floor,
         e.direction
     );
@@ -59,7 +59,7 @@ LocalElevatorState local(ElevatorState e){
 
 ElevatorState withRequests(LocalElevatorState e, bool[2][] hallReqs){
     return ElevatorState(
-        e.behaviour,
+        e.behavior,
         e.floor,
         e.direction,
         zip(hallReqs, e.cabRequests).map!(a => a[0] ~ a[1]).array.to!(bool[3][]),

@@ -5,7 +5,7 @@
 
 #include "timer.h"
 
-char* eb_toString(ElevatorBehaviour eb){
+char* eb_toString(ElevatorBehavior eb){
     return
         eb == EB_Idle       ? "EB_Idle"         :
         eb == EB_DoorOpen   ? "EB_DoorOpen"     :
@@ -23,7 +23,7 @@ void elevator_print(Elevator es){
         "  |behav = %-12.12s|\n",
         es.floor,
         elevio_dirn_toString(es.dirn),
-        eb_toString(es.behaviour)
+        eb_toString(es.behavior)
     );
     printf("  +--------------------+\n");
     printf("  |  | up  | dn  | cab |\n");
@@ -47,7 +47,7 @@ Elevator elevator_uninitialized(void){
     return (Elevator){
         .floor = -1,
         .dirn = D_Stop,
-        .behaviour = EB_Idle,
+        .behavior = EB_Idle,
         .config = {
             .clearRequestVariant = CV_All,
             .doorOpenDuration_s = 3.0,

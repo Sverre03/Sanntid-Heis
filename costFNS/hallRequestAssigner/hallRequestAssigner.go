@@ -1,4 +1,4 @@
-package main
+package hallRequestAssigner
 
 import (
 	"encoding/json"
@@ -22,6 +22,8 @@ type HRAInput struct {
 	States       map[string]HRAElevState `json:"states"`
 }
 
+
+
 func inputFunction(states []HRAElevState, HallRequests [][2]bool) HRAInput {
 	input := HRAInput{
 		HallRequests: HallRequests,
@@ -33,29 +35,8 @@ func inputFunction(states []HRAElevState, HallRequests [][2]bool) HRAInput {
 	return input
 }
 
-func main() {
-
-	elevator := HRAElevState{
-		Behavior:    "moving",
-		Floor:       1,
-		Direction:   "down",
-		CabRequests: []bool{true, false, false, true},
-	}
-	elevator1 := HRAElevState{
-		Behavior:    "idle",
-		Floor:       0,
-		Direction:   "stop",
-		CabRequests: []bool{false, false, true, false},
-	}
-	elevator2 := HRAElevState{
-		Behavior:    "idle",
-		Floor:       0,
-		Direction:   "stop",
-		CabRequests: []bool{true, false, false, false},
-	}
-
-	test := []HRAElevState{elevator, elevator1, elevator2}
-
+func outputFunction(input HRAInput) *map[string][][2]bool {
+	
 	hraExecutable := ""
 	switch runtime.GOOS {
 	case "linux":
@@ -66,28 +47,24 @@ func main() {
 		panic("OS not supported")
 	}
 
-	jsonBytes, err := json.Marshal(inputFunction(test, [][2]bool{{false, true}, {false, false}, {false, true}, {false, false}}))
+	jsonBytes, err := json.Marshal(input)
 	if err != nil {
 		fmt.Println("json.Marshal error: ", err)
-		return
+		return nil
 	}
-
-	ret, err := exec.Command("../hall_request_assigner/"+hraExecutable, "-i", string(jsonBytes)).CombinedOutput()
+	ret, err := exec.Command("../hallRequestAssigner/"+hraExecutable, "-i", string(jsonBytes)).CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error: ", err)
 		fmt.Println(string(ret))
-		return
+		return nil
 	}
 
 	output := new(map[string][][2]bool)
 	err = json.Unmarshal(ret, &output)
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
-		return
+		return nil
 	}
-
-	fmt.Printf("output: \n")
-	for k, v := range *output {
-		fmt.Printf("%6v :  %+v\n", k, v)
-	}
+	return output
 }
+

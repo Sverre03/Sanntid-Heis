@@ -1,3 +1,5 @@
+package time
+
 import (
     "time"
 )

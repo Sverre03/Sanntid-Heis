@@ -37,6 +37,26 @@ int main(void){
             }
         }
         
+        /*
+        kode for å sende states ut
+
+        
+        kode for å motta ting
+        
+        // ALL etterfølgende kode må være til stede, pluss input og output kode
+        { // check cab calls
+            static int prev[N_FLOORS][N_BUTTONS];
+            for(int f = 0; f < N_FLOORS; f++) {
+                int v = input.requestButton(f, 2);
+                if(v  &&  v != prev[f][2]) {
+                    fsm_onRequestButtonPress(f, 2);
+                }
+                prev[f][2] = v;
+            }
+        }
+        
+        */
+
         { // Floor sensor
             static int prev = -1;
             int f = input.floorSensor();
@@ -45,7 +65,6 @@ int main(void){
             }
             prev = f;
         }
-        
         
         { // Timer
             if(timer_timedOut()){

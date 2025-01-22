@@ -7,9 +7,59 @@
 #include "elevator_io_device.h"
 #include "fsm.h"
 #include "timer.h"
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
 
-int main(void){
+// this struct needs a better name. It contains the hallbuttons, and a mutex
+typedef struct  {
+    bool HallButtons[N_FLOORS][2];
+    pthread_mutex_t     mtx;
+} HallButtonsWithMutex;
+
+
+// this creates and initializes a hbwmtx
+HallButtonsWithMutex * create_hb() {
+    HallButtonsWithMutex * inputs = malloc(sizeof(HallButtonsWithMutex));
+
+    for (int i = 0; i < N_FLOORS; i++)
+    {
+        inputs->HallButtons[i][0] = false;
+        inputs->HallButtons[i][1] = false;
+    }
+    
+    // init mutex
+    pthread_mutex_init(&inputs->mtx, NULL);
+
+    return inputs;
+}
+
+// reads inputs from the Go program, updates the hallbuttons struct 
+void * readInputFromGo(void* args) {
+    bool input[N_FLOORS][2];
+    HallButtonsWithMutex* hallBtns = (HallButtonsWithMutex*)(args);
+    while(1) {
+        // poll the inputs
+        
+        // convert to inputs 
+
+        pthread_mutex_lock(&hallBtns->mtx);
+
+        for (int i = 0; i < N_FLOORS; i++)
+        {
+            hallBtns->HallButtons[i][0] = input[i][0];
+            hallBtns->HallButtons[i][1] = input[i][1];
+        }
+        
+        pthread_mutex_unlock(&hallBtns->mtx);
+    }
+}
+
+int main(void) {
+
+    // default code
     printf("Started!\n");
     
     int inputPollRate_ms = 25;
@@ -22,8 +72,18 @@ int main(void){
     if(input.floorSensor() == -1){
         fsm_onInitBetweenFloors();
     }
-        
-    while(1){
+    
+    // new code
+
+
+    pthread_t pollGoInputThread;
+    HallButtonsWithMutex * inputs = create_hb();
+
+    pthread_create(&pollGoInputThread, NULL, readInputFromGo, inputs);
+    
+
+    while(1) {
+        /*
         { // Request button
             static int prev[N_FLOORS][N_BUTTONS];
             for(int f = 0; f < N_FLOORS; f++){
@@ -37,12 +97,14 @@ int main(void){
             }
         }
         
-        /*
         kode for å sende states ut
+        
 
+        les hallButtonsWithMutex
         
-        kode for å motta ting
-        
+
+        */
+
         // ALL etterfølgende kode må være til stede, pluss input og output kode
         { // check cab calls
             static int prev[N_FLOORS][N_BUTTONS];
@@ -55,7 +117,7 @@ int main(void){
             }
         }
         
-        */
+        
 
         { // Floor sensor
             static int prev = -1;

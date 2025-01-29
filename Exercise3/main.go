@@ -30,11 +30,8 @@ func Node(id string, port int, outgoingAssignments <-chan messages.AssignmentMsg
 	go peers.Receiver(port, peerUpdateCh)
 
 	//
-	go bcast.Transmitter(port, assignmentTx)
-	go bcast.Receiver(port, assignmentRx)
-
-	go bcast.Transmitter(port, ackTx)
-	go bcast.Receiver(port, ackRx)
+	go bcast.Transmitter(port, assignmentTx, ackTx)
+	go bcast.Receiver(port, assignmentRx, ackTx)
 
 	var msg messages.AssignmentMsg
 	var peers peers.PeerUpdate
@@ -48,16 +45,10 @@ func Node(id string, port int, outgoingAssignments <-chan messages.AssignmentMsg
 		// here, you make a subroutine for sending a message. This subroutine will live until the message is accepted from all
 		go sendAssignmentMessage(assignmentTx, ackRx, &msg, peers.Peers)
 	case msg = <-assignmentRx:
-		// run a non-blocking function that acknowledges the message
-		go receiveAssignmentMessage(ackTx, msg.MessageId, &id)
+		// ackknowledge the message
+		ackTx <- messages.AckMsg{msg.MessageId, id}
 		incomingAssignments <- msg
 	}
-}
-
-func receiveAssignmentMessage(ackTx chan messages.AckMsg, msgId int, nodeId *string) {
-	ackMsg := messages.AckMsg{msgId, *nodeId}
-	ackTx <- ackMsg
-	// here, you may need some extra logic to ensure ack was acknowledged ????
 }
 
 func main() {

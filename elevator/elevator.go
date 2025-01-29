@@ -21,7 +21,6 @@ type Elevator struct {
 	Dir      elevio.MotorDirection
 	Behavior ElevatorBehavior
 	Requests [_numFloors][_numButtons]bool
-	ID       string
 }
 
 var ElevatorBehaviorToString = map[ElevatorBehavior]string{
@@ -30,13 +29,12 @@ var ElevatorBehaviorToString = map[ElevatorBehavior]string{
 	EB_Moving:   "Moving",
 }
 
-func NewElevator(ID string) Elevator {
+func NewElevator() Elevator {
 	return Elevator{
 		Behavior: EB_Idle,
 		Floor:    -1,
 		Dir:      elevio.MD_Stop,
 		Requests: [_numFloors][_numButtons]bool{},
-		ID:       ID,
 	}
 }
 
@@ -48,7 +46,6 @@ func PrintElevator(e Elevator) {
 	} else if e.Dir == elevio.MD_Down {
 		dir = "Down"
 	}
-	fmt.Printf("Elevator ID: %s\n", e.ID)
 	fmt.Printf("Floor: %d\n", e.Floor)
 	fmt.Printf("Direction: %s\n", dir)
 	fmt.Printf("Behavior: %s\n", behavior)

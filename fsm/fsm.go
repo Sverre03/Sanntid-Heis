@@ -31,6 +31,7 @@ func FsmOnRequestButtonPress(btnFloor int, btnType elevio.ButtonType) {
 
 	switch elev.Behavior {
 	case elevator.EB_DoorOpen:
+		// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
 		if requests.RequestsShouldClearImmediately(elev, btnFloor, btnType) {
 			timer.TimerStart(config.DoorOpenDurationS)
 		} else {
@@ -58,6 +59,10 @@ func FsmOnRequestButtonPress(btnFloor int, btnType elevio.ButtonType) {
 
 	fmt.Println("\nNew state:")
 	elevator.PrintElevator(elev)
+}
+
+func FsmSetObstruction(isObstructed bool) {
+	elev.IsObstructed = isObstructed
 }
 
 func FsmOnFloorArrival(newFloor int) {
@@ -91,18 +96,22 @@ func FsmOnDoorTimeout() {
 
 	switch elev.Behavior {
 	case elevator.EB_DoorOpen:
-		pair := requests.RequestsChooseDirection(elev)
-		elev.Dir = pair.Dir
-		elev.Behavior = pair.Behavior
+		if elev.IsObstructed {
+			timer.TimerStart(config.DoorOpenDurationS) // Keep the door open
+		} else {
+			pair := requests.RequestsChooseDirection(elev)
+			elev.Dir = pair.Dir
+			elev.Behavior = pair.Behavior
 
-		switch elev.Behavior {
-		case elevator.EB_DoorOpen:
-			timer.TimerStart(config.DoorOpenDurationS)
-			elev = requests.RequestsClearAtCurrentFloor(elev)
-			SetAllLights(elev)
-		case elevator.EB_Moving, elevator.EB_Idle:
-			elevio.SetDoorOpenLamp(false)
-			elevio.SetMotorDirection(elev.Dir)
+			switch elev.Behavior {
+			case elevator.EB_DoorOpen:
+				timer.TimerStart(config.DoorOpenDurationS)
+				elev = requests.RequestsClearAtCurrentFloor(elev)
+				SetAllLights(elev)
+			case elevator.EB_Moving, elevator.EB_Idle:
+				elevio.SetDoorOpenLamp(false)
+				elevio.SetMotorDirection(elev.Dir)
+			}
 		}
 	default:
 	}

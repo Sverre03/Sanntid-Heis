@@ -12,8 +12,9 @@ func main() {
 	fmt.Println("Started!")
 
 	inputPollRateMs := 25
+	numFloors := 4
 
-	elevio.Init("localhost:15657", 4)
+	elevio.Init("localhost:15657", numFloors)
 
 	prevRequestButton := make([][]bool, elevio.NumFloors)
 	for i := range prevRequestButton {
@@ -21,6 +22,7 @@ func main() {
 	}
 
 	prevFloorSensor := -1
+	prevObstructed := false
 
 	for {
 		// Request button
@@ -33,6 +35,13 @@ func main() {
 				prevRequestButton[f][b] = v
 			}
 		}
+
+		// Obstruction
+		isObstructed := elevio.GetObstruction()
+		if isObstructed != prevObstructed {
+			fsm.FsmSetObstruction(isObstructed)
+		}
+		prevObstructed = isObstructed
 
 		// Floor sensor
 		f := elevio.GetFloor()

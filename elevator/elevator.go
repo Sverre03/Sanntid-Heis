@@ -17,10 +17,11 @@ const (
 )
 
 type Elevator struct {
-	Floor    int
-	Dir      elevio.MotorDirection
-	Behavior ElevatorBehavior
-	Requests [_numFloors][_numButtons]bool
+	Floor        int
+	Dir          elevio.MotorDirection
+	Behavior     ElevatorBehavior
+	Requests     [_numFloors][_numButtons]bool
+	IsObstructed bool
 }
 
 var ElevatorBehaviorToString = map[ElevatorBehavior]string{
@@ -49,6 +50,7 @@ func PrintElevator(e Elevator) {
 	fmt.Printf("Floor: %d\n", e.Floor)
 	fmt.Printf("Direction: %s\n", dir)
 	fmt.Printf("Behavior: %s\n", behavior)
+	fmt.Printf("Obstructed: %t\n", e.IsObstructed)
 	fmt.Println("Request Matrix:")
 	for floor := len(e.Requests) - 1; floor >= 0; floor-- {
 		fmt.Printf("Floor %d: ", floor)

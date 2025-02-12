@@ -6,53 +6,52 @@ const N_FLOORS int = 4
 
 // a struct for acknowledging a message as received
 type Ack struct {
-	MessageID  int
-	NodeID int
+	MessageID int
+	NodeID    int
 }
 
-type CabRequestINF struct{
-	CabRequest [N_FLOORS]bool
-	MessageID int
+type CabRequestINF struct {
+	CabRequest     [N_FLOORS]bool
+	MessageID      int
 	ReceiverNodeID int
 }
 
-type GlobalHallRequest struct{
+type GlobalHallRequest struct {
 	HallRequests [N_FLOORS][2]bool
 }
 
 type HallLightUpdate struct {
 	LightStates [N_FLOORS][2]bool
-	MessageID int
+	MessageID   int
 }
 
-type ElevStates struct{
-	NodeID int
-	Direction string
-	Floor int
+type ElevStates struct {
+	NodeID     int
+	Direction  string
+	Floor      int
 	CabRequest [N_FLOORS]bool
-	Behavior string
+	Behavior   string
 }
 
 type ConnectionReq struct {
-	TOLC time.Time
-	MyNodeID int
+	TOLC      time.Time
+	MyNodeID  int
 	MessageID int
 }
 
 type NewHallAssignments struct {
-	NodeID int
+	NodeID         int
 	HallAssignment [N_FLOORS][2]bool
-	MessageID int
+	MessageID      int
 }
 
 type NewHallRequest struct {
 	Floor int
-	Dir string
+	Dir   string
 }
 
 type HallAssignmentComplete struct {
-	Floor int
-	Dir string
+	Floor     int
+	Dir       string
 	MessageID int
 }
-

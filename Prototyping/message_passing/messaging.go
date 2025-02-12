@@ -4,12 +4,51 @@ import (
 	"Network/network/bcast"
 	"Network/network/messages"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
 )
 
+func genRandomInt(divisor int) int {
+	i := rand.Int()
+	if i%divisor != 0 {
+		i--
+	}
+	return i
+}
+
+const (
+	NEWHALLASSIGNMENTDIVISOR      int = 2
+	HALLASSIGNMENTCOMPLETEDIVISOR     = 3
+)
+
 const PortNum int = 20011
+
+var activeNodeIds []int
+
+// Listens to incoming acknowledgment messages, distributes them to their corresponding channels
+func IncomingAckDistributor(ackRx <-chan messages.Ack, HallAssignmentsAck chan<- messages.Ack) {
+
+}
+
+func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments, OutgoingNewHallAssignments <-chan messages.NewHallAssignments) {
+	currentAssignments := map[int]messages.NewHallAssignments{}
+
+	timeOfAssignment := map[int]time.Time{}
+
+	var newAssignment messages.NewHallAssignments
+	for {
+		select {
+		case newAssignment = <-OutgoingNewHallAssignments:
+			newAssignment.MessageID = genRandomInt(NEWHALLASSIGNMENTDIVISOR)
+
+			currentAssignments[newAssignment.NodeID] = newAssignment
+			timeOfAssignment[newAssignment.NodeID] = time.Now()
+			HallAssignmentsTx <- newAssignment
+		}
+	}
+}
 
 func NetworkDude(id int) {
 
@@ -19,12 +58,11 @@ func NetworkDude(id int) {
 	ElevStatesTx := make(chan messages.ElevStates)
 	ElevStatesRx := make(chan messages.ElevStates)
 
-	NewHallAssignmentsTx := make(chan messages.NewHallAssignments)
-	NewHallAssignmentsRx := make(chan messages.NewHallAssignments)
+	HallAssignmentsTx := make(chan messages.NewHallAssignments)
+	HallAssignmentsRx := make(chan messages.NewHallAssignments)
 
-	go bcast.Transmitter(PortNum, AckTx, ElevStatesTx, NewHallAssignmentsTx)
-	go bcast.Receiver(PortNum, AckRx, ElevStatesRx, NewHallAssignmentsRx)
-	fmt.Println("Started the network dude")
+	go bcast.Transmitter(PortNum, AckTx, ElevStatesTx, HallAssignmentsTx)
+	go bcast.Receiver(PortNum, AckRx, ElevStatesRx, HallAssignmentsRx)
 
 	for {
 		select {
@@ -38,6 +76,7 @@ func NetworkDude(id int) {
 }
 
 func main() {
+	activeNodeIds = make([]int, 5)
 	id, _ := strconv.Atoi(os.Args[1])
 
 	go NetworkDude(id)

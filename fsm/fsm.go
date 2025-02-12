@@ -11,6 +11,10 @@ import (
 
 var elev elevator.Elevator
 
+func InitFSM() {
+	elev = elevator.NewElevator()
+}
+
 func SetAllLights(elev elevator.Elevator) {
 	for floor := 0; floor < elevio.NumFloors; floor++ {
 		for btn := 0; btn < elevio.NumButtons; btn++ {
@@ -90,14 +94,15 @@ func FsmOnFloorArrival(newFloor int) {
 	elevator.PrintElevator(elev)
 }
 
-func FsmOnDoorTimeout() {
+func FsmOnDoorTimeout(resetTimeout chan bool) {
 	fmt.Printf("\n\n%s()\n", "fsmOnDoorTimeout")
 	elevator.PrintElevator(elev)
 
 	switch elev.Behavior {
 	case elevator.EB_DoorOpen:
 		if elev.IsObstructed {
-			timer.TimerStart(config.DoorOpenDurationS) // Keep the door open
+			// timer.TimerStart(config.DoorOpenDurationS) // Keep the door open
+			resetTimeout <- true
 		} else {
 			pair := requests.RequestsChooseDirection(elev)
 			elev.Dir = pair.Dir
@@ -105,7 +110,8 @@ func FsmOnDoorTimeout() {
 
 			switch elev.Behavior {
 			case elevator.EB_DoorOpen:
-				timer.TimerStart(config.DoorOpenDurationS)
+				// timer.TimerStart(config.DoorOpenDurationS)
+				resetTimeout <- true
 				elev = requests.RequestsClearAtCurrentFloor(elev)
 				SetAllLights(elev)
 			case elevator.EB_Moving, elevator.EB_Idle:

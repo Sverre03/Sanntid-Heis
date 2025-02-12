@@ -5,10 +5,16 @@ import (
 	"fmt"
 	"fsm"
 	"time"
-	"timer"
 )
 
 func main() {
+	buttonEvent := make(chan elevio.ButtonEvent)
+	floorEvent := make(chan int)
+	// stopEvent  := make(chan bool);
+	obstructionEvent := make(chan bool)
+	doorTimeout := time.NewTimer(3 * time.Second)
+	resetTimeout := make(chan bool)
+
 	fmt.Println("Started!")
 
 	inputPollRateMs := 25
@@ -16,44 +22,39 @@ func main() {
 
 	elevio.Init("localhost:15657", numFloors)
 
+	for f := 0; f < numFloors; f++ {
+		for b := 0; b < 3; b++ {
+			elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
+		}
+	}
+
 	prevRequestButton := make([][]bool, elevio.NumFloors)
 	for i := range prevRequestButton {
 		prevRequestButton[i] = make([]bool, elevio.NumButtons)
 	}
 
-	prevFloorSensor := -1
-	prevObstructed := false
+	// Start polling routines outside the loop
+	go elevio.PollButtons(buttonEvent)
+	go elevio.PollFloorSensor(floorEvent)
+	go elevio.PollObstructionSwitch(obstructionEvent)
 
 	for {
-		// Request button
-		for f := 0; f < elevio.NumFloors; f++ {
-			for b := 0; b < elevio.NumButtons; b++ {
-				v := elevio.GetButton(elevio.ButtonType(b), f)
-				if v && v != prevRequestButton[f][b] {
-					fsm.FsmOnRequestButtonPress(f, elevio.ButtonType(b))
-				}
-				prevRequestButton[f][b] = v
-			}
-		}
+		select {
+		case button := <-buttonEvent:
+			fsm.FsmOnRequestButtonPress(button.Floor, button.Button)
 
-		// Obstruction
-		isObstructed := elevio.GetObstruction()
-		if isObstructed != prevObstructed {
+		case floor := <-floorEvent:
+			fsm.FsmOnFloorArrival(floor)
+
+		case isObstructed := <-obstructionEvent:
 			fsm.FsmSetObstruction(isObstructed)
-		}
-		prevObstructed = isObstructed
 
-		// Floor sensor
-		f := elevio.GetFloor()
-		if f != -1 && f != prevFloorSensor {
-			fsm.FsmOnFloorArrival(f)
-		}
-		prevFloorSensor = f
+		case <-doorTimeout.C:
+			resetTimeout <- true
+			fsm.FsmOnDoorTimeout(resetTimeout)
 
-		// Timer
-		if timer.TimerTimedOut() {
-			timer.TimerStop()
-			fsm.FsmOnDoorTimeout()
+		case <-resetTimeout:
+			doorTimeout.Reset(3 * time.Second)
 		}
 
 		time.Sleep(time.Duration(inputPollRateMs) * time.Millisecond)

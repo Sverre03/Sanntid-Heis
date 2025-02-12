@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:costFNS/hallRequestAssigner/hallRequestAssigner.go
 package hallRequestAssigner
+========
+package example
+>>>>>>>> bcd1e47be0125e70e0fe13f792836e4dfb6d157e:usage-examples/example.go
 
 import (
 	"encoding/json"
@@ -11,7 +15,7 @@ import (
 // This means they must start with a capital letter, so we need to use field renaming struct tags to make them camelCase
 
 type HRAElevState struct {
-	Behavior    string `json:"behaviour"`
+	Behavior    string `json:"behavior"`
 	Floor       int    `json:"floor"`
 	Direction   string `json:"direction"`
 	CabRequests []bool `json:"cabRequests"`

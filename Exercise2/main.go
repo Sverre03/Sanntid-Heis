@@ -8,11 +8,11 @@ import (
 
 const bufferSize = 1024
 
-const ServerIP string = "localhost" // "10.100.23.204"
+const ServerIP string = "10.100.23.204" // "localhost"
 const Port string = "34933"
 const LocalPort string = "20011"
-const WritePort string = "20000" // "20011" // Choose 20011 for both write and read when not working from home
-const ReadPort string = "20001"  // "20011" // Choose 20011 when not working from home
+const WritePort string = "20011" // "20000" // Choose 20011 for both write and read when not working from home
+const ReadPort string = "20011"  // "20001" // Choose 20011 when not working from home
 
 // UDPListenToServer takes a port and listens to udp messages on it
 // It prints anything it hears to the terminal
@@ -197,7 +197,7 @@ func main() {
 	// go TCPServer()
 	// time.Sleep(1 * time.Second)
 	// TCPClient()
-	// go UDPListenToServer(fmt.Sprintf("%s:%s", ServerIP, ReadPort))
+	// go UDPListenToServer(fmt.Sprintf(":%s", ReadPort))
 	// go UDPWriteToServer(fmt.Sprintf("%s:%s", ServerIP, WritePort), "Hello UDP")
 
 	// time.Sleep(100 * time.Second)

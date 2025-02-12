@@ -49,13 +49,13 @@ unittest {
                 [[false,false],[true,false],[false,false],[false,true]],
             "states" : {
                 "one" : {
-                    "behaviour":"moving",
+                    "behavior":"moving",
                     "floor":2,
                     "direction":"up",
                     "cabRequests":[false,false,true,true]
                 },
                 "two" : {
-                    "behaviour":"idle",
+                    "behavior":"idle",
                     "floor":0,
                     "direction":"stop",
                     "cabRequests":[false,false,false,false]
@@ -90,19 +90,19 @@ unittest {
                 [[true,false],[false,false],[true,true],[false,false]],
             "states" : {
                 "a" : {
-                    "behaviour":"doorOpen",
+                    "behavior":"doorOpen",
                     "floor":1,
                     "direction":"down",
                     "cabRequests":[false,false,false,false]
                 },
                 "b" : {
-                    "behaviour":"moving",
+                    "behavior":"moving",
                     "floor":0,
                     "direction":"up",
                     "cabRequests":[true,true,true,true]
                 },
                 "c" : {
-                    "behaviour":"moving",
+                    "behavior":"moving",
                     "floor":3,
                     "direction":"down",
                     "cabRequests":[false,false,false,false]

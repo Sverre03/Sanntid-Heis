@@ -13,7 +13,7 @@ Input:
     "states" : 
         {
             "id_1" : {
-                "behaviour"     : < "idle" | "moving" | "doorOpen" >
+                "behavior"     : < "idle" | "moving" | "doorOpen" >
                 "floor"         : NonNegativeInteger
                 "direction"     : < "up" | "down" | "stop" >
                 "cabRequests"   : [Boolean, ...]
@@ -43,13 +43,13 @@ Input:
         [[false,false],[true,false],[false,false],[false,true]],
     "states" : {
         "one" : {
-            "behaviour":"moving",
+            "behavior":"moving",
             "floor":2,
             "direction":"up",
             "cabRequests":[false,false,true,true]
         },
         "two" : {
-            "behaviour":"idle",
+            "behavior":"idle",
             "floor":0,
             "direction":"stop",
             "cabRequests":[false,false,false,false]

@@ -1,53 +1,49 @@
 package main
 
 import (
-    "fmt"
-    "time"
+	"elevio"
+	"fsm"
+	"time"
 )
 
 func main() {
-    fmt.Println("Started!")
+	buttonEvent := make(chan elevio.ButtonEvent)
+	floorEvent := make(chan int)
+	doorTimeoutEvent := make(chan bool)
+	obstructionEvent := make(chan bool)
 
-    inputPollRateMs := 25
+	inputPollRateMs := 25
+	numFloors := 4
 
-    input := elevioGetInputDevice()
+	elevio.Init("localhost:15657", numFloors)
+	fsm.InitFSM()
 
-    if input.FloorSensor() == -1 {
-        fsmOnInitBetweenFloors()
-    }
+	prevRequestButton := make([][]bool, elevio.NumFloors)
+	for i := range prevRequestButton {
+		prevRequestButton[i] = make([]bool, elevio.NumButtons)
+	}
 
-    prevRequestButton := make([][]int, N_FLOORS)
-    for i := range prevRequestButton {
-        prevRequestButton[i] = make([]int, N_BUTTONS)
-    }
+	// Start polling routines outside the loop
+	go elevio.PollButtons(buttonEvent)
+	go elevio.PollFloorSensor(floorEvent)
+	go elevio.PollObstructionSwitch(obstructionEvent)
+	go elevio.PollTimer(doorTimeoutEvent)
 
-    prevFloorSensor := -1
+	for {
+		select {
+		case button := <-buttonEvent:
+			fsm.FsmOnRequestButtonPress(button.Floor, button.Button)
 
-    for {
-        // Request button
-        for f := 0; f < N_FLOORS; f++ {
-            for b := 0; b < N_BUTTONS; b++ {
-                v := input.RequestButton(f, b)
-                if v != 0 && v != prevRequestButton[f][b] {
-                    fsmOnRequestButtonPress(f, b)
-                }
-                prevRequestButton[f][b] = v
-            }
-        }
+		case floor := <-floorEvent:
+			fsm.FsmOnFloorArrival(floor)
 
-        // Floor sensor
-        f := input.FloorSensor()
-        if f != -1 && f != prevFloorSensor {
-            fsmOnFloorArrival(f)
-        }
-        prevFloorSensor = f
+		case isObstructed := <-obstructionEvent:
+			fsm.FsmSetObstruction(isObstructed)
 
-        // Timer
-        if timerTimedOut() {
-            timerStop()
-            fsmOnDoorTimeout()
-        }
+		case <-doorTimeoutEvent:
+			fsm.FsmOnDoorTimeout()
+		}
 
-        time.Sleep(time.Duration(inputPollRateMs) * time.Millisecond)
-    }
+		time.Sleep(time.Duration(inputPollRateMs) * time.Millisecond)
+	}
 }

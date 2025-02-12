@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 	"time"
+	"timer"
 )
 
 const _pollRate = 20 * time.Millisecond
@@ -118,6 +119,18 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	for {
 		time.Sleep(_pollRate)
 		v := GetObstruction()
+		if v != prev {
+			receiver <- v
+		}
+		prev = v
+	}
+}
+
+func PollTimer(receiver chan<- bool) {
+	prev := false
+	for {
+		time.Sleep(_pollRate)
+		v := timer.TimerTimedOut()
 		if v != prev {
 			receiver <- v
 		}

@@ -12,6 +12,7 @@ import (
 const PortNum int = 20011
 
 func NetworkDude(id int) {
+
 	AckTx := make(chan messages.Ack)
 	AckRx := make(chan messages.Ack)
 
@@ -21,8 +22,9 @@ func NetworkDude(id int) {
 	NewHallAssignmentsTx := make(chan messages.NewHallAssignments)
 	NewHallAssignmentsRx := make(chan messages.NewHallAssignments)
 
-	bcast.Transmitter(PortNum, AckTx, ElevStatesTx, NewHallAssignmentsTx)
-	bcast.Receiver(PortNum, AckRx, ElevStatesRx, NewHallAssignmentsRx)
+	go bcast.Transmitter(PortNum, AckTx, ElevStatesTx, NewHallAssignmentsTx)
+	go bcast.Receiver(PortNum, AckRx, ElevStatesRx, NewHallAssignmentsRx)
+	fmt.Println("Started the network dude")
 
 	for {
 		select {
@@ -30,7 +32,6 @@ func NetworkDude(id int) {
 			fmt.Println(states.NodeID)
 			fmt.Println(states.Behavior)
 		case <-time.After(time.Millisecond * 500):
-			fmt.Println("Attempting to send data")
 			ElevStatesTx <- messages.ElevStates{id, "down", 3, [4]bool{false, false, false, false}, "Idle"}
 		}
 	}
@@ -40,8 +41,7 @@ func main() {
 	id, _ := strconv.Atoi(os.Args[1])
 
 	go NetworkDude(id)
-	fmt.Println("Started the dude")
 	for {
-		time.Sleep(1000 * time.Second)
+		time.Sleep(time.Second * 1000)
 	}
 }

@@ -65,6 +65,7 @@ func Receiver(port int, chans ...interface{}) {
 		json.Unmarshal(buf[0:n], &ttj)
 		ch, ok := chansMap[ttj.TypeId]
 		if !ok {
+			fmt.Println("Received junk data")
 			continue
 		}
 		v := reflect.New(reflect.TypeOf(ch).Elem())

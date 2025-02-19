@@ -24,7 +24,7 @@ const (
 	HALL_ASSIGNMENT_COMPLETE MessageIDPartition = 4
 )
 
-func generateMessageID(partition MessageIDPartition) int {
+func GenerateMessageID(partition MessageIDPartition) int {
 	i := rand.Intn(IDPartitionSize)
 	i += (2 << 12) * int(partition)
 	return i
@@ -74,7 +74,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 		case newAssignment = <-OutgoingNewHallAssignments:
 
 			// set a new message id
-			newAssignment.MessageID = generateMessageID(NEW_HALL_ASSIGNMENT)
+			newAssignment.MessageID = GenerateMessageID(NEW_HALL_ASSIGNMENT)
 
 			// set/overwrite old assignments
 			activeAssignments[newAssignment.NodeID] = newAssignment
@@ -195,7 +195,7 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 		case newAssignment = <-outgoingLightUpdates:
 
 			// set a new message id
-			newAssignment.MessageID = generateMessageID(HALL_LIGHT_UPDATE)
+			newAssignment.MessageID = GenerateMessageID(HALL_LIGHT_UPDATE)
 
 			commandCh <- "getActiveNodeIDs"
 			activeNodeIDs := <-activeNodeIDsCh

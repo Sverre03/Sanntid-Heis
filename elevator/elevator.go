@@ -1,7 +1,7 @@
 package elevator
 
 import (
-	"elevio"
+	"main/elevio"
 	"fmt"
 )
 

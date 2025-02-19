@@ -1,10 +1,10 @@
 package main
 
 import (
-	"node"
+	"main/node"
 )
 
 func main() {
 	testNode := node.Node(1)
-	node.InactiveProgram()
+	node.InactiveProgram(testNode)
 }

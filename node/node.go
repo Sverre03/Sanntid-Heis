@@ -1,10 +1,10 @@
 package node
 
 import (
-	"Network/network/bcast"
-	"Network/network/messages"
+	"main/Network/network/bcast"
+	"main/Network/network/messages"
 	"context"
-	"elevator"
+	"main/elevator"
 	"fmt"
 	"time"
 
@@ -160,7 +160,7 @@ func DisconnectedProgram(node *NodeData) {
 	// ID of the node we currently are trying to connect with
 	currentFriendID := 0
 
-	isConnRequestActive := false
+	// isConnRequestActive := false
 
 	for {
 		select {
@@ -215,7 +215,7 @@ func DisconnectedProgram(node *NodeData) {
 		case <-time.After(time.Millisecond * 500):
 
 			// start sending a conn request :)
-			isConnRequestActive = true
+			// isConnRequestActive = true
 			node.ConnectionReqTx <- myConnReq
 		}
 	}

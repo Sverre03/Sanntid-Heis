@@ -10,9 +10,11 @@ import (
 	"time"
 )
 
+// some of these constants may need to live elsewhere
 const PortNum int = 20011
 const IDPartitionSize = 2 << 12
 const timeout = 500 * time.Millisecond
+const MASTER_TRANSMIT_INTERVAL = 50 * time.Millisecond
 
 type MessageIDPartition int
 
@@ -24,13 +26,14 @@ const (
 	HALL_ASSIGNMENT_COMPLETE MessageIDPartition = 4
 )
 
+// generates a message ID that corresponsds to the message type
 func GenerateMessageID(partition MessageIDPartition) int {
 	i := rand.Intn(IDPartitionSize)
 	i += (2 << 12) * int(partition)
 	return i
 }
 
-// Listens to incoming acknowledgment messages, distributes them to their corresponding channels
+// Listens to incoming acknowledgment messages from UDP, distributes them to their corresponding channels
 func IncomingAckDistributor(ackRx <-chan messages.Ack,
 	hallAssignmentsAck chan<- messages.Ack,
 	lightUpdateAck chan<- messages.Ack,
@@ -57,6 +60,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 	}
 }
 
+// Transmits Hall assignments from outgoingHallAssignments channel, and handles the ack
 func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments,
 	OutgoingNewHallAssignments chan messages.NewHallAssignments,
 	HallAssignmentsAck <-chan messages.Ack) {
@@ -93,8 +97,11 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 			for _, msg := range activeAssignments {
 				if msg.MessageID == timedOutMsgID {
 
-					// add the message to the incoming messages channel
-					OutgoingNewHallAssignments <- msg
+					// rebroadcast the message, and add a new timeout
+					HallAssignmentsTx <- msg
+					time.AfterFunc(time.Millisecond*500, func() {
+						timeoutChannel <- msg.MessageID
+					})
 					break
 				}
 			}
@@ -113,6 +120,28 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 	}
 }
 
+// broadcasts the global hall requests with an interval, enable or disable by sending a bool in transmitEnableCh
+func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallRequestTx chan<- messages.GlobalHallRequest, requestsForBroadcastCh <-chan messages.GlobalHallRequest) {
+	enable := false
+	var GHallRequests messages.GlobalHallRequest
+
+	for {
+		select {
+
+		case <-time.After(MASTER_TRANSMIT_INTERVAL):
+		case enable = <-transmitEnableCh:
+		case GHallRequests = <-requestsForBroadcastCh:
+			if enable {
+				GlobalHallRequestTx <- GHallRequests
+			}
+		}
+	}
+}
+
+// server that tracks the states of all elevators by listening to the elevstatesrx channel
+// you can requests to know the states by sending a string on  commandCh
+// commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC"
+// known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
 func ElevStatesServer(commandCh <-chan string,
 	timeOfLastContactCh chan<- time.Time,
 	elevStatesCh chan<- map[int]messages.ElevStates,
@@ -121,7 +150,7 @@ func ElevStatesServer(commandCh <-chan string,
 
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]messages.ElevStates)
-	var timeOfLastContact time.Time
+	timeOfLastContact := time.Time{}
 
 	for {
 		select {
@@ -176,6 +205,8 @@ func ElevStatesServer(commandCh <-chan string,
 	}
 }
 
+// Transmits light updates when it receives them on outgoing light updates channel
+// Waits for an ack on all transmitted messages, retransmits if no ack was received
 func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 	outgoingLightUpdates chan messages.HallLightUpdate,
 	hallLightUpdateAck <-chan messages.Ack,
@@ -243,6 +274,7 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 	}
 }
 
+// temporary test function
 func NetworkDude(id int) {
 
 	AckTx := make(chan messages.Ack)

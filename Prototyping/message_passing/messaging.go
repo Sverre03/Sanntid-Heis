@@ -11,35 +11,48 @@ import (
 )
 
 const PortNum int = 20011
-const IdPartitionSpace = 2 << 12
+const IDPartitionSize = 2 << 12
 const timeout = 500 * time.Millisecond
 
-type MessageIdPartition int
+type MessageIDPartition int
 
 const (
-	NEW_HALL_ASSIGNMENT MessageIdPartition = 0
-	HALL_LIGHT_UPDATE                      = 1
-	CONNECTION_REQ                         = 2
+	NEW_HALL_ASSIGNMENT      MessageIDPartition = 0
+	HALL_LIGHT_UPDATE        MessageIDPartition = 1
+	CONNECTION_REQ           MessageIDPartition = 2
+	CAB_REQ_INFO             MessageIDPartition = 3
+	HALL_ASSIGNMENT_COMPLETE MessageIDPartition = 4
 )
 
-var activeNodeIds []int
-
-func generateMessageID(partition MessageIdPartition) int {
-	i := rand.Intn(IdPartitionSpace)
+func GenerateMessageID(partition MessageIDPartition) int {
+	i := rand.Intn(IDPartitionSize)
 	i += (2 << 12) * int(partition)
 	return i
 }
 
 // Listens to incoming acknowledgment messages, distributes them to their corresponding channels
-func IncomingAckDistributor(ackRx <-chan messages.Ack, HallAssignmentsAck chan<- messages.Ack) {
+func IncomingAckDistributor(ackRx <-chan messages.Ack,
+	hallAssignmentsAck chan<- messages.Ack,
+	lightUpdateAck chan<- messages.Ack,
+	connectionReqAck chan<- messages.Ack,
+	cabReqInfoAck chan<- messages.Ack,
+	hallAssignmentCompleteAck chan<- messages.Ack) {
 
-	var ackMsg messages.Ack
-	for {
-		select {
-		case ackMsg = <-ackRx:
-			if ackMsg.MessageID < IdPartitionSpace*int(NEW_HALL_ASSIGNMENT) {
-				HallAssignmentsAck <- ackMsg
-			}
+	for ackMsg := range ackRx {
+
+		if ackMsg.MessageID < IDPartitionSize*int(NEW_HALL_ASSIGNMENT) {
+			hallAssignmentsAck <- ackMsg
+
+		} else if ackMsg.MessageID < IDPartitionSize*int(HALL_LIGHT_UPDATE) {
+			lightUpdateAck <- ackMsg
+
+		} else if ackMsg.MessageID < IDPartitionSize*int(CONNECTION_REQ) {
+			connectionReqAck <- ackMsg
+
+		} else if ackMsg.MessageID < IDPartitionSize*int(CAB_REQ_INFO) {
+			cabReqInfoAck <- ackMsg
+		} else if ackMsg.MessageID < IDPartitionSize*int(HALL_ASSIGNMENT_COMPLETE) {
+			hallAssignmentCompleteAck <- ackMsg
 		}
 	}
 }
@@ -61,7 +74,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 		case newAssignment = <-OutgoingNewHallAssignments:
 
 			// set a new message id
-			newAssignment.MessageID = generateMessageID(NEW_HALL_ASSIGNMENT)
+			newAssignment.MessageID = GenerateMessageID(NEW_HALL_ASSIGNMENT)
 
 			// set/overwrite old assignments
 			activeAssignments[newAssignment.NodeID] = newAssignment
@@ -88,10 +101,10 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 
 		case receivedAck = <-HallAssignmentsAck:
 
-			// check if message is in map, if not do nothin
+			// check if message is in map, if not do nothing
 			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
 				if msg.MessageID == receivedAck.MessageID {
-					// remove the assignment from the map
+
 					delete(activeAssignments, receivedAck.MessageID)
 				}
 			}
@@ -101,14 +114,14 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 }
 
 func ElevStatesServer(commandCh <-chan string,
-	TimeOfLastContactCh chan<- time.Time,
+	timeOfLastContactCh chan<- time.Time,
 	elevStatesCh chan<- map[int]messages.ElevStates,
-	activeElevIDsCh chan<- []int,
+	activeNodeIDsCh chan<- []int,
 	elevStatesRx <-chan messages.ElevStates) {
 
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]messages.ElevStates)
-	var TimeOfLastContact time.Time
+	var timeOfLastContact time.Time
 
 	for {
 		select {
@@ -120,7 +133,7 @@ func ElevStatesServer(commandCh <-chan string,
 			if id != 0 {
 
 				// My new time of last contact
-				TimeOfLastContact = time.Now()
+				timeOfLastContact = time.Now()
 
 				knownNodes[id] = elevState
 
@@ -131,6 +144,7 @@ func ElevStatesServer(commandCh <-chan string,
 		case command := <-commandCh:
 			switch command {
 			case "getActiveElevStates":
+
 				// remove dead connections before sending
 				activeNodes := make(map[int]messages.ElevStates)
 				for id, t := range lastSeen {
@@ -146,14 +160,14 @@ func ElevStatesServer(commandCh <-chan string,
 
 				for id, t := range lastSeen {
 					if time.Since(t) < timeout {
-						append(activeIDs, id)
+						activeIDs = append(activeIDs, id)
 					}
 				}
 
-				activeElevIDsCh <- activeIDs
+				activeNodeIDsCh <- activeIDs
 
 			case "getTOLC":
-				TimeOfLastContactCh <- TimeOfLastContact
+				timeOfLastContactCh <- timeOfLastContact
 
 			case "getAllKnownNodes":
 				elevStatesCh <- knownNodes
@@ -162,61 +176,72 @@ func ElevStatesServer(commandCh <-chan string,
 	}
 }
 
-// func LightUpdateTransmitter(HallLightUpdateTx chan<- messages.HallLightUpdate,
-// 	OutgoingLightUpdates chan messages.HallLightUpdate,
-// 	HallLightUpdateAck <-chan messages.Ack) {
+func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
+	outgoingLightUpdates chan messages.HallLightUpdate,
+	hallLightUpdateAck <-chan messages.Ack,
+	commandCh chan<- string,
+	activeNodeIDsCh <-chan []int) {
 
-// 	activeAssignments := map[int]messages.HallLightUpdate{}
+	activeAssignments := map[int]messages.HallLightUpdate{}
 
-// 	timeoutChannel := make(chan int)
+	timeoutCh := make(chan int)
 
-// 	var timedOutMsgID int
-// 	var receivedAck messages.Ack
-// 	var newAssignment messages.HallLightUpdate
+	var timedOutMsgID int
+	var receivedAck messages.Ack
+	var newAssignment messages.HallLightUpdate
 
-// 	for {
-// 		select {
-// 		case newAssignment = <-OutgoingLightUpdates:
+	for {
+		select {
+		case newAssignment = <-outgoingLightUpdates:
 
-// 			// set a new message id
-// 			newAssignment.MessageID = generateMessageID(HALL_LIGHT_UPDATE)
+			// set a new message id
+			newAssignment.MessageID = GenerateMessageID(HALL_LIGHT_UPDATE)
 
-// 			// set/overwrite old assignments
-// 			activeAssignments[newAssignment.NodeID] = newAssignment
+			commandCh <- "getActiveNodeIDs"
+			activeNodeIDs := <-activeNodeIDsCh
 
-// 			// send out the new assignment
-// 			HallAssignmentsTx <- newAssignment
+			// set/overwrite old assignments
+			for _, id := range activeNodeIDs {
+				print(id)
+				activeAssignments[id] = newAssignment
+			}
 
-// 			// check for whether message is not acknowledged within duration
-// 			time.AfterFunc(time.Millisecond*500, func() {
-// 				timeoutChannel <- newAssignment.MessageID
-// 			})
+			// send out the new assignment
+			hallLightUpdateTx <- newAssignment
 
-// 		case timedOutMsgID = <-timeoutChannel:
+			// check for whether message is not acknowledged within duration
+			time.AfterFunc(time.Millisecond*500, func() {
+				timeoutCh <- newAssignment.MessageID
+			})
 
-// 			// check if message is still in active assigments
-// 			for _, msg := range activeAssignments {
-// 				if msg.MessageID == timedOutMsgID {
+		case timedOutMsgID = <-timeoutCh:
 
-// 					// add the message to the incoming messages channel
-// 					OutgoingNewHallAssignments <- msg
-// 					break
-// 				}
-// 			}
+			// check if message is still in active assigments
+			for _, msg := range activeAssignments {
+				if msg.MessageID == timedOutMsgID {
 
-// 		case receivedAck = <-HallAssignmentsAck:
+					// send the message again
+					hallLightUpdateTx <- msg
+					time.AfterFunc(time.Millisecond*500, func() {
+						timeoutCh <- newAssignment.MessageID
+					})
+					break
+				}
+			}
 
-// 			// check if message is in map, if not do nothin
-// 			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
-// 				if msg.MessageID == receivedAck.MessageID {
-// 					// remove the assignment from the map
-// 					delete(activeAssignments, receivedAck.MessageID)
-// 				}
-// 			}
-// 		}
+		case receivedAck = <-hallLightUpdateAck:
+			// check if message is in map, if not do nothin
 
-// 	}
-// }
+			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
+				if msg.MessageID == receivedAck.MessageID {
+					// remove the assignment from the map
+					delete(activeAssignments, receivedAck.MessageID)
+				}
+			}
+		}
+
+	}
+}
 
 func NetworkDude(id int) {
 
@@ -262,7 +287,6 @@ func NetworkDude(id int) {
 }
 
 func main() {
-	activeNodeIds = make([]int, 5)
 	id, _ := strconv.Atoi(os.Args[1])
 
 	go NetworkDude(id)

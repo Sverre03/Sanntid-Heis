@@ -1,6 +1,6 @@
-module fsm
+module requests
 
-go 1.22.1
+go 1.23.4
 
 require elevio v0.0.0
 replace elevio => ../elevio

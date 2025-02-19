@@ -1,6 +1,6 @@
 module MessagePrototype
 
-go 1.23.6
+go 1.23.4
 
 replace Network => ../../Network
 

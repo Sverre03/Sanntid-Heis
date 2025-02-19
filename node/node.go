@@ -4,6 +4,7 @@ import (
 	"Network/network/bcast"
 	"Network/network/messages"
 	"context"
+	"elevator"
 	"fmt"
 	"time"
 
@@ -15,7 +16,7 @@ type NodeData struct {
 	NodeState *fsm.FSM
 
 	TOLC                      time.Time
-	Elevator                  *Elevator
+	Elevator                  *elevator.Elevator
 	TaskQueue                 []string
 	GlobalHallRequests        []string
 	LastKnownStatesOfAllNodes map[int]string
@@ -41,6 +42,10 @@ type NodeData struct {
 	ConnectionReqTx chan messages.ConnectionReq
 	ConnectionReqRx chan messages.ConnectionReq
 
+	HallAssignmentAckRx  chan messages.Ack
+	HallLightUpdateAckRx chan messages.Ack
+	ConnectionReqAckRx   chan messages.Ack
+
 	NewHallReqTx chan messages.NewHallRequest
 	NewHallReqRx chan messages.NewHallRequest
 
@@ -49,10 +54,12 @@ type NodeData struct {
 }
 
 func Node(id int) *NodeData {
+	PortNum := 20011
+
 	node := &NodeData{
 		ID:                        id,
 		TOLC:                      time.Time{},
-		Elevator:                  &Elevator{},
+		Elevator:                  &elevator.Elevator{},
 		TaskQueue:                 make([]string, 0),
 		GlobalHallRequests:        make([]string, 0),
 		LastKnownStatesOfAllNodes: make(map[int]string),
@@ -122,19 +129,19 @@ func (node *NodeData) onEnterInactive(_ context.Context, e *fsm.Event) {
 func (node *NodeData) onEnterDisconnected(_ context.Context, e *fsm.Event) {
 	node.TOLC = time.Time{}
 	fmt.Printf("Node %d er nå DISCONNECTED. Med TOLC lik %s \node", node.ID, node.TOLC)
-	DisconnectedProgram()
+	DisconnectedProgram(node)
 }
 
 func (node *NodeData) onEnterSlave(_ context.Context, e *fsm.Event) {
 	node.TOLC = time.Now()
-	fmt.Printf("Node %d er nå SLAVE. Med TOLC lik %s \node", node.ID, node.TOLC)
-	SlaveProgram()
+	// fmt.Printf("Node %d er nå SLAVE. Med TOLC lik %s \node", node.ID, node.TOLC)
+	SlaveProgram(node)
 }
 
 func (node *NodeData) onEnterMaster(_ context.Context, e *fsm.Event) {
 	node.TOLC = time.Now()
-	fmt.Printf("Node %d er nå MASTER. Med TOLC lik %s \node", node.ID, node.TOLC)
-	MasterProgram()
+	// fmt.Printf("Node %d er nå MASTER. Med TOLC lik %s \node", node.ID, node.TOLC)
+	MasterProgram(node)
 }
 
 func InactiveProgram(node *NodeData) {
@@ -144,13 +151,80 @@ func InactiveProgram(node *NodeData) {
 }
 
 func DisconnectedProgram(node *NodeData) {
+	timeOfLastContact := time.Time{} // placeholder for getting from server
+	msgID := 0                       // placeholder for using "getmessageid function"
+
+	myConnReq := messages.ConnectionReq{TOLC: timeOfLastContact, NodeID: node.ID, MessageID: msgID}
+	incomingConnRequests := make(map[int]messages.ConnectionReq)
+
+	// ID of the node we currently are trying to connect with
+	currentFriendID := 0
+
+	isConnRequestActive := false
 
 	for {
 		select {
-		case conReq := <-node.ConnectionReqRx:
-			if node.ID != conReq.MyNodeID {
-				node.AckTx <- messages.Ack{MessageID: conReq.MessageID, NodeID: node.ID}
+
+		case <-node.GlobalHallRequestRx:
+			if err := node.NodeState.Event(context.Background(), "connect"); err != nil {
+				fmt.Println("Error:", err)
+			} else {
+				return
 			}
+
+		case incomingConnReq := <-node.ConnectionReqRx:
+			if node.ID != incomingConnReq.NodeID {
+				incomingConnRequests[incomingConnReq.NodeID] = incomingConnReq
+				if currentFriendID == 0 || currentFriendID > incomingConnReq.NodeID {
+
+					// this is the node with the lowest ID, I want to start a relationship with him
+					currentFriendID = incomingConnReq.NodeID
+				}
+			}
+
+		case connReqAck := <-node.ConnectionReqAckRx:
+
+			if node.ID != connReqAck.NodeID && connReqAck.NodeID == currentFriendID {
+
+				// check who has the most recent data
+				if node.TOLC.Before(incomingConnRequests[connReqAck.NodeID].TOLC) {
+					if err := node.NodeState.Event(context.Background(), "promote"); err != nil {
+						fmt.Println("Error:", err)
+					}
+
+				} else if node.TOLC.After(incomingConnRequests[connReqAck.NodeID].TOLC) {
+					if err := node.NodeState.Event(context.Background(), "connect"); err != nil {
+						fmt.Println("Error:", err)
+					}
+
+				} else {
+					// tie breaker: the one with the largeest ID becomes the master
+					if node.ID > connReqAck.NodeID {
+						if err := node.NodeState.Event(context.Background(), "promote"); err != nil {
+							fmt.Println("Error:", err)
+						}
+					} else if node.ID < connReqAck.NodeID {
+						if err := node.NodeState.Event(context.Background(), "connect"); err != nil {
+							fmt.Println("Error:", err)
+						}
+					}
+				}
+			}
+
+			// timeout should be a const variable
+		case <-time.After(time.Millisecond * 500):
+
+			// start sending a conn request :)
+			isConnRequestActive = true
+			node.ConnectionReqTx <- myConnReq
 		}
 	}
+}
+
+func SlaveProgram(node *NodeData) {
+	fmt.Printf("Node %d er nå MASTER. Med TOLC lik %s \node", node.ID, node.TOLC)
+}
+
+func MasterProgram(node *NodeData) {
+	fmt.Printf("Node %d er nå SLAVE. Med TOLC lik %s \node", node.ID, node.TOLC)
 }

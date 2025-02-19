@@ -40,7 +40,7 @@ type ElevStates struct {
 // event
 type ConnectionReq struct {
 	TOLC      time.Time
-	MyNodeID  int
+	NodeID    int
 	MessageID int
 }
 

@@ -1,4 +1,4 @@
-module fsm
+module elevator_fsm
 
 go 1.22.1
 

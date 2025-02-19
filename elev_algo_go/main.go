@@ -1,8 +1,8 @@
 package main
 
 import (
-	"elevio"
 	"elevator_fsm"
+	"elevio"
 	"time"
 )
 

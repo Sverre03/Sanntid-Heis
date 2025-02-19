@@ -1,4 +1,4 @@
-package fsm
+package elevator_fsm
 
 import (
 	"config"

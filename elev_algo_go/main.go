@@ -2,7 +2,7 @@ package main
 
 import (
 	"elevio"
-	"fsm"
+	"elevator_fsm"
 	"time"
 )
 
@@ -12,11 +12,11 @@ func main() {
 	doorTimeoutEvent := make(chan bool)
 	obstructionEvent := make(chan bool)
 
-	inputPollRateMs := 25
+	const inputPollRate = 25 * time.Millisecond
 	numFloors := 4
 
 	elevio.Init("localhost:15657", numFloors)
-	fsm.InitFSM()
+	elevator_fsm.InitFSM()
 
 	prevRequestButton := make([][]bool, elevio.NumFloors)
 	for i := range prevRequestButton {
@@ -32,18 +32,18 @@ func main() {
 	for {
 		select {
 		case button := <-buttonEvent:
-			fsm.FsmOnRequestButtonPress(button.Floor, button.Button)
+			elevator_fsm.FsmOnRequestButtonPress(button.Floor, button.Button)
 
 		case floor := <-floorEvent:
-			fsm.FsmOnFloorArrival(floor)
+			elevator_fsm.FsmOnFloorArrival(floor)
 
 		case isObstructed := <-obstructionEvent:
-			fsm.FsmSetObstruction(isObstructed)
+			elevator_fsm.FsmSetObstruction(isObstructed)
 
 		case <-doorTimeoutEvent:
-			fsm.FsmOnDoorTimeout()
+			elevator_fsm.FsmOnDoorTimeout()
 		}
 
-		time.Sleep(time.Duration(inputPollRateMs) * time.Millisecond)
+		time.Sleep(inputPollRate)
 	}
 }

@@ -8,8 +8,8 @@ replace elevio => ../elevio
 require elevator v0.0.0
 replace elevator => ../elevator
 
-require fsm v0.0.0
-replace fsm => ../fsm
+require elevator_fsm v0.0.0
+replace elevator_fsm => ../fsm
 
 require requests v0.0.0
 replace requests => ../requests
@@ -19,4 +19,7 @@ replace timer => ../timer
 
 require config v0.0.0
 replace config => ../config
+
+require Network v0.0.0
+replace Network => ../Network
 

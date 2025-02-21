@@ -1,8 +1,6 @@
 package main
 
-import (
-	"main/node"
-)
+import "elev/node"
 
 func main() {
 	testNode := node.Node(1)

@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:costFNS/hallRequestAssigner/hallRequestAssigner.go
 package hallRequestAssigner
-========
-package example
->>>>>>>> bcd1e47be0125e70e0fe13f792836e4dfb6d157e:usage-examples/example.go
 
 import (
 	"encoding/json"
@@ -26,8 +22,6 @@ type HRAInput struct {
 	States       map[string]HRAElevState `json:"states"`
 }
 
-
-
 func inputFunction(states []HRAElevState, HallRequests [][2]bool) HRAInput {
 	input := HRAInput{
 		HallRequests: HallRequests,
@@ -40,7 +34,7 @@ func inputFunction(states []HRAElevState, HallRequests [][2]bool) HRAInput {
 }
 
 func outputFunction(input HRAInput) *map[string][][2]bool {
-	
+
 	hraExecutable := ""
 	switch runtime.GOOS {
 	case "linux":
@@ -71,4 +65,3 @@ func outputFunction(input HRAInput) *map[string][][2]bool {
 	}
 	return output
 }
-

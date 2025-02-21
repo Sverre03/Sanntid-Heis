@@ -1,7 +1,7 @@
 package main
 
 import (
-	"elevio"
+	"elev/elevio"
 	"fmt"
 )
 

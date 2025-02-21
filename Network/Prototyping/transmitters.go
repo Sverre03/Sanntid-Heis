@@ -1,8 +1,8 @@
 package main
 
 import (
-	"Network/network/bcast"
-	"Network/network/messages"
+	"elev/Network/network/bcast"
+	"elev/Network/network/messages"
 	"fmt"
 	"math/rand"
 	"time"

@@ -1,8 +1,8 @@
 package requests
 
 import (
-	"main/elevator"
-	"main/elevio"
+	"elev/elevator"
+	"elev/elevio"
 )
 
 const NUM_FLOORS = 4

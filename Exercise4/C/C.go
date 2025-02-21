@@ -62,7 +62,7 @@ func main() {
 		fmt.Println("Could not run the backup, do not run this prog in VSCode integrated terminal :(")
 		return
 	}
-	
+
 	for {
 
 		// increment counter and update the send buffer

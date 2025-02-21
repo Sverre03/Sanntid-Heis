@@ -1,10 +1,10 @@
 package node
 
 import (
-	"main/Network/network/bcast"
-	"main/Network/network/messages"
 	"context"
-	"main/elevator"
+	"elev/Network/network/bcast"
+	"elev/Network/network/messages"
+	"elev/elevator"
 	"fmt"
 	"time"
 

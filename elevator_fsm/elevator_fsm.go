@@ -1,12 +1,12 @@
 package elevator_fsm
 
 import (
-	"main/config"
-	"main/elevator"
-	"main/elevio"
+	"elev/elevator"
+	"elev/elevio"
+	"elev/requests"
+	"elev/util/config"
+	"elev/util/timer"
 	"fmt"
-	"main/requests"
-	"main/timer"
 )
 
 var elev elevator.Elevator

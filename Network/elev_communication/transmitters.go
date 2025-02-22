@@ -1,32 +1,25 @@
-package main
+package transmitters
 
 import (
-	"elev/Network/network/bcast"
 	"elev/Network/network/messages"
-	"fmt"
+	"elev/util/config"
 	"math/rand"
 	"time"
 )
 
-// some of these constants may need to live elsewhere
-const PortNum int = 20011
-const IDPartitionSize = 2 << 12
-const timeout = 500 * time.Millisecond
-const MASTER_TRANSMIT_INTERVAL = 50 * time.Millisecond
-
-type MessageIDPartition int
+type MessageIDType int
 
 const (
-	NEW_HALL_ASSIGNMENT      MessageIDPartition = 0
-	HALL_LIGHT_UPDATE        MessageIDPartition = 1
-	CONNECTION_REQ           MessageIDPartition = 2
-	CAB_REQ_INFO             MessageIDPartition = 3
-	HALL_ASSIGNMENT_COMPLETE MessageIDPartition = 4
+	NEW_HALL_ASSIGNMENT      MessageIDType = 0
+	HALL_LIGHT_UPDATE        MessageIDType = 1
+	CONNECTION_REQ           MessageIDType = 2
+	CAB_REQ_INFO             MessageIDType = 3
+	HALL_ASSIGNMENT_COMPLETE MessageIDType = 4
 )
 
 // generates a message ID that corresponsds to the message type
-func GenerateMessageID(partition MessageIDPartition) int {
-	i := rand.Intn(IDPartitionSize)
+func GenerateMessageID(partition MessageIDType) int {
+	i := rand.Intn(config.MsgIDSize)
 	i += (2 << 12) * int(partition)
 	return i
 }
@@ -41,24 +34,24 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 	for ackMsg := range ackRx {
 
-		if ackMsg.MessageID < IDPartitionSize*int(NEW_HALL_ASSIGNMENT) {
+		if ackMsg.MessageID < config.MsgIDSize*int(NEW_HALL_ASSIGNMENT) {
 			hallAssignmentsAck <- ackMsg
 
-		} else if ackMsg.MessageID < IDPartitionSize*int(HALL_LIGHT_UPDATE) {
+		} else if ackMsg.MessageID < config.MsgIDSize*int(HALL_LIGHT_UPDATE) {
 			lightUpdateAck <- ackMsg
 
-		} else if ackMsg.MessageID < IDPartitionSize*int(CONNECTION_REQ) {
+		} else if ackMsg.MessageID < config.MsgIDSize*int(CONNECTION_REQ) {
 			connectionReqAck <- ackMsg
 
-		} else if ackMsg.MessageID < IDPartitionSize*int(CAB_REQ_INFO) {
+		} else if ackMsg.MessageID < config.MsgIDSize*int(CAB_REQ_INFO) {
 			cabReqInfoAck <- ackMsg
-		} else if ackMsg.MessageID < IDPartitionSize*int(HALL_ASSIGNMENT_COMPLETE) {
+		} else if ackMsg.MessageID < config.MsgIDSize*int(HALL_ASSIGNMENT_COMPLETE) {
 			hallAssignmentCompleteAck <- ackMsg
 		}
 	}
 }
 
-// Transmits Hall assignments from outgoingHallAssignments channel, and handles the ack
+// Transmits Hall assignments from outgoingHallAssignments channel to their designated elevators and handles ack
 func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments,
 	OutgoingNewHallAssignments chan messages.NewHallAssignments,
 	HallAssignmentsAck <-chan messages.Ack) {
@@ -126,7 +119,7 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 	for {
 		select {
 
-		case <-time.After(MASTER_TRANSMIT_INTERVAL):
+		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
 		case enable = <-transmitEnableCh:
 		case GHallRequests = <-requestsForBroadcastCh:
 			if enable {
@@ -136,7 +129,7 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 	}
 }
 
-// server that tracks the states of all elevators by listening to the elevstatesrx channel
+// server that tracks the states of all elevators by listening to the elevStatesRx channel
 // you can requests to know the states by sending a string on  commandCh
 // commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
@@ -175,7 +168,7 @@ func ElevStatesServer(commandCh <-chan string,
 				// remove dead connections before sending
 				activeNodes := make(map[int]messages.ElevStates)
 				for id, t := range lastSeen {
-					if time.Since(t) < timeout {
+					if time.Since(t) < config.ConnectionTimeout {
 						activeNodes[id] = knownNodes[id]
 					}
 				}
@@ -186,7 +179,7 @@ func ElevStatesServer(commandCh <-chan string,
 				activeIDs := make([]int, 0)
 
 				for id, t := range lastSeen {
-					if time.Since(t) < timeout {
+					if time.Since(t) < config.ConnectionTimeout {
 						activeIDs = append(activeIDs, id)
 					}
 				}
@@ -203,8 +196,7 @@ func ElevStatesServer(commandCh <-chan string,
 	}
 }
 
-// Transmits light updates when it receives them on outgoing light updates channel
-// Waits for an ack on all transmitted messages, retransmits if no ack was received
+// Transmits HallButton Lightstates from outgoingLightUpdates channel to their designated elevators and handles ack
 func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 	outgoingLightUpdates chan messages.HallLightUpdate,
 	hallLightUpdateAck <-chan messages.Ack,
@@ -270,131 +262,4 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 		}
 
 	}
-}
-
-func dummyMaster() {
-	AckTx := make(chan messages.Ack)
-	AckRx := make(chan messages.Ack)
-
-	ElevStatesTx := make(chan messages.ElevStates)
-	ElevStatesRx := make(chan messages.ElevStates)
-
-	HallAssignmentsTx := make(chan messages.NewHallAssignments)
-	HallAssignmentsRx := make(chan messages.NewHallAssignments)
-
-	CabRequestInfoTx := make(chan messages.CabRequestINF)
-	CabRequestInfoRx := make(chan messages.CabRequestINF)
-
-	GlobalHallRequestTx := make(chan messages.GlobalHallRequest)
-	GlobalHallRequestRx := make(chan messages.GlobalHallRequest)
-
-	HallLightUpdateTx := make(chan messages.HallLightUpdate)
-	HallLightUpdateRx := make(chan messages.HallLightUpdate)
-
-	ConnectionReqTx := make(chan messages.ConnectionReq)
-	ConnectionReqRx := make(chan messages.ConnectionReq)
-
-	NewHallReqTx := make(chan messages.NewHallRequest)
-	NewHallReqRx := make(chan messages.NewHallRequest)
-
-	HallAssignmentCompleteTx := make(chan messages.HallAssignmentComplete)
-	HallAssignmentCompleteRx := make(chan messages.HallAssignmentComplete)
-
-	go bcast.Transmitter(PortNum, AckTx, ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, ConnectionReqTx, NewHallReqTx, HallAssignmentCompleteTx)
-	go bcast.Receiver(PortNum, AckRx, ElevStatesRx, HallAssignmentsRx, CabRequestInfoRx, GlobalHallRequestRx, HallLightUpdateRx, ConnectionReqRx, NewHallReqRx, HallAssignmentCompleteRx)
-
-	for {
-		select {
-		case states := <-ElevStatesRx:
-			fmt.Println(states.NodeID)
-			fmt.Println(states.Behavior)
-		}
-	}
-}
-
-func dummySlave() {
-	AckTx := make(chan messages.Ack)
-	AckRx := make(chan messages.Ack)
-
-	ElevStatesTx := make(chan messages.ElevStates)
-	ElevStatesRx := make(chan messages.ElevStates)
-
-	HallAssignmentsTx := make(chan messages.NewHallAssignments)
-	HallAssignmentsRx := make(chan messages.NewHallAssignments)
-
-	CabRequestInfoTx := make(chan messages.CabRequestINF)
-	CabRequestInfoRx := make(chan messages.CabRequestINF)
-
-	GlobalHallRequestTx := make(chan messages.GlobalHallRequest)
-	GlobalHallRequestRx := make(chan messages.GlobalHallRequest)
-
-	HallLightUpdateTx := make(chan messages.HallLightUpdate)
-	HallLightUpdateRx := make(chan messages.HallLightUpdate)
-
-	ConnectionReqTx := make(chan messages.ConnectionReq)
-	ConnectionReqRx := make(chan messages.ConnectionReq)
-
-	NewHallReqTx := make(chan messages.NewHallRequest)
-	NewHallReqRx := make(chan messages.NewHallRequest)
-
-	HallAssignmentCompleteTx := make(chan messages.HallAssignmentComplete)
-	HallAssignmentCompleteRx := make(chan messages.HallAssignmentComplete)
-
-	go bcast.Transmitter(PortNum, AckTx, ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, ConnectionReqTx, NewHallReqTx, HallAssignmentCompleteTx)
-	go bcast.Receiver(PortNum, AckRx, ElevStatesRx, HallAssignmentsRx, CabRequestInfoRx, GlobalHallRequestRx, HallLightUpdateRx, ConnectionReqRx, NewHallReqRx, HallAssignmentCompleteRx)
-
-	for {
-		select {
-		case states := <-ElevStatesRx:
-			fmt.Println(states.NodeID)
-			fmt.Println(states.Behavior)
-		}
-	}
-}
-
-// temporary test function
-func NetworkDude(id int) {
-	AckTx := make(chan messages.Ack)
-	AckRx := make(chan messages.Ack)
-
-	ElevStatesTx := make(chan messages.ElevStates)
-	ElevStatesRx := make(chan messages.ElevStates)
-
-	HallAssignmentsTx := make(chan messages.NewHallAssignments)
-	HallAssignmentsRx := make(chan messages.NewHallAssignments)
-
-	CabRequestInfoTx := make(chan messages.CabRequestINF)
-	CabRequestInfoRx := make(chan messages.CabRequestINF)
-
-	GlobalHallRequestTx := make(chan messages.GlobalHallRequest)
-	GlobalHallRequestRx := make(chan messages.GlobalHallRequest)
-
-	HallLightUpdateTx := make(chan messages.HallLightUpdate)
-	HallLightUpdateRx := make(chan messages.HallLightUpdate)
-
-	ConnectionReqTx := make(chan messages.ConnectionReq)
-	ConnectionReqRx := make(chan messages.ConnectionReq)
-
-	NewHallReqTx := make(chan messages.NewHallRequest)
-	NewHallReqRx := make(chan messages.NewHallRequest)
-
-	HallAssignmentCompleteTx := make(chan messages.HallAssignmentComplete)
-	HallAssignmentCompleteRx := make(chan messages.HallAssignmentComplete)
-
-	go bcast.Transmitter(PortNum, AckTx, ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, ConnectionReqTx, NewHallReqTx, HallAssignmentCompleteTx)
-	go bcast.Receiver(PortNum, AckRx, ElevStatesRx, HallAssignmentsRx, CabRequestInfoRx, GlobalHallRequestRx, HallLightUpdateRx, ConnectionReqRx, NewHallReqRx, HallAssignmentCompleteRx)
-
-	for {
-		select {
-		case states := <-ElevStatesRx:
-			fmt.Println(states.NodeID)
-			fmt.Println(states.Behavior)
-		case <-time.After(time.Millisecond * 500):
-			ElevStatesTx <- messages.ElevStates{id, "down", 3, [4]bool{false, false, false, false}, "Idle"}
-		}
-	}
-}
-
-func main() {
-
 }

@@ -22,7 +22,7 @@ type HRAInput struct {
 	States       map[string]HRAElevState `json:"states"`
 }
 
-func inputFunction(states []HRAElevState, HallRequests [][2]bool) HRAInput {
+func InputFunction(states []HRAElevState, HallRequests [][2]bool) HRAInput {
 	input := HRAInput{
 		HallRequests: HallRequests,
 		States:       make(map[string]HRAElevState),
@@ -33,7 +33,7 @@ func inputFunction(states []HRAElevState, HallRequests [][2]bool) HRAInput {
 	return input
 }
 
-func outputFunction(input HRAInput) *map[string][][2]bool {
+func OutputFunction(input HRAInput) *map[string][][2]bool {
 
 	hraExecutable := ""
 	switch runtime.GOOS {

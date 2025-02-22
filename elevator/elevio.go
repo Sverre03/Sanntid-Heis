@@ -1,4 +1,4 @@
-package elevio
+package elevator
 
 import (
 	"elev/util/timer"
@@ -81,7 +81,7 @@ func PollButtons(receiver chan<- ButtonEvent) {
 		for floor := 0; floor < NumFloors; floor++ {
 			for button := ButtonType(0); button < 3; button++ {
 				v := GetButton(button, floor)
-				if v != prev[floor][button] && v == true {
+				if v != prev[floor][button] && v {
 					receiver <- ButtonEvent{floor, ButtonType(button)}
 				}
 				prev[floor][button] = v

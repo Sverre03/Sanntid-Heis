@@ -1,7 +1,6 @@
 package elevator
 
 import (
-	"elev/elevio"
 	"fmt"
 )
 
@@ -18,7 +17,7 @@ const (
 
 type Elevator struct {
 	Floor        int
-	Dir          elevio.MotorDirection
+	Dir          MotorDirection
 	Behavior     ElevatorBehavior
 	Requests     [_numFloors][_numButtons]bool
 	IsObstructed bool
@@ -34,7 +33,7 @@ func NewElevator() Elevator {
 	return Elevator{
 		Behavior: EB_Idle,
 		Floor:    -1,
-		Dir:      elevio.MD_Stop,
+		Dir:      MD_Stop,
 		Requests: [_numFloors][_numButtons]bool{},
 	}
 }
@@ -42,9 +41,9 @@ func NewElevator() Elevator {
 func PrintElevator(e Elevator) {
 	behavior := ElevatorBehaviorToString[e.Behavior]
 	dir := "Stop"
-	if e.Dir == elevio.MD_Up {
+	if e.Dir == MD_Up {
 		dir = "Up"
-	} else if e.Dir == elevio.MD_Down {
+	} else if e.Dir == MD_Down {
 		dir = "Down"
 	}
 	fmt.Printf("Floor: %d\n", e.Floor)

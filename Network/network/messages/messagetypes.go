@@ -24,8 +24,9 @@ type GlobalHallRequest struct {
 
 // event - ack
 type HallLightUpdate struct {
-	LightStates [N_FLOORS][2]bool
-	MessageID   int
+	LightStates       [N_FLOORS][2]bool
+	MessageID         int
+	ActiveElevatorIDs []int
 }
 
 // information

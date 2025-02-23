@@ -4,6 +4,7 @@ import (
 	"elev/Network/network/messages"
 	"elev/util/config"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -144,11 +145,12 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 // you can requests to know the states by sending a string on  commandCh
 // commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
-func ElevStatesServer(commandCh <-chan string,
+func ElevStatesListener(commandCh <-chan string,
 	timeOfLastContactCh chan<- time.Time,
 	elevStatesCh chan<- map[int]messages.ElevStates,
 	activeNodeIDsCh chan<- []int,
 	elevStatesRx <-chan messages.ElevStates) {
+	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]messages.ElevStates)
@@ -157,38 +159,33 @@ func ElevStatesServer(commandCh <-chan string,
 	for {
 		select {
 
-		// if you get a msg on elevStatesRx:
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
+
 			// here, we must check if the id is ours. Placeholder for MyID is 0 for now.
 			if id != 0 {
-
-				// My new time of last contact
 				timeOfLastContact = time.Now()
 
 				knownNodes[id] = elevState
-
 				lastSeen[id] = time.Now()
-
 			}
 
 		case command := <-commandCh:
+
 			switch command {
 			case "getActiveElevStates":
 
-				// remove dead connections before sending
 				activeNodes := make(map[int]messages.ElevStates)
 				for id, t := range lastSeen {
 					if time.Since(t) < config.ConnectionTimeout {
 						activeNodes[id] = knownNodes[id]
 					}
 				}
-				// send the active nodes
 				elevStatesCh <- activeNodes
 
 			case "getActiveNodeIDs":
-				activeIDs := make([]int, 0)
 
+				activeIDs := make([]int, 0)
 				for id, t := range lastSeen {
 					if time.Since(t) < config.ConnectionTimeout {
 						activeIDs = append(activeIDs, id)
@@ -220,58 +217,48 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 
 	var timedOutMsgID int
 	var receivedAck messages.Ack
-	var newAssignment messages.HallLightUpdate
+	var newLightUpdate messages.HallLightUpdate
 
 	for {
 		select {
-		case newAssignment = <-outgoingLightUpdates:
-			commandCh <- "getActiveNodeIDs"
+		case newLightUpdate = <-outgoingLightUpdates:
 
-			// set a new message id
 			new_msg_id, err := GenerateMessageID(HALL_LIGHT_UPDATE)
 			if err != nil {
-				panic("Fatal error, invalid message type used to generate message id")
-			}
-			newAssignment.MessageID = new_msg_id
-
-			// this is a blocking call. That is not good.
-			activeNodeIDs := <-activeNodeIDsCh
-
-			// set/overwrite old assignments
-			for _, id := range activeNodeIDs {
-				print(id)
-				activeAssignments[id] = newAssignment
+				fmt.Println("Fatal error, invalid message type used to generate message id")
 			}
 
-			// send out the new assignment
-			hallLightUpdateTx <- newAssignment
+			newLightUpdate.MessageID = new_msg_id
 
-			// check for whether message is not acknowledged within duration
+			for _, id := range newLightUpdate.ActiveElevatorIDs {
+				activeAssignments[id] = newLightUpdate
+			}
+
+			hallLightUpdateTx <- newLightUpdate
+
 			time.AfterFunc(time.Millisecond*500, func() {
-				timeoutCh <- newAssignment.MessageID
+				timeoutCh <- newLightUpdate.MessageID
 			})
 
 		case timedOutMsgID = <-timeoutCh:
 
-			// check if message is still in active assigments
 			for _, msg := range activeAssignments {
 				if msg.MessageID == timedOutMsgID {
 
 					// send the message again
 					hallLightUpdateTx <- msg
 					time.AfterFunc(time.Millisecond*500, func() {
-						timeoutCh <- newAssignment.MessageID
+						timeoutCh <- msg.MessageID
 					})
 					break
 				}
 			}
 
 		case receivedAck = <-hallLightUpdateAck:
-			// check if message is in map, if not do nothin
 
 			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
 				if msg.MessageID == receivedAck.MessageID {
-					// remove the assignment from the map
+
 					delete(activeAssignments, receivedAck.MessageID)
 				}
 			}

@@ -1,8 +1,8 @@
-package main
+package testing
 
 import "elev/node"
 
-func main() {
+func CreateTestNode() {
 	testNode := node.Node(1)
 	node.InactiveProgram(testNode)
 }

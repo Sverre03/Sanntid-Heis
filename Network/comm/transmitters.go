@@ -1,8 +1,9 @@
-package transmitters
+package comm
 
 import (
 	"elev/Network/network/messages"
 	"elev/util/config"
+	"errors"
 	"math/rand"
 	"time"
 )
@@ -18,10 +19,16 @@ const (
 )
 
 // generates a message ID that corresponsds to the message type
-func GenerateMessageID(partition MessageIDType) int {
+func GenerateMessageID(partition MessageIDType) (int, error) {
+	offset := int(partition)
+	if offset > int(HALL_ASSIGNMENT_COMPLETE) || offset < 0 {
+		return 0, errors.New("invalid messageIDType")
+	}
+
 	i := rand.Intn(config.MsgIDSize)
-	i += (2 << 12) * int(partition)
-	return i
+	i += (2 << 12) * offset
+
+	return i, nil
 }
 
 // Listens to incoming acknowledgment messages from UDP, distributes them to their corresponding channels
@@ -69,7 +76,11 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 		case newAssignment = <-OutgoingNewHallAssignments:
 
 			// set a new message id
-			newAssignment.MessageID = GenerateMessageID(NEW_HALL_ASSIGNMENT)
+			new_msg_id, err := GenerateMessageID(NEW_HALL_ASSIGNMENT)
+			if err != nil {
+				panic("Fatal error, invalid message id used")
+			}
+			newAssignment.MessageID = new_msg_id
 
 			// set/overwrite old assignments
 			activeAssignments[newAssignment.NodeID] = newAssignment
@@ -214,11 +225,16 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 	for {
 		select {
 		case newAssignment = <-outgoingLightUpdates:
+			commandCh <- "getActiveNodeIDs"
 
 			// set a new message id
-			newAssignment.MessageID = GenerateMessageID(HALL_LIGHT_UPDATE)
+			new_msg_id, err := GenerateMessageID(HALL_LIGHT_UPDATE)
+			if err != nil {
+				panic("Fatal error, invalid message type used to generate message id")
+			}
+			newAssignment.MessageID = new_msg_id
 
-			commandCh <- "getActiveNodeIDs"
+			// this is a blocking call. That is not good.
 			activeNodeIDs := <-activeNodeIDsCh
 
 			// set/overwrite old assignments
@@ -260,6 +276,5 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 				}
 			}
 		}
-
 	}
 }

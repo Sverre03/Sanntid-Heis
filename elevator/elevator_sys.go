@@ -33,8 +33,12 @@ var ElevatorDirectionToString = map[MotorDirection]string{
 	MD_Stop: "stop",
 }
 
-func GetCabRequestsAsHRAElevState(elev Elevator) [config.NUM_BUTTONS]bool {
-	return elev.Requests[:][BT_Cab]
+func GetCabRequestsAsHRAElevState(elev Elevator) [config.NUM_FLOORS]bool {
+	var cabRequests [config.NUM_FLOORS]bool
+	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+		cabRequests[floor] = elev.Requests[floor][BT_Cab]
+	}
+	return cabRequests
 }
 
 func NewElevator() Elevator {

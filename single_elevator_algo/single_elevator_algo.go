@@ -1,20 +1,24 @@
 package single_elevator_algo
 
 import (
+	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
-	"elev/node"
 	"elev/util/config"
 	"time"
 )
 
-func SingleElevatorProgram() {
+func SingleElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
+	ElevatorHRAStatesTx chan hallRequestAssigner.HRAElevState, ElevatorHallButtonEventRx chan elevator.ButtonEvent) {
+
+	var elev elevator.Elevator = elevator.NewElevator()
+
 	buttonEvent := make(chan elevator.ButtonEvent)
 	floorEvent := make(chan int)
 	doorTimeoutEvent := make(chan bool)
 	obstructionEvent := make(chan bool)
 
 	elevator.Init("localhost:15657", config.NUM_FLOORS)
-	elevator.InitFSM()
+	elevator.InitFSM(elev)
 
 	prevRequestButton := make([][]bool, config.NUM_FLOORS)
 	for i := range prevRequestButton {
@@ -26,28 +30,31 @@ func SingleElevatorProgram() {
 	go elevator.PollFloorSensor(floorEvent)
 	go elevator.PollObstructionSwitch(obstructionEvent)
 	go elevator.PollTimer(doorTimeoutEvent)
-	go TransmitHRAElevState()
+	go TransmitHRAElevState(elev, ElevatorHRAStatesTx)
 
 	for {
 		select {
 		case button := <-buttonEvent:
 			if (button.Button == elevator.BT_HallDown) || (button.Button == elevator.BT_HallUp) {
-				node.ElevatorHallButtonEventRx <- elevator.ButtonEvent{
+				ElevatorHallButtonEventRx <- elevator.ButtonEvent{
 					Floor:  button.Floor,
 					Button: button.Button,
 				}
 			} else {
-				elevator.FsmOnRequestButtonPress(button.Floor, button.Button)
+				elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button)
 			}
 
+		case button := <-ElevatorHallButtonEventTx:
+			elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button)
+
 		case floor := <-floorEvent:
-			elevator.FsmOnFloorArrival(floor)
+			elevator.FsmOnFloorArrival(elev, floor)
 
 		case isObstructed := <-obstructionEvent:
-			elevator.FsmSetObstruction(isObstructed)
+			elevator.FsmSetObstruction(elev, isObstructed)
 
 		case <-doorTimeoutEvent:
-			elevator.FsmOnDoorTimeout()
+			elevator.FsmOnDoorTimeout(elev)
 		}
 
 		time.Sleep(config.INPUT_POLL_RATE)
@@ -55,15 +62,15 @@ func SingleElevatorProgram() {
 }
 
 // Transmit the elevator state to the node
-func TransmitHRAElevState() {
+func TransmitHRAElevState(elev elevator.Elevator, ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState) {
 	for {
 		select {
 		case <-time.After(config.ELEV_STATE_TRANSMIT_INTERVAL):
-			node.ElevatorHRAStatesRx <- elevator.ElevatorState{
-				Direction:  elevator.GetDirection(),
-				Floor:      elevator.GetFloor(),
-				CabRequest: elevator.GetCabRequests(),
-				Behavior:   elevator.GetBehavior(),
+			ElevatorHRAStatesRx <- hallRequestAssigner.HRAElevState{
+				Behavior:    elevator.ElevatorBehaviorToString[elev.Behavior],
+				Floor:       elev.Floor,
+				Direction:   elevator.ElevatorDirectionToString[elev.Dir],
+				CabRequests: elevator.GetCabRequestsAsHRAElevState(elev),
 			}
 		}
 	}

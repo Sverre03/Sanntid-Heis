@@ -22,20 +22,18 @@ type Elevator struct {
 }
 
 var ElevatorBehaviorToString = map[ElevatorBehavior]string{
-	EB_Idle:     "Idle",
-	EB_DoorOpen: "DoorOpen",
-	EB_Moving:   "Moving",
+	EB_Idle:     "idle",
+	EB_DoorOpen: "doorOpen",
+	EB_Moving:   "moving",
 }
 
-func GetDirection(elev Elevator) MotorDirection {
-	return elev.Dir
+var ElevatorDirectionToString = map[MotorDirection]string{
+	MD_Up:   "up",
+	MD_Down: "down",
+	MD_Stop: "stop",
 }
 
-func GetBehavior(elev Elevator) ElevatorBehavior {
-	return elev.Behavior
-}
-
-func GetCabRequests(elev Elevator) [config.NUM_BUTTONS]bool {
+func GetCabRequestsAsHRAElevState(elev Elevator) [config.NUM_BUTTONS]bool {
 	return elev.Requests[:][BT_Cab]
 }
 

@@ -45,21 +45,21 @@ func TestTransmitFunctions() {
 		return
 	}
 
-	// err = testMessageIDGenerator()
-	// if err == nil {
-	// 	fmt.Println("Message id generator test passed")
-	// } else {
-	// 	fmt.Println(err.Error())
-	// 	return
-	// }
+	err = testMessageIDGenerator()
+	if err == nil {
+		fmt.Println("Message id generator test passed")
+	} else {
+		fmt.Println(err.Error())
+		return
+	}
 
-	// err = testAckDistr()
-	// if err == nil {
-	// 	fmt.Println("Ack test passed")
-	// } else {
-	// 	fmt.Println(err.Error())
-	// 	return
-	// }
+	err = testAckDistr()
+	if err == nil {
+		fmt.Println("Ack test passed")
+	} else {
+		fmt.Println(err.Error())
+		return
+	}
 }
 
 func testHAss() error {

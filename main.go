@@ -1,5 +1,11 @@
 package main
 
-func main() {
+import (
+	"elev/testing"
+	"fmt"
+)
 
+func main() {
+	fmt.Println("Starting test")
+	testing.TestMasterSlaveACKs()
 }

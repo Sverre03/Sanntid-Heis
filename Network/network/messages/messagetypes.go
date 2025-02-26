@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"elev/elevator"
 	"elev/util/config"
 	"time"
 )
@@ -33,7 +34,7 @@ type HallLightUpdate struct {
 // information
 type ElevStates struct {
 	NodeID     int
-	Direction  string
+	Direction  elevator.MotorDirection
 	Floor      int
 	CabRequest [config.NUM_FLOORS]bool
 	Behavior   string
@@ -55,13 +56,13 @@ type NewHallAssignments struct {
 
 // event
 type NewHallRequest struct {
-	Floor int
-	Dir   string
+	Floor      int
+	HallButton elevator.ButtonType
 }
 
 // event - ack
 type HallAssignmentComplete struct {
-	Floor     int
-	Dir       string
-	MessageID int
+	Floor      int
+	HallButton elevator.ButtonType
+	MessageID  int
 }

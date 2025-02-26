@@ -5,6 +5,7 @@ import (
 	"elev/Network/network/bcast"
 	"elev/Network/network/messages"
 	"elev/elevator"
+	"elev/util/config"
 	"fmt"
 	"time"
 
@@ -54,7 +55,6 @@ type NodeData struct {
 }
 
 func Node(id int) *NodeData {
-	PortNum := 20011
 
 	node := &NodeData{
 		ID:                        id,
@@ -115,8 +115,8 @@ func Node(id int) *NodeData {
 	node.HallAssignmentCompleteTx = make(chan messages.HallAssignmentComplete)
 	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
 
-	go bcast.Transmitter(PortNum, node.AckTx, node.ElevStatesTx, node.HallAssignmentsTx, node.CabRequestInfoTx, node.GlobalHallRequestTx, node.HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
-	go bcast.Receiver(PortNum, node.AckRx, node.ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
+	go bcast.Transmitter(config.PortNum, node.AckTx, node.ElevStatesTx, node.HallAssignmentsTx, node.CabRequestInfoTx, node.GlobalHallRequestTx, node.HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
+	go bcast.Receiver(config.PortNum, node.AckRx, node.ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
 
 	return node
 }

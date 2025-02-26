@@ -27,7 +27,7 @@ func GenerateMessageID(partition MessageIDType) (int, error) {
 	}
 
 	i := rand.Intn(config.MsgIDSize)
-	i += (2 << 12) * offset
+	i += (config.MsgIDSize) * offset
 
 	return i, nil
 }

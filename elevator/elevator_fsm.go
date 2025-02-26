@@ -10,8 +10,8 @@ var elev Elevator
 
 func InitFSM() {
 	elev = NewElevator()
-	for floor := 0; floor < NumFloors; floor++ {
-		for btn := 0; btn < NumButtons; btn++ {
+	for floor := 0; floor < config.NumFloors; floor++ {
+		for btn := 0; btn < config.NumButtons; btn++ {
 			SetButtonLamp(ButtonType(btn), floor, false)
 		}
 	}
@@ -19,8 +19,8 @@ func InitFSM() {
 }
 
 func SetAllLights(elev Elevator) {
-	for floor := 0; floor < NumFloors; floor++ {
-		for btn := 0; btn < NumButtons; btn++ {
+	for floor := 0; floor < config.NumFloors; floor++ {
+		for btn := 0; btn < config.NumButtons; btn++ {
 			SetButtonLamp(ButtonType(btn), floor, elev.Requests[floor][btn])
 		}
 	}

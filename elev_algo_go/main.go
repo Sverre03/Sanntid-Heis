@@ -2,6 +2,7 @@ package main
 
 import (
 	"elev/elevator"
+	"elev/util/config"
 	"time"
 )
 
@@ -12,9 +13,8 @@ func main() {
 	obstructionEvent := make(chan bool)
 
 	const inputPollRate = 25 * time.Millisecond
-	numFloors := 4
 
-	elevator.Init("localhost:15657", numFloors)
+	elevator.Init("localhost:15657", config.NumFloors)
 	elevator.InitFSM()
 
 	prevRequestButton := make([][]bool, elevator.NumFloors)

@@ -1,8 +1,9 @@
 package messages
 
-import "time"
-
-const N_FLOORS int = 4
+import (
+	"elev/util/config"
+	"time"
+)
 
 // a struct for acknowledging the receival of a message
 type Ack struct {
@@ -12,19 +13,19 @@ type Ack struct {
 
 // event - ack
 type CabRequestINF struct {
-	CabRequest     [N_FLOORS]bool
+	CabRequest     [config.NumFloors]bool
 	MessageID      int
 	ReceiverNodeID int
 }
 
 // information
 type GlobalHallRequest struct {
-	HallRequests [N_FLOORS][2]bool
+	HallRequests [config.NumFloors][2]bool
 }
 
 // event - ack
 type HallLightUpdate struct {
-	LightStates       [N_FLOORS][2]bool
+	LightStates       [config.NumFloors][2]bool
 	MessageID         int
 	ActiveElevatorIDs []int
 }
@@ -34,7 +35,7 @@ type ElevStates struct {
 	NodeID     int
 	Direction  string
 	Floor      int
-	CabRequest [N_FLOORS]bool
+	CabRequest [config.NumFloors]bool
 	Behavior   string
 }
 
@@ -48,7 +49,7 @@ type ConnectionReq struct {
 // event - ack
 type NewHallAssignments struct {
 	NodeID         int
-	HallAssignment [N_FLOORS][2]bool
+	HallAssignment [config.NumFloors][2]bool
 	MessageID      int
 }
 

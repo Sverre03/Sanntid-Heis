@@ -54,7 +54,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(CAB_REQ_INFO) {
 			cabReqInfoAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(HALL_ASSIGNMENT_COMPLETE) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(HALL_ASSIGNMENT_COMPLETE) {
 			fmt.Println("Received an hall ass complete ack")
 			hallAssignmentCompleteAck <- ackMsg
 		}

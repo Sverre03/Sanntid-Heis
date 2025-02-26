@@ -22,6 +22,7 @@ const (
 // generates a message ID that corresponsds to the message type
 func GenerateMessageID(partition MessageIDType) (int, error) {
 	offset := int(partition)
+
 	if offset > int(HALL_ASSIGNMENT_COMPLETE) || offset < 0 {
 		return 0, errors.New("invalid messageIDType")
 	}
@@ -42,20 +43,19 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 	for ackMsg := range ackRx {
 
-		if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(NEW_HALL_ASSIGNMENT) {
+		if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(NEW_HALL_ASSIGNMENT)+1) {
 			hallAssignmentsAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(HALL_LIGHT_UPDATE) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(HALL_LIGHT_UPDATE)+1) {
 			lightUpdateAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(CONNECTION_REQ) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(CONNECTION_REQ)+1) {
 			connectionReqAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(CAB_REQ_INFO) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(CAB_REQ_INFO)+1) {
 			cabReqInfoAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(HALL_ASSIGNMENT_COMPLETE) {
-			fmt.Println("Received an hall ass complete ack")
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(HALL_ASSIGNMENT_COMPLETE)+1) {
 			hallAssignmentCompleteAck <- ackMsg
 		}
 	}

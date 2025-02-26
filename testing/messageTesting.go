@@ -24,13 +24,32 @@ func crazy() {
 	}
 }
 
-func TestMasterSlaveACKs() {
+func testMessageIDGenerator() error {
+	for i := 0; i < 5; i++ {
+		if j, _ := comm.GenerateMessageID(comm.MessageIDType(i)); j > (i+1)*config.MSG_ID_PARTITION_SIZE || j < i*config.MSG_ID_PARTITION_SIZE {
+			return fmt.Errorf("message id outlide value area for messagetype %d", i)
+		}
 
-	err := testAckDistr()
+	}
+	return nil
+}
+
+func TestMasterSlaveACKs() {
+	var err error
+	err = testMessageIDGenerator()
+	if err == nil {
+		fmt.Println("Message id generator test passed")
+	} else {
+		fmt.Println(err.Error())
+		return
+	}
+
+	err = testAckDistr()
 	if err == nil {
 		fmt.Println("Ack test passed")
 	} else {
 		fmt.Println(err.Error())
+		return
 	}
 }
 
@@ -53,6 +72,7 @@ func testAckDistr() error {
 	for i := 0; i < 5; i++ {
 
 		id, e := comm.GenerateMessageID(comm.MessageIDType(i))
+
 		if e != nil {
 			err = e
 			return err
@@ -61,7 +81,7 @@ func testAckDistr() error {
 		ackRx <- messages.Ack{NodeID: i, MessageID: id}
 		numAckSent++
 	}
-	time.AfterFunc(time.Second*2, func() {
+	time.AfterFunc(time.Second*1, func() {
 		timeoutChannel <- 1
 	})
 ForLoop:
@@ -74,6 +94,7 @@ ForLoop:
 				break ForLoop
 			}
 			receivedAcks[msg.NodeID] = true
+
 		case msg := <-lightUpdateAck:
 			numAckSent--
 			if receivedAcks[msg.NodeID] {
@@ -81,6 +102,7 @@ ForLoop:
 				break ForLoop
 			}
 			receivedAcks[msg.NodeID] = true
+
 		case msg := <-ConnectionReqAck:
 			numAckSent--
 			if receivedAcks[msg.NodeID] {
@@ -88,6 +110,7 @@ ForLoop:
 				break ForLoop
 			}
 			receivedAcks[msg.NodeID] = true
+
 		case msg := <-CabRequestInfoAck:
 			numAckSent--
 			if receivedAcks[msg.NodeID] {
@@ -97,6 +120,7 @@ ForLoop:
 			receivedAcks[msg.NodeID] = true
 
 		case msg := <-HallAssignmentCompleteAck:
+
 			numAckSent--
 			if receivedAcks[msg.NodeID] {
 				err = errors.New("received two acks on same channel")
@@ -105,7 +129,6 @@ ForLoop:
 			receivedAcks[msg.NodeID] = true
 
 		case <-timeoutChannel:
-			fmt.Println("Test is over")
 			if numAckSent > 0 {
 				err = fmt.Errorf("not all acks were received, still have %d left", numAckSent)
 				fmt.Println(receivedAcks)

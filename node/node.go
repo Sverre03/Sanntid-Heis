@@ -256,9 +256,9 @@ func MasterProgram(node *NodeData) {
 		select {
 		case newHallReq = <-node.NewHallReqRx:
 			if newHallReq.HallButton == elevator.BT_HallUp {
-				activeHallRequests[newHallReq.Floor][1] = true
-			} else if newHallReq.HallButton == elevator.BT_HallDown {
 				activeHallRequests[newHallReq.Floor][0] = true
+			} else if newHallReq.HallButton == elevator.BT_HallDown {
+				activeHallRequests[newHallReq.Floor][1] = true
 			}
 			activeReq = true
 			node.commandCh <- "getActiveElevStates"
@@ -272,12 +272,9 @@ func MasterProgram(node *NodeData) {
 					if err != nil {
 						fmt.Println("Error: ", err)
 					}
-					
 					node.OutGoingHallAssignments <- messages.NewHallAssignments{nodeID, hallRequests, 0}
 				}
-
 			}
-
 		}
 	}
 }

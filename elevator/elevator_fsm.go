@@ -6,16 +6,13 @@ import (
 	"fmt"
 )
 
-var elev Elevator
-
-func InitFSM() {
-	elev = NewElevator()
+func InitFSM(elev Elevator) {
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
 		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 			SetButtonLamp(ButtonType(btn), floor, false)
 		}
 	}
-	FsmOnInitBetweenFloors()
+	FsmOnInitBetweenFloors(elev)
 }
 
 func SetAllLights(elev Elevator) {
@@ -26,13 +23,13 @@ func SetAllLights(elev Elevator) {
 	}
 }
 
-func FsmOnInitBetweenFloors() {
+func FsmOnInitBetweenFloors(elev Elevator) {
 	SetMotorDirection(MD_Down)
 	elev.Dir = MD_Down
 	elev.Behavior = EB_Moving
 }
 
-func FsmOnRequestButtonPress(btnFloor int, btnType ButtonType) {
+func FsmOnRequestButtonPress(elev Elevator, btnFloor int, btnType ButtonType) {
 	fmt.Printf("\n\n%s(%d, %s)\n", "fsmOnRequestButtonPress", btnFloor, ButtonToString(btnType))
 	PrintElevator(elev)
 
@@ -68,11 +65,11 @@ func FsmOnRequestButtonPress(btnFloor int, btnType ButtonType) {
 	PrintElevator(elev)
 }
 
-func FsmSetObstruction(isObstructed bool) {
+func FsmSetObstruction(elev Elevator, isObstructed bool) {
 	elev.IsObstructed = isObstructed
 }
 
-func FsmOnFloorArrival(newFloor int) {
+func FsmOnFloorArrival(elev Elevator, newFloor int) {
 	fmt.Printf("\n\n%s(%d)\n", "fsmOnFloorArrival", newFloor)
 	PrintElevator(elev)
 
@@ -96,7 +93,7 @@ func FsmOnFloorArrival(newFloor int) {
 	PrintElevator(elev)
 }
 
-func FsmOnDoorTimeout() {
+func FsmOnDoorTimeout(elev Elevator) {
 	fmt.Printf("\n\n%s()\n", "fsmOnDoorTimeout")
 	PrintElevator(elev)
 

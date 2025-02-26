@@ -17,9 +17,15 @@ func transmitDummyData(elevStatesTx chan messages.ElevStates, id int) {
 	}
 }
 
+func crazy() {
+	for {
+		fmt.Println("Test is active")
+		time.Sleep(time.Millisecond * 500)
+	}
+}
+
 func TestMasterSlaveACKs() {
 
-	// some channels for communicating with go routines
 	err := testAckDistr()
 	if err == nil {
 		fmt.Println("Ack test passed")
@@ -31,12 +37,12 @@ func TestMasterSlaveACKs() {
 func testAckDistr() error {
 
 	var err error
-	ackRx := make(chan messages.Ack)
-	hallAssignmentsAck := make(chan messages.Ack)
-	lightUpdateAck := make(chan messages.Ack)
-	ConnectionReqAck := make(chan messages.Ack)
-	CabRequestInfoAck := make(chan messages.Ack)
-	HallAssignmentCompleteAck := make(chan messages.Ack)
+	ackRx := make(chan messages.Ack, 1)
+	hallAssignmentsAck := make(chan messages.Ack, 1)
+	lightUpdateAck := make(chan messages.Ack, 1)
+	ConnectionReqAck := make(chan messages.Ack, 1)
+	CabRequestInfoAck := make(chan messages.Ack, 1)
+	HallAssignmentCompleteAck := make(chan messages.Ack, 1)
 	timeoutChannel := make(chan int)
 
 	receivedAcks := [5]bool{false, false, false, false, false}
@@ -51,13 +57,13 @@ func testAckDistr() error {
 			err = e
 			return err
 		}
+		// this blocked until I gave all channels an explicit buffer of 1
 		ackRx <- messages.Ack{NodeID: i, MessageID: id}
 		numAckSent++
 	}
-	time.AfterFunc(time.Second, func() {
+	time.AfterFunc(time.Second*2, func() {
 		timeoutChannel <- 1
 	})
-
 ForLoop:
 	for {
 		select {
@@ -89,6 +95,7 @@ ForLoop:
 				break ForLoop
 			}
 			receivedAcks[msg.NodeID] = true
+
 		case msg := <-HallAssignmentCompleteAck:
 			numAckSent--
 			if receivedAcks[msg.NodeID] {
@@ -96,9 +103,12 @@ ForLoop:
 				break ForLoop
 			}
 			receivedAcks[msg.NodeID] = true
+
 		case <-timeoutChannel:
+			fmt.Println("Test is over")
 			if numAckSent > 0 {
 				err = fmt.Errorf("not all acks were received, still have %d left", numAckSent)
+				fmt.Println(receivedAcks)
 
 			}
 			break ForLoop

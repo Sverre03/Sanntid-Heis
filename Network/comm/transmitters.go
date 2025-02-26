@@ -53,7 +53,9 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(CAB_REQ_INFO) {
 			cabReqInfoAck <- ackMsg
+
 		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(HALL_ASSIGNMENT_COMPLETE) {
+			fmt.Println("Received an hall ass complete ack")
 			hallAssignmentCompleteAck <- ackMsg
 		}
 	}
@@ -61,7 +63,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 // Transmits Hall assignments from outgoingHallAssignments channel to their designated elevators and handles ack
 func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments,
-	OutgoingNewHallAssignments chan messages.NewHallAssignments,
+	OutgoingNewHallAssignments <-chan messages.NewHallAssignments,
 	HallAssignmentsAck <-chan messages.Ack) {
 
 	activeAssignments := map[int]messages.NewHallAssignments{}

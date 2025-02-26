@@ -29,7 +29,7 @@ type HRAInput struct {
 func InputFunction(allElevStates map[int]messages.ElevStates, hallRequests [config.NUM_FLOORS][2]bool) HRAInput {
 	allElevStatesInputFormat := make(map[string]HRAElevState)
 	for id, state := range allElevStates {
-		allElevStatesInputFormat[fmt.Sprintf("elevator%d", id)] = HRAElevState{
+		allElevStatesInputFormat[fmt.Sprintf("%d", id)] = HRAElevState{
 			Behavior:    state.Behavior,
 			Floor:       state.Floor,
 			Direction:   strings.ToLower(elevator.MotorDirectionToString(state.Direction)),
@@ -43,7 +43,7 @@ func InputFunction(allElevStates map[int]messages.ElevStates, hallRequests [conf
 	return input
 }
 
-func OutputFunction(input HRAInput) *map[string][][2]bool {
+func OutputFunction(input HRAInput) *map[string][config.NUM_FLOORS][2]bool {
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -67,7 +67,7 @@ func OutputFunction(input HRAInput) *map[string][][2]bool {
 		return nil
 	}
 
-	output := new(map[string][][2]bool)
+	output := new(map[string][config.NUM_FLOORS][2]bool)
 	err = json.Unmarshal(ret, &output)
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)

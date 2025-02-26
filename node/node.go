@@ -5,9 +5,11 @@ import (
 	"elev/Network/comm"
 	"elev/Network/network/bcast"
 	"elev/Network/network/messages"
+	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/util/config"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/looplab/fsm"
@@ -259,9 +261,16 @@ func MasterProgram(node *NodeData) {
 			if activeReq {
 				inputFormat := hallRequestAssigner.InputFunction(allKnownStates, activeHallRequests)
 				outputFormat := hallRequestAssigner.OutputFunction(inputFormat)
-				node.OutGoingHallAssignments <- messages.NewHallAssignments{node.ID, outputFormat, messageID}
+				for id, hallRequests := range *outputFormat {
+					nodeID, err := strconv.Atoi(id)
+					if err != nil {
+						fmt.Println("Error: ", err)
+					}
+					
+					node.OutGoingHallAssignments <- messages.NewHallAssignments{nodeID, hallRequests, 0}
+				}
 
-		}
+			}
 
 		}
 	}

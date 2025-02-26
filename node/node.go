@@ -32,6 +32,7 @@ type NodeData struct {
 	HallAssignmentsRx       chan messages.NewHallAssignments
 	OutGoingHallAssignments chan messages.NewHallAssignments
 
+
 	CabRequestInfoRx chan messages.CabRequestINF
 
 	GlobalHallRequestRx chan messages.GlobalHallRequest
@@ -50,6 +51,11 @@ type NodeData struct {
 
 	NewHallReqTx chan messages.NewHallRequest
 	NewHallReqRx chan messages.NewHallRequest
+
+	ElevatorHallButtonEventTx chan elevator.ButtonEvent // Receives local hall calls from elevator
+	ElevatorHallButtonEventRx chan elevator.ButtonEvent
+
+	ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState
 
 	HallAssignmentCompleteRx chan messages.HallAssignmentComplete
 }

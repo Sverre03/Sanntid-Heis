@@ -27,6 +27,18 @@ var ElevatorBehaviorToString = map[ElevatorBehavior]string{
 	EB_Moving:   "Moving",
 }
 
+func GetDirection(elev Elevator) MotorDirection {
+	return elev.Dir
+}
+
+func GetBehavior(elev Elevator) ElevatorBehavior {
+	return elev.Behavior
+}
+
+func GetCabRequests(elev Elevator) [config.NUM_BUTTONS]bool {
+	return elev.Requests[:][BT_Cab]
+}
+
 func NewElevator() Elevator {
 	return Elevator{
 		Behavior: EB_Idle,

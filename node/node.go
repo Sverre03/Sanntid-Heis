@@ -7,6 +7,7 @@ import (
 	"elev/Network/network/messages"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
+	"elev/util/config"
 	"fmt"
 	"time"
 
@@ -52,7 +53,6 @@ type NodeData struct {
 }
 
 func Node(id int) *NodeData {
-	PortNum := 20011
 
 	node := &NodeData{
 		ID:                        id,
@@ -115,6 +115,8 @@ func Node(id int) *NodeData {
 	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
 
 	HallAssignmentsAckTx := make(chan messages.Ack)
+	go bcast.Transmitter(config.PORT_NUM, node.AckTx, node.ElevStatesTx, node.HallAssignmentsTx, node.CabRequestInfoTx, node.GlobalHallRequestTx, node.HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
+	go bcast.Receiver(config.PORT_NUM, node.AckRx, node.ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
 
 	node.commandCh = make(chan string)
 	timeOfLastContactCh := make(chan time.Time)

@@ -10,8 +10,8 @@ var elev Elevator
 
 func InitFSM() {
 	elev = NewElevator()
-	for floor := 0; floor < NumFloors; floor++ {
-		for btn := 0; btn < NumButtons; btn++ {
+	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 			SetButtonLamp(ButtonType(btn), floor, false)
 		}
 	}
@@ -19,8 +19,8 @@ func InitFSM() {
 }
 
 func SetAllLights(elev Elevator) {
-	for floor := 0; floor < NumFloors; floor++ {
-		for btn := 0; btn < NumButtons; btn++ {
+	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 			SetButtonLamp(ButtonType(btn), floor, elev.Requests[floor][btn])
 		}
 	}
@@ -40,7 +40,7 @@ func FsmOnRequestButtonPress(btnFloor int, btnType ButtonType) {
 	case EB_DoorOpen:
 		// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
 		if RequestsShouldClearImmediately(elev, btnFloor, btnType) {
-			timer.TimerStart(config.DoorOpenDurationS)
+			timer.TimerStart(config.DOOR_OPEN_DURATION)
 		} else {
 			elev.Requests[btnFloor][btnType] = true
 		}
@@ -54,7 +54,7 @@ func FsmOnRequestButtonPress(btnFloor int, btnType ButtonType) {
 		switch pair.Behavior {
 		case EB_DoorOpen:
 			SetDoorOpenLamp(true)
-			timer.TimerStart(config.DoorOpenDurationS)
+			timer.TimerStart(config.DOOR_OPEN_DURATION)
 			elev = RequestsClearAtCurrentFloor(elev)
 		case EB_Moving:
 			SetMotorDirection(elev.Dir)
@@ -85,7 +85,7 @@ func FsmOnFloorArrival(newFloor int) {
 			SetMotorDirection(MD_Stop)
 			SetDoorOpenLamp(true)
 			elev = RequestsClearAtCurrentFloor(elev)
-			timer.TimerStart(config.DoorOpenDurationS)
+			timer.TimerStart(config.DOOR_OPEN_DURATION)
 			SetAllLights(elev)
 			elev.Behavior = EB_DoorOpen
 		}
@@ -103,7 +103,7 @@ func FsmOnDoorTimeout() {
 	switch elev.Behavior {
 	case EB_DoorOpen:
 		if elev.IsObstructed {
-			timer.TimerStart(config.DoorOpenDurationS) // Keep the door open
+			timer.TimerStart(config.DOOR_OPEN_DURATION) // Keep the door open
 		} else {
 			timer.TimerStop()
 			SetDoorOpenLamp(false)
@@ -117,7 +117,7 @@ func FsmOnDoorTimeout() {
 
 			switch elev.Behavior {
 			case EB_DoorOpen:
-				timer.TimerStart(config.DoorOpenDurationS)
+				timer.TimerStart(config.DOOR_OPEN_DURATION)
 				elev = RequestsClearAtCurrentFloor(elev)
 				SetAllLights(elev)
 			case EB_Moving, EB_Idle:

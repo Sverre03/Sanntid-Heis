@@ -14,8 +14,8 @@ type PeerUpdate struct {
 	Lost  []string
 }
 
-const interval = 15 * time.Millisecond
-const timeout = 500 * time.Millisecond
+const INTERVAL = 15 * time.Millisecond
+const TIMEOUT = 500 * time.Millisecond
 
 // Transmitter broadcasts the given ID on the specified port at regular intervals.
 // The transmission can be enabled or disabled using the transmitEnable channel.
@@ -28,7 +28,7 @@ func Transmitter(port int, id string, transmitEnable <-chan bool) {
 	for {
 		select {
 		case enable = <-transmitEnable:
-		case <-time.After(interval):
+		case <-time.After(INTERVAL):
 		}
 		if enable {
 			conn.WriteTo([]byte(id), addr)
@@ -49,7 +49,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 	for {
 		updated := false
 
-		conn.SetReadDeadline(time.Now().Add(interval))
+		conn.SetReadDeadline(time.Now().Add(INTERVAL))
 		n, _, _ := conn.ReadFrom(buf[0:])
 
 		id := string(buf[:n])
@@ -68,7 +68,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 		// Removing dead connection
 		p.Lost = make([]string, 0)
 		for k, v := range lastSeen {
-			if time.Now().Sub(v) > timeout {
+			if time.Now().Sub(v) > TIMEOUT {
 				updated = true
 				p.Lost = append(p.Lost, k)
 				delete(lastSeen, k)

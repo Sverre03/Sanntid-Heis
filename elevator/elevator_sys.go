@@ -1,11 +1,9 @@
 package elevator
 
 import (
+	"elev/util/config"
 	"fmt"
 )
-
-const _numFloors = 4
-const _numButtons = 3
 
 type ElevatorBehavior int
 
@@ -19,7 +17,7 @@ type Elevator struct {
 	Floor        int
 	Dir          MotorDirection
 	Behavior     ElevatorBehavior
-	Requests     [_numFloors][_numButtons]bool
+	Requests     [config.NUM_FLOORS][config.NUM_BUTTONS]bool
 	IsObstructed bool
 }
 
@@ -34,7 +32,7 @@ func NewElevator() Elevator {
 		Behavior: EB_Idle,
 		Floor:    -1,
 		Dir:      MD_Stop,
-		Requests: [_numFloors][_numButtons]bool{},
+		Requests: [config.NUM_FLOORS][config.NUM_BUTTONS]bool{},
 	}
 }
 

@@ -1,6 +1,7 @@
 package elevator
 
 import (
+	"elev/util/config"
 	"elev/util/timer"
 	"fmt"
 	"net"
@@ -11,9 +12,6 @@ import (
 const _pollRate = 20 * time.Millisecond
 
 var _initialized bool = false
-
-var NumFloors int = 4
-var NumButtons int = 3
 
 var _mtx sync.Mutex
 var _conn net.Conn
@@ -44,7 +42,6 @@ func Init(addr string, numFloors int) {
 		fmt.Println("Driver already initialized!")
 		return
 	}
-	NumFloors = numFloors
 	_mtx = sync.Mutex{}
 	var err error
 	_conn, err = net.Dial("tcp", addr)
@@ -75,10 +72,10 @@ func SetStopLamp(value bool) {
 }
 
 func PollButtons(receiver chan<- ButtonEvent) {
-	prev := make([][3]bool, NumFloors)
+	prev := make([][3]bool, config.NUM_FLOORS)
 	for {
 		time.Sleep(_pollRate)
-		for floor := 0; floor < NumFloors; floor++ {
+		for floor := 0; floor < config.NUM_FLOORS; floor++ {
 			for button := ButtonType(0); button < 3; button++ {
 				v := GetButton(button, floor)
 				if v != prev[floor][button] && v {

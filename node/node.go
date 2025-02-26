@@ -2,8 +2,10 @@ package node
 
 import (
 	"context"
+	"elev/Network/comm"
 	"elev/Network/network/bcast"
 	"elev/Network/network/messages"
+	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"fmt"
 	"time"
@@ -22,25 +24,22 @@ type NodeData struct {
 	LastKnownStatesOfAllNodes map[int]string
 
 	AckTx chan messages.Ack
-	AckRx chan messages.Ack
 
 	ElevStatesTx chan messages.ElevStates
-	ElevStatesRx chan messages.ElevStates
 
-	HallAssignmentsTx chan messages.NewHallAssignments
-	HallAssignmentsRx chan messages.NewHallAssignments
-
-	CabRequestInfoTx chan messages.CabRequestINF
+	HallAssignmentsRx       chan messages.NewHallAssignments
+	OutGoingHallAssignments chan messages.NewHallAssignments
+	
 	CabRequestInfoRx chan messages.CabRequestINF
 
-	GlobalHallRequestTx chan messages.GlobalHallRequest
 	GlobalHallRequestRx chan messages.GlobalHallRequest
 
-	HallLightUpdateTx chan messages.HallLightUpdate
 	HallLightUpdateRx chan messages.HallLightUpdate
 
 	ConnectionReqTx chan messages.ConnectionReq
 	ConnectionReqRx chan messages.ConnectionReq
+
+	commandCh chan string
 
 	HallAssignmentAckRx  chan messages.Ack
 	HallLightUpdateAckRx chan messages.Ack
@@ -49,7 +48,6 @@ type NodeData struct {
 	NewHallReqTx chan messages.NewHallRequest
 	NewHallReqRx chan messages.NewHallRequest
 
-	HallAssignmentCompleteTx chan messages.HallAssignmentComplete
 	HallAssignmentCompleteRx chan messages.HallAssignmentComplete
 }
 
@@ -89,21 +87,22 @@ func Node(id int) *NodeData {
 	)
 
 	node.AckTx = make(chan messages.Ack)
-	node.AckRx = make(chan messages.Ack)
+	AckRx := make(chan messages.Ack) //
 
 	node.ElevStatesTx = make(chan messages.ElevStates)
-	node.ElevStatesRx = make(chan messages.ElevStates)
+	ElevStatesRx := make(chan messages.ElevStates) //
 
-	node.HallAssignmentsTx = make(chan messages.NewHallAssignments)
+	HallAssignmentsTx := make(chan messages.NewHallAssignments)
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
+	node.OutGoingHallAssignments = make(chan messages.NewHallAssignments)
 
-	node.CabRequestInfoTx = make(chan messages.CabRequestINF)
+	CabRequestInfoTx := make(chan messages.CabRequestINF) //
 	node.CabRequestInfoRx = make(chan messages.CabRequestINF)
 
-	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest)
+	GlobalHallRequestTx := make(chan messages.GlobalHallRequest) //
 	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
 
-	node.HallLightUpdateTx = make(chan messages.HallLightUpdate)
+	HallLightUpdateTx := make(chan messages.HallLightUpdate) //
 	node.HallLightUpdateRx = make(chan messages.HallLightUpdate)
 
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
@@ -112,12 +111,22 @@ func Node(id int) *NodeData {
 	node.NewHallReqTx = make(chan messages.NewHallRequest)
 	node.NewHallReqRx = make(chan messages.NewHallRequest)
 
-	node.HallAssignmentCompleteTx = make(chan messages.HallAssignmentComplete)
+	HallAssignmentCompleteTx := make(chan messages.HallAssignmentComplete) //
 	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
 
-	go bcast.Transmitter(PortNum, node.AckTx, node.ElevStatesTx, node.HallAssignmentsTx, node.CabRequestInfoTx, node.GlobalHallRequestTx, node.HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
-	go bcast.Receiver(PortNum, node.AckRx, node.ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
+	HallAssignmentsAckTx := make(chan messages.Ack)
 
+	node.commandCh = make(chan string)
+	timeOfLastContactCh := make(chan time.Time)
+	elevStatesCh := make(chan map[int]messages.ElevStates)
+	activeNodeIDsC := make (chan []int)
+	elevStatesRx := make(chan messages.ElevStates)
+
+
+	go bcast.Transmitter(PortNum, node.AckTx, node.ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
+	go bcast.Receiver(PortNum, AckRx, ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
+	go comm.HallAssignmentsTransmitter(HallAssignmentsTx, node.OutGoingHallAssignments, HallAssignmentsAckTx)
+	go comm.ElevStatesListener(node.commandCh, timeOfLastContactCh, elevStatesCh, activeNodeIDsC, elevStatesRx)
 	return node
 }
 
@@ -226,5 +235,19 @@ func SlaveProgram(node *NodeData) {
 }
 
 func MasterProgram(node *NodeData) {
-	fmt.Printf("Node %d er nå SLAVE. Med TOLC lik %s \node", node.ID, node.TOLC)
+
+	for {
+		var hallRequests [][2]bool                           //placeholder for getting from server
+		var allElevStates []hallRequestAssigner.HRAElevState //placeholder for getting from server
+
+		messageID, err := comm.GenerateMessageID(comm.NEW_HALL_ASSIGNMENT)
+		if err != nil {
+			fmt.Printf("Fatal error, invalid message id used")
+		}
+
+		inputFormat := hallRequestAssigner.InputFunction(allElevStates, hallRequests)
+		outputFormat := hallRequestAssigner.OutputFunction(inputFormat)
+
+		node.OutGoingHallAssignments <- messages.NewHallAssignments{node.ID, outputFormat, messageID}
+	}
 }

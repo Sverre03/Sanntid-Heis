@@ -48,7 +48,7 @@ type ConnectionReq struct {
 // event - ack
 type NewHallAssignments struct {
 	NodeID         int
-	HallAssignment [N_FLOORS][2]bool
+	HallAssignment *map[string][][2]bool
 	MessageID      int
 }
 

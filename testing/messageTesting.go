@@ -10,7 +10,7 @@ import (
 )
 
 func transmitDummyData(elevStatesTx chan messages.ElevStates, id int) {
-	dummyData := messages.ElevStates{NodeID: id, Direction: "up", Floor: 1, CabRequest: [config.NumFloors]bool{false, false, false, false}, Behavior: "Down"}
+	dummyData := messages.ElevStates{NodeID: id, Direction: "up", Floor: 1, CabRequest: [config.NUM_FLOORS]bool{false, false, false, false}, Behavior: "Down"}
 	for {
 		time.Sleep(50 * time.Millisecond)
 		elevStatesTx <- dummyData

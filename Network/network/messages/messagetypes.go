@@ -13,19 +13,19 @@ type Ack struct {
 
 // event - ack
 type CabRequestINF struct {
-	CabRequest     [config.NumFloors]bool
+	CabRequest     [config.NUM_FLOORS]bool
 	MessageID      int
 	ReceiverNodeID int
 }
 
 // information
 type GlobalHallRequest struct {
-	HallRequests [config.NumFloors][2]bool
+	HallRequests [config.NUM_FLOORS][2]bool
 }
 
 // event - ack
 type HallLightUpdate struct {
-	LightStates       [config.NumFloors][2]bool
+	LightStates       [config.NUM_FLOORS][2]bool
 	MessageID         int
 	ActiveElevatorIDs []int
 }
@@ -35,7 +35,7 @@ type ElevStates struct {
 	NodeID     int
 	Direction  string
 	Floor      int
-	CabRequest [config.NumFloors]bool
+	CabRequest [config.NUM_FLOORS]bool
 	Behavior   string
 }
 
@@ -49,7 +49,7 @@ type ConnectionReq struct {
 // event - ack
 type NewHallAssignments struct {
 	NodeID         int
-	HallAssignment [config.NumFloors][2]bool
+	HallAssignment [config.NUM_FLOORS][2]bool
 	MessageID      int
 }
 

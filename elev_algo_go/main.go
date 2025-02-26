@@ -12,14 +12,12 @@ func main() {
 	doorTimeoutEvent := make(chan bool)
 	obstructionEvent := make(chan bool)
 
-	const inputPollRate = 25 * time.Millisecond
-
-	elevator.Init("localhost:15657", config.NumFloors)
+	elevator.Init("localhost:15657", config.NUM_FLOORS)
 	elevator.InitFSM()
 
-	prevRequestButton := make([][]bool, elevator.NumFloors)
+	prevRequestButton := make([][]bool, config.NUM_FLOORS)
 	for i := range prevRequestButton {
-		prevRequestButton[i] = make([]bool, elevator.NumButtons)
+		prevRequestButton[i] = make([]bool, config.NUM_BUTTONS)
 	}
 
 	// Start polling routines outside the loop
@@ -43,6 +41,6 @@ func main() {
 			elevator.FsmOnDoorTimeout()
 		}
 
-		time.Sleep(inputPollRate)
+		time.Sleep(config.INPUT_POLL_RATE)
 	}
 }

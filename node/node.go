@@ -115,8 +115,6 @@ func Node(id int) *NodeData {
 	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
 
 	HallAssignmentsAckTx := make(chan messages.Ack)
-	go bcast.Transmitter(config.PORT_NUM, node.AckTx, node.ElevStatesTx, node.HallAssignmentsTx, node.CabRequestInfoTx, node.GlobalHallRequestTx, node.HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
-	go bcast.Receiver(config.PORT_NUM, node.AckRx, node.ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
 
 	node.commandCh = make(chan string)
 	timeOfLastContactCh := make(chan time.Time)
@@ -125,8 +123,8 @@ func Node(id int) *NodeData {
 	elevStatesRx := make(chan messages.ElevStates)
 
 
-	go bcast.Transmitter(PortNum, node.AckTx, node.ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
-	go bcast.Receiver(PortNum, AckRx, ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
+	go bcast.Transmitter(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
+	go bcast.Receiver(config.PORT_NUM, AckRx, ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
 	go comm.HallAssignmentsTransmitter(HallAssignmentsTx, node.OutGoingHallAssignments, HallAssignmentsAckTx)
 	go comm.ElevStatesListener(node.commandCh, timeOfLastContactCh, elevStatesCh, activeNodeIDsC, elevStatesRx)
 	return node

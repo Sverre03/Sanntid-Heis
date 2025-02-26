@@ -35,7 +35,6 @@ func SingleElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	for {
 		select {
 		case button := <-buttonEvent:
-			println("Button event received")
 			if (button.Button == elevator.BT_HallDown) || (button.Button == elevator.BT_HallUp) {
 				ElevatorHallButtonEventTx <- elevator.ButtonEvent{
 					Floor:  button.Floor,
@@ -46,7 +45,6 @@ func SingleElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 			}
 
 		case button := <-ElevatorHallButtonEventRx:
-			println("External hall button event received")
 			elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button)
 
 		case floor := <-floorEvent:

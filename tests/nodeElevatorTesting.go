@@ -18,7 +18,7 @@ func TestNodeReceivesHallButtonAndProcessesMasterAssignment(t *testing.T) {
 	// Run the SingleElevatorProgram in a separate goroutine.
 	go single_elevator_algo.SingleElevatorProgram(hallButtonEventTx, hraStatesTx, hallButtonEventRx)
 
-	// Simulate a hall button press (hall call). In our program, hall calls are forwarded
+	// Simulate a hall button press (hall call). In the program, hall calls are forwarded
 	// so the elevator does not process them directly.
 	testHallEvent := elevator.ButtonEvent{
 		Floor:  2,
@@ -33,13 +33,13 @@ func TestNodeReceivesHallButtonAndProcessesMasterAssignment(t *testing.T) {
 		// Since the elevator is newly initialized, the floor should remain at -1.
 		if state.Floor != -1 {
 			t.Errorf("Expected initial floor -1, got %d", state.Floor)
-		}
+		} 
 	case <-time.After(2 * time.Second):
 		t.Error("Did not receive HRAElevState within timeout after hall call")
 	}
 
 	// Now simulate an incoming hall button assignment from a master node.
-	// In our design, non-hall events (e.g. cab requests) are processed directly.
+	// Cab requests are still processed directly.
 	testCabEvent := elevator.ButtonEvent{
 		Floor:  3,
 		Button: elevator.BT_Cab,

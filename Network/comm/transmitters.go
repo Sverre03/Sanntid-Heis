@@ -68,27 +68,22 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 
 	activeAssignments := map[int]messages.NewHallAssignments{}
 
-	timeoutChannel := make(chan int)
-
-	var timedOutMsgID int
-	var receivedAck messages.Ack
-	var newAssignment messages.NewHallAssignments
+	timeoutChannel := make(chan int, 2)
 
 	for {
 		select {
-		case newAssignment = <-OutgoingNewHallAssignments:
+		case newAssignment := <-OutgoingNewHallAssignments:
 
-			// set a new message id
 			new_msg_id, err := GenerateMessageID(NEW_HALL_ASSIGNMENT)
 			if err != nil {
-				panic("Fatal error, invalid message id used")
+				fmt.Println("Fatal error, invalid message id type used to generate a message id in HallAssignmentTransmitter")
 			}
+
 			newAssignment.MessageID = new_msg_id
 
-			// set/overwrite old assignments
+			// fmt.Printf("got new hall assignment with id %d and a message id %d\n", newAssignment.NodeID, newAssignment.MessageID)
 			activeAssignments[newAssignment.NodeID] = newAssignment
 
-			// send out the new assignment
 			HallAssignmentsTx <- newAssignment
 
 			// check for whether message is not acknowledged within duration
@@ -96,13 +91,13 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 				timeoutChannel <- newAssignment.MessageID
 			})
 
-		case timedOutMsgID = <-timeoutChannel:
+		case timedOutMsgID := <-timeoutChannel:
 
-			// check if message is still in active assigments
+			// fmt.Printf("Checking messageID for resend: %d \n", timedOutMsgID)
 			for _, msg := range activeAssignments {
 				if msg.MessageID == timedOutMsgID {
 
-					// rebroadcast the message, and add a new timeout
+					// fmt.Printf("resending message id %d \n", timedOutMsgID)
 					HallAssignmentsTx <- msg
 					time.AfterFunc(time.Millisecond*500, func() {
 						timeoutChannel <- msg.MessageID
@@ -111,13 +106,11 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 				}
 			}
 
-		case receivedAck = <-HallAssignmentsAck:
-
-			// check if message is in map, if not do nothing
+		case receivedAck := <-HallAssignmentsAck:
 			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
 				if msg.MessageID == receivedAck.MessageID {
-
-					delete(activeAssignments, receivedAck.MessageID)
+					// fmt.Printf("Deleting assignment with node id %d and message id %d \n", receivedAck.NodeID, receivedAck.MessageID)
+					delete(activeAssignments, receivedAck.NodeID)
 				}
 			}
 		}

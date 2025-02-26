@@ -1,6 +1,8 @@
 package elevator
 
-import "elev/util/config"
+import (
+	"elev/util/config"
+)
 
 type DirBehaviorPair struct {
 	Dir      MotorDirection
@@ -8,6 +10,9 @@ type DirBehaviorPair struct {
 }
 
 func RequestsAbove(e Elevator) bool {
+	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
+		return false
+	}
 	for floor := e.Floor + 1; floor < config.NUM_FLOORS; floor++ {
 		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 			if e.Requests[floor][btn] {
@@ -19,6 +24,9 @@ func RequestsAbove(e Elevator) bool {
 }
 
 func RequestsBelow(e Elevator) bool {
+	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
+		return false
+	}
 	for floor := 0; floor < e.Floor; floor++ {
 		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 			if e.Requests[floor][btn] {
@@ -30,6 +38,9 @@ func RequestsBelow(e Elevator) bool {
 }
 
 func RequestsHere(e Elevator) bool {
+	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
+		return false
+	}
 	for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 		if e.Requests[e.Floor][btn] {
 			return true
@@ -93,6 +104,9 @@ func RequestsShouldClearImmediately(e Elevator, btnFloor int, btnType ButtonType
 }
 
 func RequestsClearAtCurrentFloor(e Elevator) Elevator {
+	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
+		return e
+	}
 	e.Requests[e.Floor][BT_Cab] = false
 	switch e.Dir {
 	case MD_Up:

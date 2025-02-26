@@ -1,11 +1,14 @@
 package main
 
 import (
-	"elev/testing"
+	"elev/tests"
 	"fmt"
+	"testing"
 )
 
 func main() {
 	fmt.Println("Starting test")
-	testing.TestTransmitFunctions()
+	// tests.TestTransmitFunctions()
+	t := &testing.T{}
+	tests.TestNodeReceivesHallButtonAndProcessesMasterAssignment(t)
 }

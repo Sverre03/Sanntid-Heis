@@ -32,7 +32,6 @@ type NodeData struct {
 	HallAssignmentsRx       chan messages.NewHallAssignments
 	OutGoingHallAssignments chan messages.NewHallAssignments
 
-
 	CabRequestInfoRx chan messages.CabRequestINF
 
 	GlobalHallRequestRx chan messages.GlobalHallRequest
@@ -272,7 +271,7 @@ func MasterProgram(node *NodeData) {
 					if err != nil {
 						fmt.Println("Error: ", err)
 					}
-					
+
 					node.OutGoingHallAssignments <- messages.NewHallAssignments{nodeID, hallRequests, 0}
 				}
 

@@ -8,7 +8,7 @@ import (
 	"reflect"
 )
 
-const bufSize = 1024
+const BUF_SIZE = 1024
 
 // Transmitter encodes received values from `chans` into type-tagged JSON, then broadcasts
 // it on the specified 'port'. It takes multiple channels as input.
@@ -33,11 +33,11 @@ func Transmitter(port int, chans ...interface{}) {
 			TypeId: typeNames[chosen],
 			JSON:   jsonstr,
 		})
-		if len(ttj) > bufSize {
+		if len(ttj) > BUF_SIZE {
 			panic(fmt.Sprintf(
 				"Tried to send a message longer than the buffer size (length: %d, buffer size: %d)\n\t'%s'\n"+
 					"Either send smaller packets, or go to network/bcast/bcast.go and increase the buffer size",
-				len(ttj), bufSize, string(ttj)))
+				len(ttj), BUF_SIZE, string(ttj)))
 		}
 		conn.WriteTo(ttj, addr)
 
@@ -53,7 +53,7 @@ func Receiver(port int, chans ...interface{}) {
 		chansMap[reflect.TypeOf(ch).Elem().String()] = ch
 	}
 
-	var buf [bufSize]byte
+	var buf [BUF_SIZE]byte
 	conn := conn.DialBroadcastUDP(port)
 	for {
 		n, _, e := conn.ReadFrom(buf[0:])

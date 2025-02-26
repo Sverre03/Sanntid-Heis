@@ -8,8 +8,8 @@ type DirBehaviorPair struct {
 }
 
 func RequestsAbove(e Elevator) bool {
-	for floor := e.Floor + 1; floor < config.NumFloors; floor++ {
-		for btn := 0; btn < config.NumButtons; btn++ {
+	for floor := e.Floor + 1; floor < config.NUM_FLOORS; floor++ {
+		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 			if e.Requests[floor][btn] {
 				return true
 			}
@@ -20,7 +20,7 @@ func RequestsAbove(e Elevator) bool {
 
 func RequestsBelow(e Elevator) bool {
 	for floor := 0; floor < e.Floor; floor++ {
-		for btn := 0; btn < config.NumButtons; btn++ {
+		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 			if e.Requests[floor][btn] {
 				return true
 			}
@@ -30,7 +30,7 @@ func RequestsBelow(e Elevator) bool {
 }
 
 func RequestsHere(e Elevator) bool {
-	for btn := 0; btn < config.NumButtons; btn++ {
+	for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 		if e.Requests[e.Floor][btn] {
 			return true
 		}

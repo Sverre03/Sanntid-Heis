@@ -26,8 +26,8 @@ func GenerateMessageID(partition MessageIDType) (int, error) {
 		return 0, errors.New("invalid messageIDType")
 	}
 
-	i := rand.Intn(config.MsgIDPartitionSize)
-	i += (config.MsgIDPartitionSize) * offset
+	i := rand.Intn(config.MSG_ID_PARTITION_SIZE)
+	i += (config.MSG_ID_PARTITION_SIZE) * offset
 
 	return i, nil
 }
@@ -42,16 +42,16 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 	for ackMsg := range ackRx {
 
-		if ackMsg.MessageID < config.MsgIDPartitionSize*int(NEW_HALL_ASSIGNMENT) {
+		if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(NEW_HALL_ASSIGNMENT) {
 			hallAssignmentsAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(HALL_LIGHT_UPDATE) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(HALL_LIGHT_UPDATE) {
 			lightUpdateAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(CONNECTION_REQ) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(CONNECTION_REQ) {
 			connectionReqAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(CAB_REQ_INFO) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*int(CAB_REQ_INFO) {
 			cabReqInfoAck <- ackMsg
 
 		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(HALL_ASSIGNMENT_COMPLETE) {
@@ -179,7 +179,7 @@ func ElevStatesListener(commandCh <-chan string,
 
 				activeNodes := make(map[int]messages.ElevStates)
 				for id, t := range lastSeen {
-					if time.Since(t) < config.ConnectionTimeout {
+					if time.Since(t) < config.CONNECTION_TIMEOUT {
 						activeNodes[id] = knownNodes[id]
 					}
 				}
@@ -189,7 +189,7 @@ func ElevStatesListener(commandCh <-chan string,
 
 				activeIDs := make([]int, 0)
 				for id, t := range lastSeen {
-					if time.Since(t) < config.ConnectionTimeout {
+					if time.Since(t) < config.CONNECTION_TIMEOUT {
 						activeIDs = append(activeIDs, id)
 					}
 				}

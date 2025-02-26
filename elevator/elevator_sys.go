@@ -17,7 +17,7 @@ type Elevator struct {
 	Floor        int
 	Dir          MotorDirection
 	Behavior     ElevatorBehavior
-	Requests     [config.NumFloors][config.NumButtons]bool
+	Requests     [config.NUM_FLOORS][config.NUM_BUTTONS]bool
 	IsObstructed bool
 }
 
@@ -32,7 +32,7 @@ func NewElevator() Elevator {
 		Behavior: EB_Idle,
 		Floor:    -1,
 		Dir:      MD_Stop,
-		Requests: [config.NumFloors][config.NumButtons]bool{},
+		Requests: [config.NUM_FLOORS][config.NUM_BUTTONS]bool{},
 	}
 }
 

@@ -30,7 +30,7 @@ type NodeData struct {
 
 	HallAssignmentsRx       chan messages.NewHallAssignments
 	OutGoingHallAssignments chan messages.NewHallAssignments
-	
+
 	CabRequestInfoRx chan messages.CabRequestINF
 
 	GlobalHallRequestRx chan messages.GlobalHallRequest
@@ -48,6 +48,11 @@ type NodeData struct {
 
 	NewHallReqTx chan messages.NewHallRequest
 	NewHallReqRx chan messages.NewHallRequest
+
+	ElevatorHallButtonEventTx chan elevator.ButtonEvent // Receives local hall calls from elevator
+	ElevatorHallButtonEventRx chan elevator.ButtonEvent
+
+	ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState
 
 	HallAssignmentCompleteRx chan messages.HallAssignmentComplete
 }
@@ -119,9 +124,8 @@ func Node(id int) *NodeData {
 	node.commandCh = make(chan string)
 	timeOfLastContactCh := make(chan time.Time)
 	elevStatesCh := make(chan map[int]messages.ElevStates)
-	activeNodeIDsC := make (chan []int)
+	activeNodeIDsC := make(chan []int)
 	elevStatesRx := make(chan messages.ElevStates)
-
 
 	go bcast.Transmitter(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
 	go bcast.Receiver(config.PORT_NUM, AckRx, ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)

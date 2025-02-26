@@ -26,8 +26,8 @@ func GenerateMessageID(partition MessageIDType) (int, error) {
 		return 0, errors.New("invalid messageIDType")
 	}
 
-	i := rand.Intn(config.MsgIDSize)
-	i += (config.MsgIDSize) * offset
+	i := rand.Intn(config.MsgIDPartitionSize)
+	i += (config.MsgIDPartitionSize) * offset
 
 	return i, nil
 }
@@ -42,18 +42,18 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 	for ackMsg := range ackRx {
 
-		if ackMsg.MessageID < config.MsgIDSize*int(NEW_HALL_ASSIGNMENT) {
+		if ackMsg.MessageID < config.MsgIDPartitionSize*int(NEW_HALL_ASSIGNMENT) {
 			hallAssignmentsAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MsgIDSize*int(HALL_LIGHT_UPDATE) {
+		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(HALL_LIGHT_UPDATE) {
 			lightUpdateAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MsgIDSize*int(CONNECTION_REQ) {
+		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(CONNECTION_REQ) {
 			connectionReqAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MsgIDSize*int(CAB_REQ_INFO) {
+		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(CAB_REQ_INFO) {
 			cabReqInfoAck <- ackMsg
-		} else if ackMsg.MessageID < config.MsgIDSize*int(HALL_ASSIGNMENT_COMPLETE) {
+		} else if ackMsg.MessageID < config.MsgIDPartitionSize*int(HALL_ASSIGNMENT_COMPLETE) {
 			hallAssignmentCompleteAck <- ackMsg
 		}
 	}

@@ -9,14 +9,6 @@ import (
 	"time"
 )
 
-func transmitDummyData(elevStatesTx chan messages.ElevStates, id int) {
-	// dummyData := messages.ElevStates{NodeID: id, Direction: "up", Floor: 1, CabRequest: [config.NUM_FLOORS]bool{false, false, false, false}, Behavior: "Down"}
-	for {
-		time.Sleep(50 * time.Millisecond)
-		// elevStatesTx <- dummyData
-	}
-}
-
 func crazy() {
 	for {
 		fmt.Println("Test is active")
@@ -37,6 +29,14 @@ func testMessageIDGenerator() error {
 func TestTransmitFunctions() {
 	var err error
 
+	err = testGlobalHallReqTransmitter()
+	if err == nil {
+		fmt.Println("hall assignment transmitter test passed")
+	} else {
+		fmt.Println(err.Error())
+		return
+	}
+
 	err = testHAss()
 	if err == nil {
 		fmt.Println("Hall assignment test passed")
@@ -47,7 +47,7 @@ func TestTransmitFunctions() {
 
 	err = testMessageIDGenerator()
 	if err == nil {
-		fmt.Println("Message id generator test passed")
+		fmt.Println("MessageID generator test passed")
 	} else {
 		fmt.Println(err.Error())
 		return
@@ -55,7 +55,7 @@ func TestTransmitFunctions() {
 
 	err = testAckDistr()
 	if err == nil {
-		fmt.Println("Ack test passed")
+		fmt.Println("Ack distributor test passed")
 	} else {
 		fmt.Println(err.Error())
 		return
@@ -119,6 +119,69 @@ ForLoop:
 	}
 	return err
 
+}
+
+func testGlobalHallReqTransmitter() error {
+	var err error
+	transmitEnableCh := make(chan bool, 1)
+	GlobalHallRequestTx := make(chan messages.GlobalHallRequest, 1)
+	requestsForBroadcastCh := make(chan messages.GlobalHallRequest, 1)
+	timeoutChannel := make(chan int, 1)
+
+	haveReceived := false
+
+	go comm.GlobalHallRequestsTransmitter(transmitEnableCh, GlobalHallRequestTx, requestsForBroadcastCh)
+
+	var currentHallRequests [config.NUM_FLOORS][2]bool
+
+	time.AfterFunc(time.Second*5, func() {
+		timeoutChannel <- 10
+	})
+
+	time.AfterFunc(time.Second*2, func() {
+		timeoutChannel <- 5
+	})
+
+	time.AfterFunc(time.Millisecond*150, func() {
+		timeoutChannel <- 1
+	})
+
+	requestsForBroadcastCh <- messages.GlobalHallRequest{HallRequests: currentHallRequests}
+	transmitEnableCh <- true
+
+ForLoop:
+	for {
+		select {
+		case GHallReq := <-GlobalHallRequestTx:
+
+			if currentHallRequests != GHallReq.HallRequests {
+				err = errors.New("received wrong hall requests")
+				fmt.Println(GHallReq.HallRequests)
+				break ForLoop
+			}
+			haveReceived = true
+
+		case i := <-timeoutChannel:
+
+			if !haveReceived {
+				err = errors.New("did not receive an update in time")
+				break ForLoop
+			}
+			if i == 10 {
+				break ForLoop
+			} else if i == 5 {
+				fmt.Println("Updating new hall requests")
+				currentHallRequests[0][1] = true
+				requestsForBroadcastCh <- messages.GlobalHallRequest{HallRequests: currentHallRequests}
+			}
+
+			time.AfterFunc(config.MASTER_TIMEOUT, func() {
+				timeoutChannel <- 1
+			})
+			haveReceived = false
+		}
+	}
+	return err
 }
 
 func testAckDistr() error {

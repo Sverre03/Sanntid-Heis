@@ -126,9 +126,9 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 	for {
 		select {
 
-		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
-		case enable = <-transmitEnableCh:
 		case GHallRequests = <-requestsForBroadcastCh:
+		case enable = <-transmitEnableCh:
+		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
 			if enable {
 				GlobalHallRequestTx <- GHallRequests
 			}

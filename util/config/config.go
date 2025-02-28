@@ -13,3 +13,4 @@ const MASTER_TRANSMIT_INTERVAL = 50 * time.Millisecond
 const ELEV_STATE_TRANSMIT_INTERVAL = 50 * time.Millisecond
 const PORT_NUM = 20011
 const INPUT_POLL_RATE = 25 * time.Millisecond
+const MASTER_TIMEOUT = 600 * time.Millisecond

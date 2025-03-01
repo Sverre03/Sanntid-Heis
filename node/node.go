@@ -246,8 +246,8 @@ func SlaveProgram(node *NodeData) {
 
 func MasterProgram(node *NodeData) {
 	activeReq := false
-	var activeHallRequests [config.NUM_FLOORS][2]bool //Get activeHallRequests from previous master saved in server if existing
-	var activeConnReq map[int]messages.ConnectionReq  // do we need an ack on this
+	var activeHallRequests [config.NUM_FLOORS][2]bool     //Get activeHallRequests from previous master saved in server if existing
+	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 
 	for i := 0; i < config.NUM_FLOORS; i++ {
 		for j := 0; j < 2; j++ {

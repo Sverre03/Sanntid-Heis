@@ -19,7 +19,7 @@ func crazy() {
 func testMessageIDGenerator() error {
 	for i := 0; i < 5; i++ {
 		if j, _ := comm.GenerateMessageID(comm.MessageIDType(i)); j > (i+1)*config.MSG_ID_PARTITION_SIZE || j < i*config.MSG_ID_PARTITION_SIZE {
-			return fmt.Errorf("message id outlide value area for messagetype %d", i)
+			return fmt.Errorf("message id outside value area for messagetype %d", i)
 		}
 
 	}
@@ -187,6 +187,7 @@ ForLoop:
 func testAckDistr() error {
 
 	var err error
+	// if these channels are not buffered, the listener is blocking while waiting to send the first message (waiting for someone to listen) and so we get a deadlock.
 	ackRx := make(chan messages.Ack, 1)
 	hallAssignmentsAck := make(chan messages.Ack, 1)
 	lightUpdateAck := make(chan messages.Ack, 1)
@@ -208,7 +209,7 @@ func testAckDistr() error {
 			err = e
 			return err
 		}
-		// this blocked until I gave all channels an explicit buffer of 1
+		// this blocked until I gave all channels an explicit buffer of 1. See reason above
 		ackRx <- messages.Ack{NodeID: i, MessageID: id}
 		numAckSent++
 	}

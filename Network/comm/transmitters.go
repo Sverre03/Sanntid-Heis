@@ -140,11 +140,12 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 // you can requests to know the states by sending a string on  commandCh
 // commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
-func ElevStatesListener(commandCh <-chan string,
-	timeOfLastContactCh chan<- time.Time,
-	elevStatesCh chan<- map[int]messages.ElevStates,
-	activeNodeIDsCh chan<- []int,
-	elevStatesRx <-chan messages.ElevStates) {
+func ElevStatesListener(commandRx <-chan string,
+	timeOfLastContactTx chan<- time.Time,
+	activeElevStatesTx chan<- map[int]messages.ElevStates,
+	activeNodeIDsTx chan<- []int,
+	elevStatesRx <-chan messages.ElevStates,
+	allElevStatesTx chan<- map[int]messages.ElevStates) {
 	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
 	lastSeen := make(map[int]time.Time)
@@ -165,7 +166,7 @@ func ElevStatesListener(commandCh <-chan string,
 				lastSeen[id] = time.Now()
 			}
 
-		case command := <-commandCh:
+		case command := <-commandRx:
 
 			switch command {
 			case "getActiveElevStates":
@@ -176,7 +177,7 @@ func ElevStatesListener(commandCh <-chan string,
 						activeNodes[id] = knownNodes[id]
 					}
 				}
-				elevStatesCh <- activeNodes
+				activeElevStatesTx <- activeNodes
 
 			case "getActiveNodeIDs":
 
@@ -187,13 +188,13 @@ func ElevStatesListener(commandCh <-chan string,
 					}
 				}
 
-				activeNodeIDsCh <- activeIDs
+				activeNodeIDsTx <- activeIDs
 
 			case "getTOLC":
-				timeOfLastContactCh <- timeOfLastContact
+				timeOfLastContactTx <- timeOfLastContact
 
-			case "getAllKnownNodes":
-				elevStatesCh <- knownNodes
+			case "getAllElevStates":
+				allElevStatesTx <- knownNodes
 			}
 		}
 	}

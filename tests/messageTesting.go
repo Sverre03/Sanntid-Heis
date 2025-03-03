@@ -17,7 +17,7 @@ func crazy() {
 }
 
 func testMessageIDGenerator() error {
-	for i := 0; i < 5; i++ {
+	for i := uint64(0); i < 5; i++ {
 		if j, _ := comm.GenerateMessageID(comm.MessageIDType(i)); j > (i+1)*config.MSG_ID_PARTITION_SIZE || j < i*config.MSG_ID_PARTITION_SIZE {
 			return fmt.Errorf("message id outside value area for messagetype %d", i)
 		}

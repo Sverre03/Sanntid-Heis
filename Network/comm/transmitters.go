@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type MessageIDType int
+type MessageIDType uint64
 
 const (
 	NEW_HALL_ASSIGNMENT      MessageIDType = 0
@@ -20,15 +20,15 @@ const (
 )
 
 // generates a message ID that corresponsds to the message type
-func GenerateMessageID(partition MessageIDType) (int, error) {
-	offset := int(partition)
+func GenerateMessageID(partition MessageIDType) (uint64, error) {
+	offset := uint64(partition)
 
-	if offset > int(HALL_ASSIGNMENT_COMPLETE) || offset < 0 {
+	if offset > uint64(HALL_ASSIGNMENT_COMPLETE) {
 		return 0, errors.New("invalid messageIDType")
 	}
 
-	i := rand.Intn(config.MSG_ID_PARTITION_SIZE)
-	i += (config.MSG_ID_PARTITION_SIZE) * offset
+	i := uint64(rand.Int63n(int64(config.MSG_ID_PARTITION_SIZE)))
+	i += uint64((config.MSG_ID_PARTITION_SIZE) * offset)
 
 	return i, nil
 }
@@ -43,19 +43,19 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 	for ackMsg := range ackRx {
 
-		if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(NEW_HALL_ASSIGNMENT)+1) {
+		if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(NEW_HALL_ASSIGNMENT)+1) {
 			hallAssignmentsAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(HALL_LIGHT_UPDATE)+1) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(HALL_LIGHT_UPDATE)+1) {
 			lightUpdateAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(CONNECTION_REQ)+1) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(CONNECTION_REQ)+1) {
 			connectionReqAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(CAB_REQ_INFO)+1) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(CAB_REQ_INFO)+1) {
 			cabReqInfoAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(int(HALL_ASSIGNMENT_COMPLETE)+1) {
+		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(HALL_ASSIGNMENT_COMPLETE)+1) {
 			hallAssignmentCompleteAck <- ackMsg
 		}
 	}
@@ -68,7 +68,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 
 	activeAssignments := map[int]messages.NewHallAssignments{}
 
-	timeoutChannel := make(chan int, 2)
+	timeoutChannel := make(chan uint64, 2)
 
 	for {
 		select {
@@ -208,16 +208,11 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 	activeNodeIDsCh <-chan []int) {
 
 	activeAssignments := map[int]messages.HallLightUpdate{}
-
-	timeoutCh := make(chan int)
-
-	var timedOutMsgID int
-	var receivedAck messages.Ack
-	var newLightUpdate messages.HallLightUpdate
+	timeoutCh := make(chan uint64)
 
 	for {
 		select {
-		case newLightUpdate = <-outgoingLightUpdates:
+		case newLightUpdate := <-outgoingLightUpdates:
 
 			new_msg_id, err := GenerateMessageID(HALL_LIGHT_UPDATE)
 			if err != nil {
@@ -236,7 +231,7 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 				timeoutCh <- newLightUpdate.MessageID
 			})
 
-		case timedOutMsgID = <-timeoutCh:
+		case timedOutMsgID := <-timeoutCh:
 
 			for _, msg := range activeAssignments {
 				if msg.MessageID == timedOutMsgID {
@@ -250,12 +245,12 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 				}
 			}
 
-		case receivedAck = <-hallLightUpdateAck:
+		case receivedAck := <-hallLightUpdateAck:
 
 			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
 				if msg.MessageID == receivedAck.MessageID {
 
-					delete(activeAssignments, receivedAck.MessageID)
+					delete(activeAssignments, receivedAck.NodeID)
 				}
 			}
 		}

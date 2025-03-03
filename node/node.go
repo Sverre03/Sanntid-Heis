@@ -8,6 +8,7 @@ import (
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/util/config"
+	"elev/util/msgid_buffer"
 	"fmt"
 	"strconv"
 	"time"
@@ -170,8 +171,8 @@ func InactiveProgram(node *NodeData) {
 }
 
 func DisconnectedProgram(node *NodeData) {
-	timeOfLastContact := time.Time{} // placeholder for getting from server
-	msgID := 0                       // placeholder for using "getmessageid function"
+	timeOfLastContact := time.Time{}                        // placeholder for getting from server
+	msgID, _ := comm.GenerateMessageID(comm.CONNECTION_REQ) // placeholder for using "getmessageid function"
 
 	myConnReq := messages.ConnectionReq{TOLC: timeOfLastContact, NodeID: node.ID, MessageID: msgID}
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
@@ -185,6 +186,8 @@ func DisconnectedProgram(node *NodeData) {
 		select {
 
 		case <-node.GlobalHallRequestRx:
+			// here, we must check if the master knows anything about us
+			// this message transaction should be defined better than it is now, who sends what?
 			if err := node.NodeState.Event(context.Background(), "connect"); err != nil {
 				fmt.Println("Error:", err)
 			} else {
@@ -202,8 +205,9 @@ func DisconnectedProgram(node *NodeData) {
 			}
 
 		case connReqAck := <-node.ConnectionReqAckRx:
-
 			if node.ID != connReqAck.NodeID && connReqAck.NodeID == currentFriendID {
+
+				// All these decisions should be moved into a pure function, and the result returned
 
 				// check who has the most recent data
 				if node.TOLC.Before(incomingConnRequests[connReqAck.NodeID].TOLC) {
@@ -248,6 +252,7 @@ func MasterProgram(node *NodeData) {
 	activeReq := false
 	var activeHallRequests [config.NUM_FLOORS][2]bool     //Get activeHallRequests from previous master saved in server if existing
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
+	var recentHACompleteBuffer msgid_buffer.MessageIDBuffer
 
 	for i := 0; i < config.NUM_FLOORS; i++ {
 		for j := 0; j < 2; j++ {
@@ -259,16 +264,25 @@ func MasterProgram(node *NodeData) {
 		select {
 		case newHallReq := <-node.NewHallReqRx:
 
-			if newHallReq.HallButton == elevator.BT_HallUp {
+			switch newHallReq.HallButton {
+
+			case elevator.BT_HallUp:
 				activeHallRequests[newHallReq.Floor][0] = true
-			} else if newHallReq.HallButton == elevator.BT_HallDown {
+
+			case elevator.BT_HallDown:
 				activeHallRequests[newHallReq.Floor][1] = true
+
+			case elevator.BT_Cab:
+				fmt.Println("received a new hall requests, but the button type was invalid")
+				break
 			}
+
 			activeReq = true
 			node.commandCh <- "getActiveElevStates"
 
 		case newElevStates := <-node.ActiveElevStatesRx:
 			if activeReq {
+
 				// this can maybe just be one function
 				inputFormat := hallRequestAssigner.InputFunction(newElevStates, activeHallRequests)
 				outputFormat := hallRequestAssigner.OutputFunction(inputFormat)
@@ -280,21 +294,29 @@ func MasterProgram(node *NodeData) {
 						fmt.Println("Error: ", err)
 					}
 					node.OutGoingHallAssignments <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
-					// here, we should update the active hall requests that are transmitted
+
 				}
 			}
 
 		case connReq := <-node.ConnectionReqRx:
-			// handle the connection request
+
+			// here, there may need to be some extra logic
 			if connReq.TOLC.IsZero() {
 				activeConnReq[connReq.NodeID] = connReq
 				node.commandCh <- "getAllElevStates"
-				// you now have to request the node data, then give it to him
 			}
 
 		case HA := <-node.HallAssignmentCompleteRx:
-			activeHallRequests[HA.Floor][HA.HallButton] = false
-			// min hall assignment er complete, det er bra.
+
+			// this logic could go somewhere else to clean up the master program
+			if !recentHACompleteBuffer.Contains(HA.MessageID) {
+
+				activeHallRequests[HA.Floor][HA.HallButton] = false
+				node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
+
+				recentHACompleteBuffer.Add(HA.MessageID)
+			}
+
 		case <-node.HallAssignmentsRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
@@ -305,8 +327,6 @@ func MasterProgram(node *NodeData) {
 		case <-node.AllElevStatesRx:
 		case <-node.TOLCRx:
 		case <-node.ActiveNodeIDsRx:
-
-			// send them to the elev states server?
 
 		}
 	}

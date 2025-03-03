@@ -8,14 +8,14 @@ import (
 
 // a struct for acknowledging the receival of a message
 type Ack struct {
-	MessageID int
+	MessageID uint64
 	NodeID    int
 }
 
 // event - ack
 type CabRequestINF struct {
 	CabRequest     [config.NUM_FLOORS]bool
-	MessageID      int
+	MessageID      uint64
 	ReceiverNodeID int
 }
 
@@ -27,7 +27,7 @@ type GlobalHallRequest struct {
 // event - ack
 type HallLightUpdate struct {
 	LightStates       [config.NUM_FLOORS][2]bool
-	MessageID         int
+	MessageID         uint64
 	ActiveElevatorIDs []int
 }
 
@@ -44,14 +44,14 @@ type ElevStates struct {
 type ConnectionReq struct {
 	TOLC      time.Time
 	NodeID    int
-	MessageID int
+	MessageID uint64
 }
 
 // event - ack
 type NewHallAssignments struct {
 	NodeID         int
 	HallAssignment [config.NUM_FLOORS][2]bool
-	MessageID      int
+	MessageID      uint64
 }
 
 // event
@@ -64,5 +64,5 @@ type NewHallRequest struct {
 type HallAssignmentComplete struct {
 	Floor      int
 	HallButton elevator.ButtonType
-	MessageID  int
+	MessageID  uint64
 }

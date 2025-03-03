@@ -203,9 +203,7 @@ func ElevStatesListener(commandRx <-chan string,
 // Transmits HallButton Lightstates from outgoingLightUpdates channel to their designated elevators and handles ack
 func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 	outgoingLightUpdates chan messages.HallLightUpdate,
-	hallLightUpdateAck <-chan messages.Ack,
-	commandCh chan<- string,
-	activeNodeIDsCh <-chan []int) {
+	hallLightUpdateAck <-chan messages.Ack) {
 
 	activeAssignments := map[int]messages.HallLightUpdate{}
 	timeoutCh := make(chan uint64)
@@ -216,14 +214,18 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 
 			new_msg_id, err := GenerateMessageID(HALL_LIGHT_UPDATE)
 			if err != nil {
-				fmt.Println("Fatal error, invalid message type used to generate message id")
+				fmt.Println("Fatal error, invalid message type used to generate message id in hall light update")
 			}
 
 			newLightUpdate.MessageID = new_msg_id
 
+			// make the actual message shorter by removing redundant information
+
 			for _, id := range newLightUpdate.ActiveElevatorIDs {
 				activeAssignments[id] = newLightUpdate
 			}
+
+			newLightUpdate.ActiveElevatorIDs = []int{}
 
 			hallLightUpdateTx <- newLightUpdate
 

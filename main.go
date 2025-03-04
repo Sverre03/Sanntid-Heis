@@ -3,12 +3,13 @@ package main
 import (
 	"elev/tests"
 	"fmt"
-	"testing"
 )
 
 func main() {
 	fmt.Println("Starting test")
+	//tests.TestHRA()
 	// tests.TestTransmitFunctions()
-	t := &testing.T{}
-	tests.TestNodeReceivesHallButtonAndProcessesMasterAssignment(t)
+	//t := &testing.T{}
+	//tests.TestNodeReceivesHallButtonAndProcessesMasterAssignment(t)
+	tests.RunTestNode()
 }

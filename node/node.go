@@ -61,7 +61,6 @@ type NodeData struct {
 	HallAssignmentCompleteRx chan messages.HallAssignmentComplete
 
 	transmitEnableCh chan bool
-
 }
 
 func Node(id int) *NodeData {
@@ -137,12 +136,10 @@ func Node(id int) *NodeData {
 
 	node.transmitEnableCh = make(chan bool)
 
-	elevStatesRx := make(chan messages.ElevStates)
-
 	go bcast.Transmitter(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
 	go bcast.Receiver(config.PORT_NUM, AckRx, ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
 	go comm.HallAssignmentsTransmitter(HallAssignmentsTx, node.OutGoingHallAssignments, HallAssignmentsAckTx)
-	go comm.ElevStatesListener(node.commandCh, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, elevStatesRx, node.AllElevStatesRx)
+	go comm.ElevStatesListener(node.commandCh, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, ElevStatesRx, node.AllElevStatesRx)
 	go comm.GlobalHallRequestsTransmitter(node.transmitEnableCh, GlobalHallRequestTx, node.GlobalHallRequestRx)
 	return node
 }
@@ -252,16 +249,16 @@ func DisconnectedProgram(node *NodeData) {
 
 func SlaveProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a slave\n", node.ID)
-	for{
+
+	for {
 		select {
-		case <- time.After(config.MASTER_TIMEOUT):
-			fmt.Printf("Node %d info sent\n", node.ID)
-			node.NewHallReqTx <- messages.NewHallRequest{Floor: 1, HallButton: elevator.BT_HallUp}
-			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: elevator.MD_Up, Floor: 1, CabRequest: [config.NUM_FLOORS]bool{false, false, false, false}, Behavior: "idle"}
-		case hallAssignment := <- node.HallAssignmentsRx:
-			fmt.Printf("Node %d received hall assignment: %v\n", node.ID, hallAssignment)
+			case hallAssignment := <-node.HallAssignmentsRx:
+				fmt.Printf("Node %d received hall assignment: %v\n", node.ID, hallAssignment)
+			case <-time.After(config.MASTER_TIMEOUT):
+				fmt.Printf("Node %d alive\n", node.ID)
 		}
-	}
+	
+}
 }
 
 func MasterProgram(node *NodeData) {
@@ -273,7 +270,7 @@ func MasterProgram(node *NodeData) {
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgid_buffer.MessageIDBuffer
 
-	for i := 0; i < config.NUM_FLOORS; i++ {  //Emtpy activeHallRequests list if no activeHallRequests from previous master, placeholder for now
+	for i := 0; i < config.NUM_FLOORS; i++ { //Emtpy activeHallRequests list if no activeHallRequests from previous master, placeholder for now
 		for j := 0; j < 2; j++ {
 			activeHallRequests[i][j] = false
 		}
@@ -298,14 +295,16 @@ func MasterProgram(node *NodeData) {
 			node.commandCh <- "getActiveElevStates"
 
 		case newElevStates := <-node.ActiveElevStatesRx:
-			fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
+			fmt.Printf("Node %d received active elev states: %v\n",node.ID, newElevStates)
 			if activeReq {
 				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, activeHallRequests)
+				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
 				for id, hallRequests := range *HRAoutput {
 					nodeID, err := strconv.Atoi(id)
 					if err != nil {
 						fmt.Println("Error: ", err)
 					}
+					fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, nodeID, hallRequests)
 					//sending hall requests to all nodes assuming all
 					//nodes are connected nad not been disconnected after sending out internal states
 					node.OutGoingHallAssignments <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
@@ -325,9 +324,9 @@ func MasterProgram(node *NodeData) {
 			if activeConnectionReq {
 				//If activeConnectionReq is true, send all activeElevStates to nodes in activeConnReq
 				for id := range activeConnReq {
-					node.ElevStatesTx <- messages.ElevStates{NodeID: id, Direction: allElevStates[id].Direction, 
-					Floor: allElevStates[id].Floor, CabRequest: allElevStates[id].CabRequest, 
-					Behavior: allElevStates[id].Behavior}	
+					node.ElevStatesTx <- messages.ElevStates{NodeID: id, Direction: allElevStates[id].Direction,
+						Floor: allElevStates[id].Floor, CabRequest: allElevStates[id].CabRequest,
+						Behavior: allElevStates[id].Behavior}
 				}
 				activeConnectionReq = false
 			}
@@ -341,11 +340,12 @@ func MasterProgram(node *NodeData) {
 
 				recentHACompleteBuffer.Add(HA.MessageID)
 			}
-		
+
 		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
 			// Master transmitting global hall requests
 			node.transmitEnableCh <- true
 			node.GlobalHallRequestRx <- messages.GlobalHallRequest{HallRequests: activeHallRequests}
+			fmt.Printf("Node %d sent global hall requests: %v\n", node.ID, activeHallRequests)
 
 		}
 	}

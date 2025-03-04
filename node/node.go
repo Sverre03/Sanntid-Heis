@@ -254,7 +254,7 @@ func MasterProgram(node *NodeData) {
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgid_buffer.MessageIDBuffer
 
-	for i := 0; i < config.NUM_FLOORS; i++ {
+	for i := 0; i < config.NUM_FLOORS; i++ {  //Emtpy activeHallRequests list if no activeHallRequests from previous master
 		for j := 0; j < 2; j++ {
 			activeHallRequests[i][j] = false
 		}
@@ -274,7 +274,6 @@ func MasterProgram(node *NodeData) {
 
 			case elevator.BT_Cab:
 				fmt.Println("received a new hall requests, but the button type was invalid")
-				break
 			}
 
 			activeReq = true
@@ -282,19 +281,15 @@ func MasterProgram(node *NodeData) {
 
 		case newElevStates := <-node.ActiveElevStatesRx:
 			if activeReq {
-
-				// this can maybe just be one function
-				inputFormat := hallRequestAssigner.InputFunction(newElevStates, activeHallRequests)
-				outputFormat := hallRequestAssigner.OutputFunction(inputFormat)
-				// as you will never use inputformat without using outputformat
-
-				for id, hallRequests := range *outputFormat {
+				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, activeHallRequests)
+				for id, hallRequests := range *HRAoutput {
 					nodeID, err := strconv.Atoi(id)
 					if err != nil {
 						fmt.Println("Error: ", err)
 					}
+					//sending hall requests to all nodes assuming all
+					//nodes are connected nad not been disconnected after sending out internal states
 					node.OutGoingHallAssignments <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
-
 				}
 			}
 

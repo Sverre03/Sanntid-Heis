@@ -345,7 +345,7 @@ func MasterProgram(node *NodeData) {
 			// Master transmitting global hall requests
 			node.transmitEnableCh <- true
 			node.GlobalHallRequestRx <- messages.GlobalHallRequest{HallRequests: activeHallRequests}
-			fmt.Printf("Node %d sent global hall requests: %v\n", node.ID, activeHallRequests)
+			//fmt.Printf("Node %d sent global hall requests: %v\n", node.ID, activeHallRequests)
 
 		}
 	}

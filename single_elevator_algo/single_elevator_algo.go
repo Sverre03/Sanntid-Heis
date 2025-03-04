@@ -36,7 +36,7 @@ func SingleElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 		select {
 		case button := <-buttonEvent:
 			if (button.Button == elevator.BT_HallDown) || (button.Button == elevator.BT_HallUp) {
-				ElevatorHallButtonEventTx <- elevator.ButtonEvent{
+				ElevatorHallButtonEventTx <- elevator.ButtonEvent{ // Forward the hall call to the node
 					Floor:  button.Floor,
 					Button: button.Button,
 				}
@@ -45,7 +45,7 @@ func SingleElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 			}
 
 		case button := <-ElevatorHallButtonEventRx:
-			elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button)
+			elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button) // Process the hall call from the node
 
 		case floor := <-floorEvent:
 			elevator.FsmOnFloorArrival(elev, floor)
@@ -63,15 +63,12 @@ func SingleElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 
 // Transmit the elevator state to the node
 func TransmitHRAElevState(elev elevator.Elevator, ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState) {
-	for {
-		select {
-		case <-time.After(config.ELEV_STATE_TRANSMIT_INTERVAL):
-			ElevatorHRAStatesRx <- hallRequestAssigner.HRAElevState{
-				Behavior:    elevator.ElevatorBehaviorToString[elev.Behavior],
-				Floor:       elev.Floor,
-				Direction:   elevator.ElevatorDirectionToString[elev.Dir],
-				CabRequests: elevator.GetCabRequestsAsHRAElevState(elev),
-			}
+	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
+		ElevatorHRAStatesRx <- hallRequestAssigner.HRAElevState{
+			Behavior:    elevator.ElevatorBehaviorToString[elev.Behavior],
+			Floor:       elev.Floor,
+			Direction:   elevator.ElevatorDirectionToString[elev.Dir],
+			CabRequests: elevator.GetCabRequestsAsHRAElevState(elev),
 		}
 	}
 }

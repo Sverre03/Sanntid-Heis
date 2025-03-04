@@ -50,11 +50,11 @@ type NodeData struct {
 
 	ConnectionReqAckRx chan messages.Ack
 
-	NewHallReqTx chan messages.NewHallRequest
-	NewHallReqRx chan messages.NewHallRequest
+	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
+	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	ElevatorHallButtonEventTx chan elevator.ButtonEvent // Receives local hall calls from elevator
-	ElevatorHallButtonEventRx chan elevator.ButtonEvent
+	ElevatorHallButtonEventRx chan elevator.ButtonEvent // Receives hall calls from node
 
 	ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState
 
@@ -257,6 +257,7 @@ func SlaveProgram(node *NodeData) {
 		case <- time.After(config.MASTER_TIMEOUT):
 			fmt.Printf("Node %d info sent\n", node.ID)
 			node.NewHallReqTx <- messages.NewHallRequest{Floor: 1, HallButton: elevator.BT_HallUp}
+			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: elevator.MD_Up, Floor: 1, CabRequest: [config.NUM_FLOORS]bool{false, false, false, false}, Behavior: "idle"}
 		case hallAssignment := <- node.HallAssignmentsRx:
 			fmt.Printf("Node %d received hall assignment: %v\n", node.ID, hallAssignment)
 		}
@@ -293,11 +294,11 @@ func MasterProgram(node *NodeData) {
 			case elevator.BT_Cab:
 				fmt.Println("received a new hall requests, but the button type was invalid")
 			}
-
 			activeReq = true
 			node.commandCh <- "getActiveElevStates"
 
 		case newElevStates := <-node.ActiveElevStatesRx:
+			fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
 			if activeReq {
 				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, activeHallRequests)
 				for id, hallRequests := range *HRAoutput {

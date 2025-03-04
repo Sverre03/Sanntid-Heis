@@ -12,4 +12,5 @@ func main() {
 	//t := &testing.T{}
 	//tests.TestNodeReceivesHallButtonAndProcessesMasterAssignment(t)
 	tests.RunTestNode()
+	select {}
 }

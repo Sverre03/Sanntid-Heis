@@ -50,11 +50,11 @@ type NodeData struct {
 
 	ConnectionReqAckRx chan messages.Ack
 
-	NewHallReqTx chan messages.NewHallRequest
-	NewHallReqRx chan messages.NewHallRequest
+	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
+	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	ElevatorHallButtonEventTx chan elevator.ButtonEvent // Receives local hall calls from elevator
-	ElevatorHallButtonEventRx chan elevator.ButtonEvent
+	ElevatorHallButtonEventRx chan elevator.ButtonEvent // Receives hall calls from node
 
 	ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState
 
@@ -254,7 +254,7 @@ func MasterProgram(node *NodeData) {
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgid_buffer.MessageIDBuffer
 
-	for i := 0; i < config.NUM_FLOORS; i++ {  //Emtpy activeHallRequests list if no activeHallRequests from previous master
+	for i := 0; i < config.NUM_FLOORS; i++ { //Emtpy activeHallRequests list if no activeHallRequests from previous master
 		for j := 0; j < 2; j++ {
 			activeHallRequests[i][j] = false
 		}

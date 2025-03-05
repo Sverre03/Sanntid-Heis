@@ -123,11 +123,11 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	}
 }
 
-func PollTimer(receiver chan<- bool) {
+func PollTimer(inTimer timer.Timer, receiver chan<- bool) {
 	prev := false
 	for {
 		time.Sleep(_pollRate)
-		v := timer.TimerTimedOut()
+		v := timer.TimerTimedOut(inTimer)
 		if v != prev {
 			receiver <- v
 		}

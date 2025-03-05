@@ -4,12 +4,13 @@ import (
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/util/config"
+	"elev/util/timer"
 	"time"
 )
 
 // Tx and Rx is from the view of the elevator.
 func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
-	ElevatorHRAStatesTx chan hallRequestAssigner.HRAElevState, ElevatorHallButtonEventRx chan elevator.ButtonEvent) {
+	ElevatorHRAStatesTx chan hallRequestAssigner.HRAElevState, ElevatorHallButtonEventRx chan elevator.ButtonEvent, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
 
 	var elev elevator.Elevator = elevator.NewElevator()
 
@@ -17,6 +18,9 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	floorEvent := make(chan int)
 	doorTimeoutEvent := make(chan bool)
 	obstructionEvent := make(chan bool)
+
+	doorTimeoutTimer := timer.NewTimer()
+	doorStuckTimer := timer.NewTimer()
 
 	elevator.Init("localhost:15657", config.NUM_FLOORS)
 	elevator.InitFSM(elev)
@@ -30,7 +34,8 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	go elevator.PollButtons(buttonEvent)
 	go elevator.PollFloorSensor(floorEvent)
 	go elevator.PollObstructionSwitch(obstructionEvent)
-	go elevator.PollTimer(doorTimeoutEvent)
+	go elevator.PollTimer(doorTimeoutTimer, doorTimeoutEvent)
+	go elevator.PollTimer(doorStuckTimer, DoorStateRequestCh)
 	go TransmitHRAElevState(elev, ElevatorHRAStatesTx)
 
 	for {
@@ -42,20 +47,23 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 					Button: button.Button,
 				}
 			} else {
-				elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button)
+				elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button, inTimer)
 			}
 
 		case button := <-ElevatorHallButtonEventRx:
-			elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button) // Process the hall call from the node
+			elevator.FsmOnRequestButtonPress(elev, button.Floor, button.Button, inTimer) // Process the hall call from the node
+
+		case <-DoorStateRequestCh:
+			IsDoorStuckCh <- elevator.IsDoorStuck(elev)
 
 		case floor := <-floorEvent:
-			elevator.FsmOnFloorArrival(elev, floor)
+			elevator.FsmOnFloorArrival(elev, floor, inTimer)
 
 		case isObstructed := <-obstructionEvent:
 			elevator.FsmSetObstruction(elev, isObstructed)
 
 		case <-doorTimeoutEvent:
-			elevator.FsmOnDoorTimeout(elev)
+			elevator.FsmOnDoorTimeout(elev, inTimer)
 		}
 
 		time.Sleep(config.INPUT_POLL_RATE)

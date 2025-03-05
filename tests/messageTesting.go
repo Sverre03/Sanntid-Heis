@@ -239,16 +239,15 @@ func testAckDistr() error {
 	hallAssignmentsAck := make(chan messages.Ack, 1)
 	lightUpdateAck := make(chan messages.Ack, 1)
 	ConnectionReqAck := make(chan messages.Ack, 1)
-	CabRequestInfoAck := make(chan messages.Ack, 1)
 	HallAssignmentCompleteAck := make(chan messages.Ack, 1)
 	timeoutChannel := make(chan int)
 
-	receivedAcks := [5]bool{false, false, false, false, false}
+	receivedAcks := [4]bool{false, false, false, false}
 
-	go comm.IncomingAckDistributor(ackRx, hallAssignmentsAck, lightUpdateAck, ConnectionReqAck, CabRequestInfoAck, HallAssignmentCompleteAck)
+	go comm.IncomingAckDistributor(ackRx, hallAssignmentsAck, lightUpdateAck, ConnectionReqAck, HallAssignmentCompleteAck)
 
 	numAckSent := 0
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 4; i++ {
 
 		id, e := comm.GenerateMessageID(comm.MessageIDType(i))
 
@@ -283,14 +282,6 @@ ForLoop:
 			receivedAcks[msg.NodeID] = true
 
 		case msg := <-ConnectionReqAck:
-			numAckSent--
-			if receivedAcks[msg.NodeID] {
-				err = errors.New("received two acks on same channel")
-				break ForLoop
-			}
-			receivedAcks[msg.NodeID] = true
-
-		case msg := <-CabRequestInfoAck:
 			numAckSent--
 			if receivedAcks[msg.NodeID] {
 				err = errors.New("received two acks on same channel")

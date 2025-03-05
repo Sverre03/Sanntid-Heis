@@ -48,7 +48,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 // you can requests to know the states by sending a string on  commandCh
 // commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
-func ElevStatesListener(commandRx <-chan string,
+func ElevStatesListener(myID int, commandRx <-chan string,
 	timeOfLastContactTx chan<- time.Time,
 	activeElevStatesTx chan<- map[int]messages.ElevStates,
 	activeNodeIDsTx chan<- []int,
@@ -64,8 +64,7 @@ func ElevStatesListener(commandRx <-chan string,
 
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
-			// here, we must check if the id is ours. Placeholder for MyID is 0 for now.
-			if id != 0 {
+			if id != myID { // Check if we received our own message
 				timeOfLastContact = time.Now()
 
 				knownNodes[id] = elevState

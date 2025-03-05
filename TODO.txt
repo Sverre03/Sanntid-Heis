@@ -1,5 +1,8 @@
 TODO:
 
+- Node
+    setup all transmitters and channels
+
 - Slave
     Start making the slave program
 
@@ -8,9 +11,11 @@ TODO:
     Make logic for control of lights
 
 - Inactive
+    Fix the inactive state
 
 - Disconnected 
     Fix TOLC - request the data from ElevStatesListener
 
-- Receiver
-    Filter out messages from myself (check if node id in message field equals mine)
+- Everywhere
+    Filter out messages from myself
+    

@@ -3,25 +3,9 @@ package comm
 import (
 	"elev/Network/network/messages"
 	"elev/util/config"
-	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 )
-
-// generates a message ID that corresponsds to the message type
-func GenerateMessageID(partition MessageIDType) (uint64, error) {
-	offset := uint64(partition)
-
-	if offset > uint64(HALL_ASSIGNMENT_COMPLETE) {
-		return 0, errors.New("invalid messageIDType")
-	}
-
-	i := uint64(rand.Int63n(int64(config.MSG_ID_PARTITION_SIZE)))
-	i += uint64((config.MSG_ID_PARTITION_SIZE) * offset)
-
-	return i, nil
-}
 
 // Transmits Hall assignments from outgoingHallAssignments channel to their designated elevators and handles ack
 func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments,

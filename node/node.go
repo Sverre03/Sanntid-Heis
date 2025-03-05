@@ -55,8 +55,9 @@ type NodeData struct {
 	ElevatorHallButtonEventRx chan elevator.ButtonEvent             // Receives hall calls from node
 	ElevatorHRAStatesRx       chan hallRequestAssigner.HRAElevState // Receives the elevator's HRA states
 
-	HallAssignmentCompleteTx chan messages.HallAssignmentComplete
-	HallAssignmentCompleteRx chan messages.HallAssignmentComplete
+	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete
+	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete
+	HallAssignmentCompleteAckRx chan messages.Ack
 
 	GlobalHallReqTransmitEnableTx chan bool
 }
@@ -89,58 +90,64 @@ func Node(id int) *NodeData {
 		},
 	)
 
+	// broadcast channels
 	node.AckTx = make(chan messages.Ack)
-	AckRx := make(chan messages.Ack) //
-
 	node.ElevStatesTx = make(chan messages.ElevStates)
-	ElevStatesRx := make(chan messages.ElevStates) //
+	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
+	node.ConnectionReqTx = make(chan messages.ConnectionReq)
+	node.NewHallReqTx = make(chan messages.NewHallRequest)
+	node.HallAssignmentCompleteTx = make(chan messages.HallAssignmentComplete)
+
+	HATransToBcastTx := make(chan messages.NewHallAssignments)           // channel for comm from Hall Assignment Transmitter process to Broadcaster
+	lightUpdateTransToBroadcastCh := make(chan messages.HallLightUpdate) //channel for communication from light update transmitter process and broadcaster
+	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
+
+	// broadcast all messages on channels to udp process
+	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HATransToBcastTx, node.CabRequestInfoTx, globalHallReqTransToBroadcast, lightUpdateTransToBroadcastCh, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
+
+	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
+	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
+	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
+	node.HallLightUpdateRx = make(chan messages.HallLightUpdate)
+	node.ConnectionReqRx = make(chan messages.ConnectionReq)
+	node.NewHallReqRx = make(chan messages.NewHallRequest)
+	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
+
+	ackRx := make(chan messages.Ack)
+	elevStatesRx := make(chan messages.ElevStates)
+
+	go bcast.Receiver(config.PORT_NUM, ackRx, elevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
+
+	lightUpdateAckRx := make(chan messages.Ack)
+	hallAssignmentsAckRx := make(chan messages.Ack)
+	node.ConnectionReqAckRx = make(chan messages.Ack)
+	node.HallAssignmentCompleteAckRx = make(chan messages.Ack)
+
+	// process for distributing incoming acks in ackRx to different processes
+	go comm.IncomingAckDistributor(ackRx, hallAssignmentsAckRx, lightUpdateAckRx, node.ConnectionReqAckRx, node.HallAssignmentCompleteAckRx)
 
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
-	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
-	HATransToBcastTx := make(chan messages.NewHallAssignments) // channel from Hall Assignment Transmitter to Broadcaster (UDP)
-
-	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
-	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
-
-	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
-	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
-
-	HallLightUpdateTx := make(chan messages.HallLightUpdate) //
-	node.HallLightUpdateRx = make(chan messages.HallLightUpdate)
-
-	node.ConnectionReqTx = make(chan messages.ConnectionReq)
-	node.ConnectionReqRx = make(chan messages.ConnectionReq)
-
-	node.commandTx = make(chan string)
-	node.ActiveElevStatesRx = make(chan map[int]messages.ElevStates)
-	node.AllElevStatesRx = make(chan map[int]messages.ElevStates)
-	node.TOLCRx = make(chan time.Time)
-	node.ActiveNodeIDsRx = make(chan []int)
-
-	node.NewHallReqTx = make(chan messages.NewHallRequest)
-	node.NewHallReqRx = make(chan messages.NewHallRequest)
+	// process responsible for sending and making sure hall assignments are acknowledged
+	go comm.HallAssignmentsTransmitter(HATransToBcastTx, node.HallAssignmentTx, hallAssignmentsAckRx)
 
 	node.ElevatorHallButtonEventTx = make(chan elevator.ButtonEvent)
 	node.ElevatorHallButtonEventRx = make(chan elevator.ButtonEvent)
 	node.ElevatorHRAStatesRx = make(chan hallRequestAssigner.HRAElevState)
-
-	HallAssignmentCompleteTx := make(chan messages.HallAssignmentComplete)
-	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
-
-	HallAssignmentsAckRx := make(chan messages.Ack)
-
-	node.GlobalHallReqTransmitEnableTx = make(chan bool)
-
 	go elevatoralgo.ElevatorProgram(node.ElevatorHallButtonEventRx, node.ElevatorHRAStatesRx, node.ElevatorHallButtonEventTx)
 
-	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HATransToBcastTx, node.CabRequestInfoTx, node.GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
-	go bcast.Receiver(config.PORT_NUM, AckRx, ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
+	node.commandTx = make(chan string)
+	node.TOLCRx = make(chan time.Time)
+	node.ActiveElevStatesRx = make(chan map[int]messages.ElevStates)
+	node.AllElevStatesRx = make(chan map[int]messages.ElevStates)
+	node.ActiveNodeIDsRx = make(chan []int)
+	go comm.ElevStatesListener(node.ID, node.commandTx, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, elevStatesRx, node.AllElevStatesRx)
 
-	go comm.HallAssignmentsTransmitter(HATransToBcastTx, node.HallAssignmentTx, HallAssignmentsAckRx)
+	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
+	node.GlobalHallReqTransmitEnableTx = make(chan bool)
+	go comm.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx, globalHallReqTransToBroadcast, node.GlobalHallRequestRx)
 
-	go comm.ElevStatesListener(node.ID, node.commandTx, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, ElevStatesRx, node.AllElevStatesRx)
-
-	go comm.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx, node.GlobalHallRequestTx, node.GlobalHallRequestRx)
+	node.HallLightUpdateTx = make(chan messages.HallLightUpdate) //
+	go comm.LightUpdateTransmitter(lightUpdateTransToBroadcastCh, node.HallLightUpdateTx, lightUpdateAckRx)
 
 	return node
 }

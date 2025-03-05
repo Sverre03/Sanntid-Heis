@@ -17,7 +17,7 @@ func crazy() {
 }
 
 func testMessageIDGenerator() error {
-	for i := uint64(0); i < 5; i++ {
+	for i := uint64(0); i < 4; i++ {
 		if j, _ := comm.GenerateMessageID(comm.MessageIDType(i)); j > (i+1)*config.MSG_ID_PARTITION_SIZE || j < i*config.MSG_ID_PARTITION_SIZE {
 			return fmt.Errorf("message id outside value area for messagetype %d", i)
 		}
@@ -40,7 +40,7 @@ func testLightUpdateTransmitter() error {
 
 	outgoingLightUpdates <- hallLightUpdate
 
-	time.AfterFunc(5 * time.Second, func() {
+	time.AfterFunc(5*time.Second, func() {
 		timeoutChannel <- 5
 	})
 
@@ -128,7 +128,7 @@ func testHAss() error {
 	numMsgReceived := 0
 	hasReceived := false
 
-	time.AfterFunc(5 * time.Second, func() {
+	time.AfterFunc(5*time.Second, func() {
 		timeoutChannel <- 1
 	})
 
@@ -181,15 +181,15 @@ func testGlobalHallReqTransmitter() error {
 
 	var currentHallRequests [config.NUM_FLOORS][2]bool
 
-	time.AfterFunc(5 * time.Second, func() {
+	time.AfterFunc(5*time.Second, func() {
 		timeoutChannel <- 10
 	})
 
-	time.AfterFunc(2 * time.Second, func() {
+	time.AfterFunc(2*time.Second, func() {
 		timeoutChannel <- 5
 	})
 
-	time.AfterFunc(150 * time.Millisecond, func() {
+	time.AfterFunc(150*time.Millisecond, func() {
 		timeoutChannel <- 1
 	})
 
@@ -239,16 +239,15 @@ func testAckDistr() error {
 	hallAssignmentsAck := make(chan messages.Ack, 1)
 	lightUpdateAck := make(chan messages.Ack, 1)
 	ConnectionReqAck := make(chan messages.Ack, 1)
-	CabRequestInfoAck := make(chan messages.Ack, 1)
 	HallAssignmentCompleteAck := make(chan messages.Ack, 1)
 	timeoutChannel := make(chan int)
 
-	receivedAcks := [5]bool{false, false, false, false, false}
+	receivedAcks := [4]bool{false, false, false, false}
 
-	go comm.IncomingAckDistributor(ackRx, hallAssignmentsAck, lightUpdateAck, ConnectionReqAck, CabRequestInfoAck, HallAssignmentCompleteAck)
+	go comm.IncomingAckDistributor(ackRx, hallAssignmentsAck, lightUpdateAck, ConnectionReqAck, HallAssignmentCompleteAck)
 
 	numAckSent := 0
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 4; i++ {
 
 		id, e := comm.GenerateMessageID(comm.MessageIDType(i))
 
@@ -260,7 +259,7 @@ func testAckDistr() error {
 		ackRx <- messages.Ack{NodeID: i, MessageID: id}
 		numAckSent++
 	}
-	time.AfterFunc(1 * time.Second, func() {
+	time.AfterFunc(1*time.Second, func() {
 		timeoutChannel <- 1
 	})
 ForLoop:
@@ -283,14 +282,6 @@ ForLoop:
 			receivedAcks[msg.NodeID] = true
 
 		case msg := <-ConnectionReqAck:
-			numAckSent--
-			if receivedAcks[msg.NodeID] {
-				err = errors.New("received two acks on same channel")
-				break ForLoop
-			}
-			receivedAcks[msg.NodeID] = true
-
-		case msg := <-CabRequestInfoAck:
 			numAckSent--
 			if receivedAcks[msg.NodeID] {
 				err = errors.New("received two acks on same channel")

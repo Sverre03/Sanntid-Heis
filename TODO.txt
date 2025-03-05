@@ -1,5 +1,8 @@
 TODO:
 
+- Elevator
+    Need a channel to notify node that door has been stuck open for 30 seconds
+
 - Node
     setup all transmitters and channels
 

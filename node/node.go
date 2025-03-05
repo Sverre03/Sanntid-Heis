@@ -56,8 +56,8 @@ type NodeData struct {
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	// Elevator-Node communication channels
-	ElevatorHallButtonEventTx chan elevator.ButtonEvent             // Receives local hall calls from elevator
-	ElevatorHallButtonEventRx chan elevator.ButtonEvent             // Receives hall calls from node
+	ElevatorHallButtonEventTx chan elevator.ButtonEvent             // Transmit assigned hall calls to elevator
+	ElevatorHallButtonEventRx chan elevator.ButtonEvent             // Receives local hall button presses from node
 	ElevatorHRAStatesRx       chan hallRequestAssigner.HRAElevState // Receives the elevator's HRA states
 	IsDoorStuckCh             chan bool                             // Receives the elevator's door state (if it is stuck or not)
 	RequestDoorStateCh        chan bool                             // Sends a request to the elevator to check its door state

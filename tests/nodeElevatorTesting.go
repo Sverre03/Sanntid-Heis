@@ -6,6 +6,7 @@ import (
 
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
+	"elev/elevatoralgo"
 )
 
 // Communication test between a node and an elevator, from the perspective of the node. Rx and Tx as seen from the node.

@@ -14,7 +14,7 @@ TODO:
     Fix the inactive state
 
 - Disconnected 
-    Fix TOLC - request the data from ElevStatesListener
+    Fix TOLC - request the data from ElevStatesListener ✅
 
 - Everywhere
     Filter out messages from myself

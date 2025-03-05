@@ -40,7 +40,7 @@ func testLightUpdateTransmitter() error {
 
 	outgoingLightUpdates <- hallLightUpdate
 
-	time.AfterFunc(time.Second*5, func() {
+	time.AfterFunc(5 * time.Second, func() {
 		timeoutChannel <- 5
 	})
 
@@ -128,7 +128,7 @@ func testHAss() error {
 	numMsgReceived := 0
 	hasReceived := false
 
-	time.AfterFunc(time.Second*5, func() {
+	time.AfterFunc(5 * time.Second, func() {
 		timeoutChannel <- 1
 	})
 
@@ -181,15 +181,15 @@ func testGlobalHallReqTransmitter() error {
 
 	var currentHallRequests [config.NUM_FLOORS][2]bool
 
-	time.AfterFunc(time.Second*5, func() {
+	time.AfterFunc(5 * time.Second, func() {
 		timeoutChannel <- 10
 	})
 
-	time.AfterFunc(time.Second*2, func() {
+	time.AfterFunc(2 * time.Second, func() {
 		timeoutChannel <- 5
 	})
 
-	time.AfterFunc(time.Millisecond*150, func() {
+	time.AfterFunc(150 * time.Millisecond, func() {
 		timeoutChannel <- 1
 	})
 
@@ -260,7 +260,7 @@ func testAckDistr() error {
 		ackRx <- messages.Ack{NodeID: i, MessageID: id}
 		numAckSent++
 	}
-	time.AfterFunc(time.Second*1, func() {
+	time.AfterFunc(1 * time.Second, func() {
 		timeoutChannel <- 1
 	})
 ForLoop:

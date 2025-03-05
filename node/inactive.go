@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"elev/util/config"
 	"fmt"
 	"time"
 )
@@ -15,7 +16,7 @@ func InactiveProgram(node *NodeData) {
 	for {
 		select {
 
-		case isDoorStuck := node.isDoorStuckCh:
+		case isDoorStuck := <-node.IsDoorStuckCh:
 			if !isDoorStuck {
 				if err := node.NodeState.Event(context.Background(), "activate"); err != nil {
 					fmt.Println("Error:", err)

@@ -36,18 +36,25 @@ func SlaveProgram(node *NodeData) {
 					}
 				}
 			}
-		case <-node.HallLightUpdateRx:
-		case <-node.CabRequestInfoRx:
-		case <-node.GlobalHallRequestRx:
-		case <-node.ConnectionReqRx:
-		case <-node.ConnectionReqAckRx:
+		case lightUpdate := <-node.HallLightUpdateRx:
+			// set the lights
+			fmt.Println(lightUpdate)
+
+		case hallReqFromMaster := <-node.GlobalHallRequestRx:
+			node.GlobalHallRequests = hallReqFromMaster.HallRequests
+
+		case btnEvent := <-node.ElevatorHallButtonEventRx:
+			node.NewHallReqTx <- messages.NewHallRequest{Floor: btnEvent.Floor, HallButton: btnEvent.Button}
+
 		case <-node.ActiveElevStatesRx:
 		case <-node.AllElevStatesRx:
-		case <-node.TOLCRx:
-		case <-node.ActiveNodeIDsRx:
 		case <-node.NewHallReqRx:
-		case <-node.ElevatorHallButtonEventRx:
+		case <-node.TOLCRx:
+		case <-node.ConnectionReqRx:
+		case <-node.ConnectionReqAckRx:
 		case <-node.ElevatorHRAStatesRx:
+		case <-node.CabRequestInfoRx:
+		case <-node.ActiveNodeIDsRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
 		}

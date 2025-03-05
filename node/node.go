@@ -1,3 +1,6 @@
+// Package node implements a fault-tolerant distributed system for elevator control.
+// It provides mechanisms for master-slave coordination, connection between nodes,
+// hall call distribution, and state synchronization between multiple elevator nodes.
 package node
 
 import (
@@ -17,6 +20,9 @@ import (
 	"github.com/looplab/fsm"
 )
 
+// NodeData represents a node in the distributed elevator system.
+// It contains the node's state machine, communication channels,
+// and necessary data for the node to function.
 type NodeData struct {
 	ID        int
 	NodeState *fsm.FSM
@@ -26,7 +32,7 @@ type NodeData struct {
 	AckTx        chan messages.Ack
 	ElevStatesTx chan messages.ElevStates
 
-	HallAssignmentTx  chan messages.NewHallAssignments // send hall assignments to elevators on network
+	HallAssignmentTx  chan messages.NewHallAssignments // Transmits hall assignments to elevators on the network
 	HallAssignmentsRx chan messages.NewHallAssignments // Receives hall assignments from other nodes
 
 	HallLightUpdateTx chan messages.HallLightUpdate
@@ -42,7 +48,7 @@ type NodeData struct {
 	ConnectionReqRx    chan messages.ConnectionReq
 	ConnectionReqAckRx chan messages.Ack // Receives acknowledgement for request to connect to another node
 
-	commandTx          chan string
+	commandTx          chan string                      // Sends commands to the ElevStateListener (defined in Network/comm/receivers.go)
 	ActiveElevStatesRx chan map[int]messages.ElevStates // Receives the state of the other active node's elevators
 	AllElevStatesRx    chan map[int]messages.ElevStates
 	TOLCRx             chan time.Time // Receives the Time of Last Contact
@@ -51,6 +57,7 @@ type NodeData struct {
 	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
+	// Elevator-Node communication channels
 	ElevatorHallButtonEventTx chan elevator.ButtonEvent             // Receives local hall calls from elevator
 	ElevatorHallButtonEventRx chan elevator.ButtonEvent             // Receives hall calls from node
 	ElevatorHRAStatesRx       chan hallRequestAssigner.HRAElevState // Receives the elevator's HRA states

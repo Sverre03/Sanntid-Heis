@@ -33,7 +33,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 			HallAssignmentsTx <- newAssignment
 
 			// check for whether message is not acknowledged within duration
-			time.AfterFunc(time.Millisecond*500, func() {
+			time.AfterFunc(500*time.Millisecond, func() {
 				timeoutChannel <- newAssignment.MessageID
 			})
 
@@ -45,7 +45,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 
 					// fmt.Printf("resending message id %d \n", timedOutMsgID)
 					HallAssignmentsTx <- msg
-					time.AfterFunc(time.Millisecond*500, func() {
+					time.AfterFunc(500*time.Millisecond, func() {
 						timeoutChannel <- msg.MessageID
 					})
 					break
@@ -111,7 +111,7 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 
 			hallLightUpdateTx <- newLightUpdate
 
-			time.AfterFunc(time.Millisecond*500, func() {
+			time.AfterFunc(500*time.Millisecond, func() {
 				timeoutCh <- newLightUpdate.MessageID
 			})
 
@@ -122,7 +122,7 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 
 					// send the message again
 					hallLightUpdateTx <- msg
-					time.AfterFunc(time.Millisecond*500, func() {
+					time.AfterFunc(500*time.Millisecond, func() {
 						timeoutCh <- msg.MessageID
 					})
 					break

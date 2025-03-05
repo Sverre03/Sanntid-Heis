@@ -1,4 +1,4 @@
-package single_elevator_algo
+package elevatoralgo
 
 import (
 	"elev/costFNS/hallRequestAssigner"
@@ -8,7 +8,7 @@ import (
 )
 
 // Tx and Rx is from the view of the elevator.
-func SingleElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
+func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	ElevatorHRAStatesTx chan hallRequestAssigner.HRAElevState, ElevatorHallButtonEventRx chan elevator.ButtonEvent) {
 
 	var elev elevator.Elevator = elevator.NewElevator()

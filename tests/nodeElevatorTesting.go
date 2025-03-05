@@ -6,19 +6,18 @@ import (
 
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
-	"elev/single_elevator_algo"
 )
 
 // Communication test between a node and an elevator, from the perspective of the node. Rx and Tx as seen from the node.
 func TestNodeReceivesHallButtonAndProcessesMasterAssignment(t *testing.T) {
 	// Create buffered channels for communication between a node and an elevator.
-	ElevatorHallButtonEventRx := make(chan elevator.ButtonEvent, 10)       // Receive hall button events from the elevator.
-	ElevatorHRAStatesRx := make(chan hallRequestAssigner.HRAElevState, 10) // Receive HRAElevState updates from the elevator.
-	ElevatorHallButtonEventTx := make(chan elevator.ButtonEvent, 10)       // Transmit hall button events to the elevator.
+	ElevatorHallButtonEventRx := make(chan elevator.ButtonEvent)       // Receive hall button events from the elevator.
+	ElevatorHRAStatesRx := make(chan hallRequestAssigner.HRAElevState) // Receive HRAElevState updates from the elevator.
+	ElevatorHallButtonEventTx := make(chan elevator.ButtonEvent, 10)   // Transmit hall button events to the elevator.
 	// ElevatorHRAStatesTx := make(chan hallRequestAssigner.HRAElevState, 10) // Transmit HRAElevState updates to the elevator.
 
-	// Run the SingleElevatorProgram in its own goroutine.
-	go single_elevator_algo.SingleElevatorProgram(ElevatorHallButtonEventRx, ElevatorHRAStatesRx, ElevatorHallButtonEventTx)
+	// Run the ElevatorProgram in its own goroutine.
+	go elevatoralgo.ElevatorProgram(ElevatorHallButtonEventRx, ElevatorHRAStatesRx, ElevatorHallButtonEventTx)
 
 	// Simulate a hall button press from the local elevator. In the program, hall calls are forwarded
 	// so the elevator does not process them directly.
@@ -52,14 +51,6 @@ func TestNodeReceivesHallButtonAndProcessesMasterAssignment(t *testing.T) {
 	// Transmit the hall assignment to the elevator.
 	ElevatorHallButtonEventTx <- testCabEvent
 	time.Sleep(100 * time.Millisecond)
-
-	// // Wait for the HRAElevState update and check that incoming hall assignment is registered.
-	// select {
-	// case state := <-ElevatorHRAStatesRx:
-	// 	println("Received HRAElevState")
-	// case <-time.After(1 * time.Second):
-	// 	t.Error("Did not receive HRAElevState within timeout after hall assignment")
-	// }
 
 	time.Sleep(1 * time.Second)
 }

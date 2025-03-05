@@ -7,6 +7,7 @@ import (
 	"elev/Network/network/messages"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
+	"elev/elevatoralgo"
 	"elev/util/config"
 	"elev/util/msgid_buffer"
 	"fmt"
@@ -94,9 +95,9 @@ func Node(id int) *NodeData {
 	node.ElevStatesTx = make(chan messages.ElevStates)
 	ElevStatesRx := make(chan messages.ElevStates) //
 
-	HATransToBcastTx := make(chan messages.NewHallAssignments) // channel from Hall Assignment Transmitter to Broadcaster (UDP)
-	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
+	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
+	HATransToBcastTx := make(chan messages.NewHallAssignments) // channel from Hall Assignment Transmitter to Broadcaster (UDP)
 
 	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
@@ -110,27 +111,32 @@ func Node(id int) *NodeData {
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
 	node.ConnectionReqRx = make(chan messages.ConnectionReq)
 
+	node.commandTx = make(chan string)
+	node.ActiveElevStatesRx = make(chan map[int]messages.ElevStates)
+	node.AllElevStatesRx = make(chan map[int]messages.ElevStates)
+	node.TOLCRx = make(chan time.Time)
+	node.ActiveNodeIDsRx = make(chan []int)
+
 	node.NewHallReqTx = make(chan messages.NewHallRequest)
 	node.NewHallReqRx = make(chan messages.NewHallRequest)
 
-	HallAssignmentCompleteTx := make(chan messages.HallAssignmentComplete) //
+	node.ElevatorHallButtonEventTx = make(chan elevator.ButtonEvent)
+	node.ElevatorHallButtonEventRx = make(chan elevator.ButtonEvent)
+	node.ElevatorHRAStatesRx = make(chan hallRequestAssigner.HRAElevState)
+
+	HallAssignmentCompleteTx := make(chan messages.HallAssignmentComplete)
 	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
 
-	HallAssignmentsAckTx := make(chan messages.Ack)
-
-	node.commandTx = make(chan string)
-	node.TOLCRx = make(chan time.Time)
-
-	node.ActiveElevStatesRx = make(chan map[int]messages.ElevStates)
-	node.AllElevStatesRx = make(chan map[int]messages.ElevStates)
-	node.ActiveNodeIDsRx = make(chan []int)
+	HallAssignmentsAckRx := make(chan messages.Ack)
 
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)
+
+	go elevatoralgo.ElevatorProgram(node.ElevatorHallButtonEventRx, node.ElevatorHRAStatesRx, node.ElevatorHallButtonEventTx)
 
 	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HATransToBcastTx, node.CabRequestInfoTx, node.GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
 	go bcast.Receiver(config.PORT_NUM, AckRx, ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
 
-	go comm.HallAssignmentsTransmitter(HATransToBcastTx, node.HallAssignmentTx, HallAssignmentsAckTx)
+	go comm.HallAssignmentsTransmitter(HATransToBcastTx, node.HallAssignmentTx, HallAssignmentsAckRx)
 
 	go comm.ElevStatesListener(node.ID, node.commandTx, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, ElevStatesRx, node.AllElevStatesRx)
 
@@ -156,12 +162,14 @@ func (node *NodeData) onEnterMaster(_ context.Context, e *fsm.Event) {
 }
 
 func InactiveProgram(node *NodeData) {
+	fmt.Printf("Node %d is now Inactive\n", node.ID)
 	if err := node.NodeState.Event(context.Background(), "initialize"); err != nil {
 		fmt.Println("Error:", err)
 	}
 }
 
 func DisconnectedProgram(node *NodeData) {
+	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 	timeOfLastContact := time.Time{}                        // placeholder for getting from server
 	msgID, _ := comm.GenerateMessageID(comm.CONNECTION_REQ) // placeholder for using "getmessageid function"
 
@@ -238,7 +246,7 @@ func DisconnectedProgram(node *NodeData) {
 }
 
 func SlaveProgram(node *NodeData) {
-	fmt.Printf("Node %d is now a slave\n", node.ID)
+	fmt.Printf("Node %d is now a Slave\n", node.ID)
 
 	for {
 		select {
@@ -252,7 +260,7 @@ func SlaveProgram(node *NodeData) {
 }
 
 func MasterProgram(node *NodeData) {
-	fmt.Printf("Node %d is now a master\n", node.ID)
+	fmt.Printf("Node %d is now a Master\n", node.ID)
 	activeReq := false
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgid_buffer.MessageIDBuffer

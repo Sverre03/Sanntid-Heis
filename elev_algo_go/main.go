@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func SingleElevatorProgram() {
+func ElevatorProgram() {
 	buttonEvent := make(chan elevator.ButtonEvent)
 	floorEvent := make(chan int)
 	doorTimeoutEvent := make(chan bool)

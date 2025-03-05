@@ -9,7 +9,7 @@ import (
 	"elev/elevator"
 	"elev/elevatoralgo"
 	"elev/util/config"
-	"elev/util/msgid_buffer"
+	"elev/util/msgidbuffer"
 	"fmt"
 	"strconv"
 	"time"
@@ -268,7 +268,7 @@ func MasterProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
 	activeReq := false
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
-	var recentHACompleteBuffer msgid_buffer.MessageIDBuffer
+	var recentHACompleteBuffer msgidbuffer.MessageIDBuffer
 
 	node.GlobalHallReqTransmitEnableTx <- true // start transmitting global hall requests (this means you are a master)
 

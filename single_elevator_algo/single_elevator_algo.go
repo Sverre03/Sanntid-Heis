@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// Tx and Rx is from the view of the elevator.
 func SingleElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	ElevatorHRAStatesTx chan hallRequestAssigner.HRAElevState, ElevatorHallButtonEventRx chan elevator.ButtonEvent) {
 

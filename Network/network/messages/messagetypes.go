@@ -13,9 +13,8 @@ type Ack struct {
 }
 
 // event - ack
-type CabRequestINF struct {
+type CabRequestInfo struct {
 	CabRequest     [config.NUM_FLOORS]bool
-	MessageID      uint64
 	ReceiverNodeID int
 }
 

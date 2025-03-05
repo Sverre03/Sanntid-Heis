@@ -30,10 +30,11 @@ type NodeData struct {
 
 	ElevStatesTx chan messages.ElevStates
 
-	HallAssignmentsRx       chan messages.NewHallAssignments
-	OutGoingHallAssignments chan messages.NewHallAssignments
+	HallAssignmentsRx       chan messages.NewHallAssignments // Receives hall assignments from other nodes
+	OutGoingHallAssignments chan messages.NewHallAssignments //
 
-	CabRequestInfoRx chan messages.CabRequestINF
+	CabRequestInfoTx chan messages.CabRequestInfo
+	CabRequestInfoRx chan messages.CabRequestInfo
 
 	GlobalHallRequestRx chan messages.GlobalHallRequest
 
@@ -43,12 +44,12 @@ type NodeData struct {
 	ConnectionReqRx chan messages.ConnectionReq
 
 	commandCh          chan string
-	ActiveElevStatesRx chan map[int]messages.ElevStates
+	ActiveElevStatesRx chan map[int]messages.ElevStates // Receives the state of the other active node's elevators
 	AllElevStatesRx    chan map[int]messages.ElevStates
-	TOLCRx             chan time.Time
-	ActiveNodeIDsRx    chan []int
+	TOLCRx             chan time.Time // Receives the Time of Last Contact
+	ActiveNodeIDsRx    chan []int     // Receives the IDs of the active nodes on the network
 
-	ConnectionReqAckRx chan messages.Ack
+	ConnectionReqAckRx chan messages.Ack // Receives acknowledgement for request to connect to another node
 
 	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
@@ -56,9 +57,9 @@ type NodeData struct {
 	ElevatorHallButtonEventTx chan elevator.ButtonEvent // Receives local hall calls from elevator
 	ElevatorHallButtonEventRx chan elevator.ButtonEvent // Receives hall calls from node
 
-	ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState
+	ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState // Receives the elevator's HRA states
 
-	HallAssignmentCompleteRx chan messages.HallAssignmentComplete
+	HallAssignmentCompleteRx chan messages.HallAssignmentComplete // Receives completed hall assignments
 
 	transmitEnableCh chan bool
 }
@@ -107,8 +108,8 @@ func Node(id int) *NodeData {
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
 	node.OutGoingHallAssignments = make(chan messages.NewHallAssignments)
 
-	CabRequestInfoTx := make(chan messages.CabRequestINF) //
-	node.CabRequestInfoRx = make(chan messages.CabRequestINF)
+	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
+	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
 
 	GlobalHallRequestTx := make(chan messages.GlobalHallRequest) //
 	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
@@ -136,7 +137,7 @@ func Node(id int) *NodeData {
 
 	node.transmitEnableCh = make(chan bool)
 
-	go bcast.Transmitter(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HallAssignmentsTx, CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
+	go bcast.Transmitter(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HallAssignmentsTx, node.CabRequestInfoTx, GlobalHallRequestTx, HallLightUpdateTx, node.ConnectionReqTx, node.NewHallReqTx, HallAssignmentCompleteTx)
 	go bcast.Receiver(config.PORT_NUM, AckRx, ElevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
 	go comm.HallAssignmentsTransmitter(HallAssignmentsTx, node.OutGoingHallAssignments, HallAssignmentsAckTx)
 	go comm.ElevStatesListener(node.commandCh, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, ElevStatesRx, node.AllElevStatesRx)
@@ -252,20 +253,18 @@ func SlaveProgram(node *NodeData) {
 
 	for {
 		select {
-			case hallAssignment := <-node.HallAssignmentsRx:
-				fmt.Printf("Node %d received hall assignment: %v\n", node.ID, hallAssignment)
-			case <-time.After(config.MASTER_TIMEOUT):
-				fmt.Printf("Node %d alive\n", node.ID)
+		case hallAssignment := <-node.HallAssignmentsRx:
+			fmt.Printf("Node %d received hall assignment: %v\n", node.ID, hallAssignment)
+		case <-time.After(config.MASTER_TIMEOUT):
+			fmt.Printf("Node %d alive\n", node.ID)
 		}
-	
-}
+
+	}
 }
 
 func MasterProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a master\n", node.ID)
 	activeReq := false
-	activeConnectionReq := false
-	var allElevStates map[int]messages.ElevStates
 	var activeHallRequests [config.NUM_FLOORS][2]bool     //Get activeHallRequests from previous master saved in server if existing
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgid_buffer.MessageIDBuffer
@@ -283,10 +282,10 @@ func MasterProgram(node *NodeData) {
 			switch newHallReq.HallButton {
 
 			case elevator.BT_HallUp:
-				activeHallRequests[newHallReq.Floor][0] = true
+				activeHallRequests[newHallReq.Floor][elevator.BT_HallUp] = true
 
 			case elevator.BT_HallDown:
-				activeHallRequests[newHallReq.Floor][1] = true
+				activeHallRequests[newHallReq.Floor][elevator.BT_HallDown] = true
 
 			case elevator.BT_Cab:
 				fmt.Println("received a new hall requests, but the button type was invalid")
@@ -295,7 +294,7 @@ func MasterProgram(node *NodeData) {
 			node.commandCh <- "getActiveElevStates"
 
 		case newElevStates := <-node.ActiveElevStatesRx:
-			fmt.Printf("Node %d received active elev states: %v\n",node.ID, newElevStates)
+			fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
 			if activeReq {
 				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, activeHallRequests)
 				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
@@ -317,29 +316,43 @@ func MasterProgram(node *NodeData) {
 			if connReq.TOLC.IsZero() {
 				activeConnReq[connReq.NodeID] = connReq
 				node.commandCh <- "getAllElevStates"
-				activeConnectionReq = true
 			}
 
-		case allElevStates = <-node.AllElevStatesRx:
-			if activeConnectionReq {
+		case allElevStates := <-node.AllElevStatesRx:
+			if len(activeConnReq) != 0 {
+
 				//If activeConnectionReq is true, send all activeElevStates to nodes in activeConnReq
+
+				// her antas det at en id eksisterer i allElevStates Mappet dersom den eksisterer i activeConnReq, dette er en feilaktig antagelse
+
 				for id := range activeConnReq {
-					node.ElevStatesTx <- messages.ElevStates{NodeID: id, Direction: allElevStates[id].Direction,
-						Floor: allElevStates[id].Floor, CabRequest: allElevStates[id].CabRequest,
-						Behavior: allElevStates[id].Behavior}
+					var cabRequestInfo messages.CabRequestInfo
+					if states, ok := allElevStates[id]; ok {
+						cabRequestInfo = messages.CabRequestInfo{CabRequest: states.CabRequest, ReceiverNodeID: id}
+					}
+					// sjekke om id finnes i map
+					// hvis ja: send svar
+					// hvis nei: send svar likevel
+					node.CabRequestInfoTx <- cabRequestInfo
+					delete(activeConnReq, id)
 				}
-				activeConnectionReq = false
 			}
 
 		case HA := <-node.HallAssignmentCompleteRx:
 			// this logic could go somewhere else to clean up the master program
 			if !recentHACompleteBuffer.Contains(HA.MessageID) {
 
-				activeHallRequests[HA.Floor][HA.HallButton] = false
-				node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
+				// in case ButtonType is not hall button, this line of code will crash the program!
+				if HA.HallButton != elevator.BT_Cab {
+					activeHallRequests[HA.Floor][HA.HallButton] = false
+				} else {
+					fmt.Println("Some less intelligent cretin sent a hall assignment complete message with the wrong button type (cab btn)")
+				}
 
 				recentHACompleteBuffer.Add(HA.MessageID)
 			}
+
+			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
 		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
 			// Master transmitting global hall requests
@@ -347,6 +360,16 @@ func MasterProgram(node *NodeData) {
 			node.GlobalHallRequestRx <- messages.GlobalHallRequest{HallRequests: activeHallRequests}
 			fmt.Printf("Node %d sent global hall requests: %v\n", node.ID, activeHallRequests)
 
+		case <-node.HallAssignmentsRx:
+		case <-node.CabRequestInfoRx:
+		case <-node.GlobalHallRequestRx:
+		case <-node.HallLightUpdateRx:
+		case <-node.ConnectionReqAckRx:
+		case <-node.ElevatorHallButtonEventRx:
+		case <-node.ElevatorHRAStatesRx:
+		case <-node.AllElevStatesRx:
+		case <-node.TOLCRx:
+		case <-node.ActiveNodeIDsRx:
 		}
 	}
 }

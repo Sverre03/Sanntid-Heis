@@ -4,20 +4,18 @@ import (
 	"time"
 )
 
-// Add new timer object
 type Timer struct {
 	endTime time.Time
 	active  bool
 }
 
+func Active(inTimer Timer) bool {
+	return inTimer.active
+}
+
 func NewTimer() Timer {
 	return Timer{endTime: time.Time{}, active: false}
 }
-
-// var (
-// 	timerEndTime time.Time
-// 	timerActive  bool
-// )
 
 func GetWallTime() time.Time {
 	return time.Now()

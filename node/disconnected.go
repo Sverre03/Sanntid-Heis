@@ -84,7 +84,7 @@ func ShouldBeMaster(myID int, otherID int, _currentFriendID int, TOLC time.Time,
 	} else { // TOLC values are equal --> Compare node IDs
 		if myID > otherID {
 			return true
-		} else if myID < otherID {
+		} else {
 			return false
 		}
 	}

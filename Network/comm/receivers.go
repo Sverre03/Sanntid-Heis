@@ -6,6 +6,16 @@ import (
 	"time"
 )
 
+type MessageIDType uint64
+
+const (
+	NEW_HALL_ASSIGNMENT      MessageIDType = 0
+	HALL_LIGHT_UPDATE        MessageIDType = 1
+	CONNECTION_REQ           MessageIDType = 2
+	CAB_REQ_INFO             MessageIDType = 3
+	HALL_ASSIGNMENT_COMPLETE MessageIDType = 4
+)
+
 // Listens to incoming acknowledgment messages from UDP, distributes them to their corresponding channels
 func IncomingAckDistributor(ackRx <-chan messages.Ack,
 	hallAssignmentsAck chan<- messages.Ack,

@@ -9,16 +9,6 @@ import (
 	"time"
 )
 
-type MessageIDType uint64
-
-const (
-	NEW_HALL_ASSIGNMENT      MessageIDType = 0
-	HALL_LIGHT_UPDATE        MessageIDType = 1
-	CONNECTION_REQ           MessageIDType = 2
-	CAB_REQ_INFO             MessageIDType = 3
-	HALL_ASSIGNMENT_COMPLETE MessageIDType = 4
-)
-
 // generates a message ID that corresponsds to the message type
 func GenerateMessageID(partition MessageIDType) (uint64, error) {
 	offset := uint64(partition)

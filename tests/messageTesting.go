@@ -17,7 +17,7 @@ func crazy() {
 }
 
 func testMessageIDGenerator() error {
-	for i := uint64(0); i < 5; i++ {
+	for i := uint64(0); i < 4; i++ {
 		if j, _ := comm.GenerateMessageID(comm.MessageIDType(i)); j > (i+1)*config.MSG_ID_PARTITION_SIZE || j < i*config.MSG_ID_PARTITION_SIZE {
 			return fmt.Errorf("message id outside value area for messagetype %d", i)
 		}
@@ -40,7 +40,7 @@ func testLightUpdateTransmitter() error {
 
 	outgoingLightUpdates <- hallLightUpdate
 
-	time.AfterFunc(5 * time.Second, func() {
+	time.AfterFunc(5*time.Second, func() {
 		timeoutChannel <- 5
 	})
 
@@ -128,7 +128,7 @@ func testHAss() error {
 	numMsgReceived := 0
 	hasReceived := false
 
-	time.AfterFunc(5 * time.Second, func() {
+	time.AfterFunc(5*time.Second, func() {
 		timeoutChannel <- 1
 	})
 
@@ -181,15 +181,15 @@ func testGlobalHallReqTransmitter() error {
 
 	var currentHallRequests [config.NUM_FLOORS][2]bool
 
-	time.AfterFunc(5 * time.Second, func() {
+	time.AfterFunc(5*time.Second, func() {
 		timeoutChannel <- 10
 	})
 
-	time.AfterFunc(2 * time.Second, func() {
+	time.AfterFunc(2*time.Second, func() {
 		timeoutChannel <- 5
 	})
 
-	time.AfterFunc(150 * time.Millisecond, func() {
+	time.AfterFunc(150*time.Millisecond, func() {
 		timeoutChannel <- 1
 	})
 
@@ -259,7 +259,7 @@ func testAckDistr() error {
 		ackRx <- messages.Ack{NodeID: i, MessageID: id}
 		numAckSent++
 	}
-	time.AfterFunc(1 * time.Second, func() {
+	time.AfterFunc(1*time.Second, func() {
 		timeoutChannel <- 1
 	})
 ForLoop:

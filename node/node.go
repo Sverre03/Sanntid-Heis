@@ -98,12 +98,12 @@ func Node(id int) *NodeData {
 	node.NewHallReqTx = make(chan messages.NewHallRequest)
 	node.HallAssignmentCompleteTx = make(chan messages.HallAssignmentComplete)
 
-	HATransToBcastTx := make(chan messages.NewHallAssignments)           // channel for comm from Hall Assignment Transmitter process to Broadcaster
-	lightUpdateTransToBroadcastCh := make(chan messages.HallLightUpdate) //channel for communication from light update transmitter process and broadcaster
+	HATransToBcastTx := make(chan messages.NewHallAssignments)         // channel for comm from Hall Assignment Transmitter process to Broadcaster
+	lightUpdateTransToBroadcast := make(chan messages.HallLightUpdate) //channel for communication from light update transmitter process and broadcaster
 	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
 
 	// broadcast all messages on channels to udp process
-	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HATransToBcastTx, node.CabRequestInfoTx, globalHallReqTransToBroadcast, lightUpdateTransToBroadcastCh, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
+	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HATransToBcastTx, node.CabRequestInfoTx, globalHallReqTransToBroadcast, lightUpdateTransToBroadcast, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
 
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
@@ -144,10 +144,10 @@ func Node(id int) *NodeData {
 
 	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)
-	go comm.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx, globalHallReqTransToBroadcast, node.GlobalHallRequestRx)
+	go comm.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx, globalHallReqTransToBroadcast, node.GlobalHallRequestTx)
 
 	node.HallLightUpdateTx = make(chan messages.HallLightUpdate) //
-	go comm.LightUpdateTransmitter(lightUpdateTransToBroadcastCh, node.HallLightUpdateTx, lightUpdateAckRx)
+	go comm.LightUpdateTransmitter(lightUpdateTransToBroadcast, node.HallLightUpdateTx, lightUpdateAckRx)
 
 	return node
 }

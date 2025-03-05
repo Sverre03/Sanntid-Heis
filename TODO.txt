@@ -1,0 +1,16 @@
+TODO:
+
+- Slave
+    Start making the slave program
+
+- Master
+    Listen to hall button presses from elevator, merge this with the current infrastructure
+    Make logic for control of lights
+
+- Inactive
+
+- Disconnected 
+    Fix TOLC - request the data from ElevStatesListener
+
+- Receiver
+    Filter out messages from myself (check if node id in message field equals mine)

@@ -342,10 +342,6 @@ func MasterProgram(node *NodeData) {
 
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
-		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
-			// Master transmitting global hall requests
-			fmt.Printf("Node %d sent global hall requests: %v\n", node.ID, node.GlobalHallRequests)
-
 		case <-node.HallAssignmentsRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:

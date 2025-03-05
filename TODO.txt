@@ -8,6 +8,7 @@ TODO:
     Make logic for control of lights
 
 - Inactive
+    Fix the inactive state
 
 - Disconnected 
     Fix TOLC - request the data from ElevStatesListener

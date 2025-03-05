@@ -26,7 +26,7 @@ type HRAInput struct {
 	States       map[string]HRAElevState    `json:"states"`
 }
 
-func InputFunction(allElevStates map[int]messages.ElevStates, hallRequests [config.NUM_FLOORS][2]bool) HRAInput {
+func HRAalgorithm(allElevStates map[int]messages.ElevStates, hallRequests [config.NUM_FLOORS][2]bool) *map[string][config.NUM_FLOORS][2]bool {
 	allElevStatesInputFormat := make(map[string]HRAElevState)
 	for id, state := range allElevStates {
 		allElevStatesInputFormat[fmt.Sprintf("%d", id)] = HRAElevState{
@@ -40,10 +40,6 @@ func InputFunction(allElevStates map[int]messages.ElevStates, hallRequests [conf
 		HallRequests: hallRequests,
 		States:       allElevStatesInputFormat,
 	}
-	return input
-}
-
-func OutputFunction(input HRAInput) *map[string][config.NUM_FLOORS][2]bool {
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -75,3 +71,4 @@ func OutputFunction(input HRAInput) *map[string][config.NUM_FLOORS][2]bool {
 	}
 	return output
 }
+

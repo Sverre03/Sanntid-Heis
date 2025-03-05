@@ -35,7 +35,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 	for {
 		select {
 		case newAssignment := <-OutgoingNewHallAssignments:
-
+			//fmt.Printf("got new hall assignment with id %d\n", newAssignment.NodeID)
 			new_msg_id, err := GenerateMessageID(NEW_HALL_ASSIGNMENT)
 			if err != nil {
 				fmt.Println("Fatal error, invalid message id type used to generate a message id in HallAssignmentTransmitter")
@@ -45,7 +45,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 
 			// fmt.Printf("got new hall assignment with id %d and a message id %d\n", newAssignment.NodeID, newAssignment.MessageID)
 			activeAssignments[newAssignment.NodeID] = newAssignment
-
+			//fmt.Printf("active assignments: %v\n", activeAssignments[newAssignment.NodeID])
 			HallAssignmentsTx <- newAssignment
 
 			// check for whether message is not acknowledged within duration

@@ -59,13 +59,11 @@ func ElevStatesListener(commandRx <-chan string,
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]messages.ElevStates)
 	timeOfLastContact := time.Time{}
-
 	for {
 		select {
 
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
-
 			// here, we must check if the id is ours. Placeholder for MyID is 0 for now.
 			if id != 0 {
 				timeOfLastContact = time.Now()

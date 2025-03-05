@@ -32,7 +32,6 @@ func TestHRA() {
 	allElevStates[0] = newMessage1
 	allElevStates[1] = newMessage2
 
-	input := hallRequestAssigner.InputFunction(allElevStates, GlobalHallRequest)
-	output := hallRequestAssigner.OutputFunction(input)
+	output := hallRequestAssigner.HRAalgorithm(allElevStates, GlobalHallRequest)
 	fmt.Printf("Output: %v\n", output)
 }

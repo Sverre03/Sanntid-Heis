@@ -1,4 +1,4 @@
-package msgid_buffer
+package msgidbuffer
 
 const bufferSize = 5
 

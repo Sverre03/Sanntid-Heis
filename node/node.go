@@ -9,7 +9,7 @@ import (
 	"elev/elevator"
 	"elev/elevatoralgo"
 	"elev/util/config"
-	"elev/util/msgid_buffer"
+	"elev/util/msgidbuffer"
 	"fmt"
 	"strconv"
 	"time"
@@ -186,11 +186,10 @@ func DisconnectedProgram(node *NodeData) {
 	// ID of the node we currently are trying to connect with
 	currentFriendID := 0
 
-	// isConnRequestActive := false
+	var lastReceivedAck *messages.Ack
 
 	for {
 		select {
-
 		case <-node.GlobalHallRequestRx:
 			// here, we must check if the master knows anything about us
 			// this message transaction should be defined better than it is now, who sends what?
@@ -204,7 +203,6 @@ func DisconnectedProgram(node *NodeData) {
 			if node.ID != incomingConnReq.NodeID {
 				incomingConnRequests[incomingConnReq.NodeID] = incomingConnReq
 				if currentFriendID == 0 || currentFriendID > incomingConnReq.NodeID {
-
 					// this is the node with the lowest ID, I want to start a relationship with him
 					currentFriendID = incomingConnReq.NodeID
 				}
@@ -212,42 +210,49 @@ func DisconnectedProgram(node *NodeData) {
 
 		case connReqAck := <-node.ConnectionReqAckRx:
 			if node.ID != connReqAck.NodeID && connReqAck.NodeID == currentFriendID {
-
 				// All these decisions should be moved into a pure function, and the result returned
-
 				// check who has the most recent data
-
 				// here, we must ask on node.commandTx "getTOLC". Then, on return from node.TOLCRx compare
-				if node.TOLC.Before(incomingConnRequests[connReqAck.NodeID].TOLC) {
-					if err := node.NodeState.Event(context.Background(), "promote"); err != nil {
-						fmt.Println("Error:", err)
-					}
-
-				} else if node.TOLC.After(incomingConnRequests[connReqAck.NodeID].TOLC) {
-					if err := node.NodeState.Event(context.Background(), "connect"); err != nil {
-						fmt.Println("Error:", err)
-					}
-
-				} else {
-					// tie breaker: the one with the largeest ID becomes the master
-					if node.ID > connReqAck.NodeID {
+				lastReceivedAck = &connReqAck
+				node.commandTx <- "getTOLC"
+			}
+		case TOLC := <-node.TOLCRx:
+			if lastReceivedAck != nil && node.ID != lastReceivedAck.NodeID && lastReceivedAck.NodeID == currentFriendID {
+				if connReq, exists := incomingConnRequests[lastReceivedAck.NodeID]; exists {
+					shouldBeMaster := ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, TOLC, connReq.TOLC)
+					if shouldBeMaster {
 						if err := node.NodeState.Event(context.Background(), "promote"); err != nil {
 							fmt.Println("Error:", err)
 						}
-					} else if node.ID < connReqAck.NodeID {
+					} else {
 						if err := node.NodeState.Event(context.Background(), "connect"); err != nil {
 							fmt.Println("Error:", err)
 						}
 					}
 				}
+				lastReceivedAck = nil
 			}
 
 			// timeout should be a const variable
 		case <-time.After(time.Millisecond * 500):
-
 			// start sending a conn request :)
 			// isConnRequestActive = true
 			node.ConnectionReqTx <- myConnReq
+		}
+	}
+}
+
+func ShouldBeMaster(myID int, otherID int, _currentFriendID int, TOLC time.Time, otherTOLC time.Time) bool {
+	// Compare TOLC values to determine who becomes master
+	if TOLC.Before(otherTOLC) { // The other node has more recent data --> We should be master
+		return true
+	} else if TOLC.After(otherTOLC) { // We have more recent data --> We should be slave
+		return false
+	} else { // TOLC values are equal --> Compare node IDs
+		if myID > otherID {
+			return true
+		} else if myID < otherID {
+			return false
 		}
 	}
 }
@@ -270,7 +275,7 @@ func MasterProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
 	activeReq := false
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
-	var recentHACompleteBuffer msgid_buffer.MessageIDBuffer
+	var recentHACompleteBuffer msgidbuffer.MessageIDBuffer
 
 	node.GlobalHallReqTransmitEnableTx <- true // start transmitting global hall requests (this means you are a master)
 

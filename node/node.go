@@ -90,9 +90,10 @@ func CreateNode(id int) *NodeData {
 	HATransToBcastTx := make(chan messages.NewHallAssignments)         // channel for comm from Hall Assignment Transmitter process to Broadcaster
 	lightUpdateTransToBroadcast := make(chan messages.HallLightUpdate) //channel for communication from light update transmitter process and broadcaster
 	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
+	HACompleteTransToBcast := make(chan messages.HallAssignmentComplete)
 
 	// broadcast all messages on channels to udp process
-	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HATransToBcastTx, node.CabRequestInfoTx, globalHallReqTransToBroadcast, lightUpdateTransToBroadcast, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
+	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HACompleteTransToBcast, HATransToBcastTx, node.CabRequestInfoTx, globalHallReqTransToBroadcast, lightUpdateTransToBroadcast, node.ConnectionReqTx, node.NewHallReqTx)
 
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
@@ -118,7 +119,7 @@ func CreateNode(id int) *NodeData {
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go comm.HallAssignmentsTransmitter(HATransToBcastTx, node.HallAssignmentTx, hallAssignmentsAckRx)
-
+	go comm.HallAssignmentCompleteTransmitter(HACompleteTransToBcast, node.HallAssignmentCompleteTx, node.HallAssignmentCompleteAckRx)
 	node.ElevatorHallButtonAssignmentTx = make(chan [config.NUM_FLOORS][2]bool)
 	node.ElevatorHallButtonEventRx = make(chan elevator.ButtonEvent)
 	node.ElevatorHRAStatesRx = make(chan elevator.ElevatorState)

@@ -61,6 +61,7 @@ func MasterProgram(node *NodeData) nodestate {
 
 					if id == node.ID {
 						hallAssignmentTasks := hallRequests
+						node.ElevatorHallButtonAssignmentTx <- hallRequests
 						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTasks)
 
 					} else {
@@ -68,6 +69,7 @@ func MasterProgram(node *NodeData) nodestate {
 						//sending hall requests to all nodes assuming all
 						//nodes are connected and not been disconnected after sending out internal states
 						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: id, HallAssignment: hallRequests, MessageID: 0}
+
 					}
 
 				}
@@ -101,6 +103,7 @@ func MasterProgram(node *NodeData) nodestate {
 			}
 
 		case HA := <-node.HallAssignmentCompleteRx:
+			fmt.Printf("Completed HallAssignment")
 			// this logic could go somewhere else to clean up the master program
 			if !recentHACompleteBuffer.Contains(HA.MessageID) {
 
@@ -108,7 +111,7 @@ func MasterProgram(node *NodeData) nodestate {
 				if HA.HallButton != elevator.BT_Cab {
 					node.GlobalHallRequests[HA.Floor][HA.HallButton] = false
 				} else {
-					fmt.Println("Some less intelligent cretin sent a hall assignment complete message with the wrong button type (cab btn)")
+					fmt.Printf("Recieved invalid completion %v", HA.HallButton)
 				}
 
 				recentHACompleteBuffer.Add(HA.MessageID)
@@ -147,7 +150,9 @@ func MasterProgram(node *NodeData) nodestate {
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
 			node.commandToServerTx <- "getActiveElevStates"
-
+		
+		
+		
 		case <-node.HallAssignmentsRx:
 		case <-node.RequestDoorStateCh:
 		case <-node.HallAssignmentCompleteAckRx:

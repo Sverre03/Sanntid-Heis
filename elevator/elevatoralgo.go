@@ -79,7 +79,9 @@ func ElevatorProgram(
 			for floor := 0; floor < config.NUM_FLOORS; floor++ {
 				for hallButton := 0; hallButton < 2; hallButton++ {
 					elev.Requests[floor][hallButton] = hallButtons[floor][hallButton]
-					FsmOnRequestButtonPress(&elev, floor, ButtonType(hallButton), &doorOpenTimer)
+					if elev.Requests[floor][hallButton]{
+						FsmOnRequestButtonPress(&elev, floor, ButtonType(hallButton), &doorOpenTimer)
+					}
 				}
 			}
 			SetAllLights(&elev)

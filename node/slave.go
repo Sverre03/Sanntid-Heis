@@ -1,7 +1,7 @@
 package node
 
 import (
-	"elev/Network/network/messages"
+	"elev/Network/messages"
 	"fmt"
 )
 
@@ -41,7 +41,7 @@ func SlaveProgram(node *NodeData) nodestate {
 		case btnEvent := <-node.ElevatorHallButtonEventRx:
 			node.NewHallReqTx <- messages.NewHallRequest{Floor: btnEvent.Floor, HallButton: btnEvent.Button}
 
-		case currentElevStates := <-node.ElevatorHRAStatesRx:
+		case currentElevStates := <-node.MyElevatorStatesRx:
 			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
 		case <-node.ActiveElevStatesFromServerRx:
 		case <-node.AllElevStatesFromServerRx:
@@ -49,7 +49,7 @@ func SlaveProgram(node *NodeData) nodestate {
 		case <-node.TOLCFromServerRx:
 		case <-node.ConnectionReqRx:
 		case <-node.ConnectionReqAckRx:
-		case <-node.ElevatorHRAStatesRx:
+		case <-node.MyElevatorStatesRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.HallAssignmentCompleteRx:

@@ -1,7 +1,7 @@
 package hallRequestAssigner
 
 import (
-	"elev/Network/network/messages"
+	"elev/Network/messages"
 	"elev/elevator"
 	"elev/util/config"
 	"encoding/json"
@@ -66,14 +66,13 @@ func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [co
 		return nil
 	}
 
-	
 	HRAoutput := new(map[string][config.NUM_FLOORS][2]bool)
 	err = json.Unmarshal(ret, &HRAoutput)
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
 		return nil
 	}
-	
+
 	HRAoutputFormatting := make(map[int][config.NUM_FLOORS][2]bool) // Convert map[string][config.NUM_FLOORS][2]bool to map[int][config.NUM_FLOORS][2]bool
 	for id, output := range *HRAoutput {
 		id, err := strconv.Atoi(id)

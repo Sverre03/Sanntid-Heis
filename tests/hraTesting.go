@@ -1,7 +1,7 @@
 package tests
 
 // import (
-// 	"elev/Network/network/messages"
+// 	"elev/Network/messages"
 // 	"elev/costFNS/hallRequestAssigner"
 // 	"elev/elevator"
 // 	"elev/util/config"

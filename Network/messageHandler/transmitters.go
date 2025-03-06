@@ -1,13 +1,13 @@
-package comm
+package messageHandler
 
 import (
-	"elev/Network/network/messages"
+	"elev/Network/messages"
 	"elev/util/config"
 	"fmt"
 	"time"
 )
 
-// Transmits Hall assignments from outgoingHallAssignments channel to their designated elevators and handles ack
+// Transmits Hall assignments from outgoingHallAssignments channel to their designated elevators and handles ack - i.e resends if the message didnt arrive
 func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments,
 	OutgoingNewHallAssignments <-chan messages.NewHallAssignments,
 	HallAssignmentsAck <-chan messages.Ack) {
@@ -141,49 +141,49 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 	}
 }
 
-func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.HallAssignmentComplete, 
-	hallAssignmentCompleteRx <-chan messages.HallAssignmentComplete, 
+// transmits hall assignments complete
+func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.HallAssignmentComplete,
+	hallAssignmentCompleteRx <-chan messages.HallAssignmentComplete,
 	hallAssignmentCompleteAckRx <-chan messages.Ack) {
-	
+
 	timeoutChannel := make(chan uint64, 2)
 	completedActiveAssignments := make(map[uint64]messages.HallAssignmentComplete) //mapping message id to hall assignment complete message
-	
+
 	for {
 		select {
-			case newComplete := <-hallAssignmentCompleteRx:
-				new_msg_id, err := GenerateMessageID(HALL_ASSIGNMENT_COMPLETE)
-				if err != nil {
-					fmt.Println("Fatal error, invalid message type used to generate message id in hall assignment complete")
-				}
-				newComplete.MessageID = new_msg_id
-				completedActiveAssignments[new_msg_id] = newComplete
-				fmt.Printf("Hall Assignment %v is completed\n", newComplete)
-				HallAssignmentCompleteTx <- newComplete
+		case newComplete := <-hallAssignmentCompleteRx:
+			new_msg_id, err := GenerateMessageID(HALL_ASSIGNMENT_COMPLETE)
+			if err != nil {
+				fmt.Println("Fatal error, invalid message type used to generate message id in hall assignment complete")
+			}
+			newComplete.MessageID = new_msg_id
+			completedActiveAssignments[new_msg_id] = newComplete
+			fmt.Printf("Hall Assignment %v is completed\n", newComplete)
+			HallAssignmentCompleteTx <- newComplete
 
-				time.AfterFunc(500*time.Millisecond, func() {
-					timeoutChannel <- newComplete.MessageID
-				})
-			case receivedAck := <-hallAssignmentCompleteAckRx:
-				if msg, ok := completedActiveAssignments[receivedAck.MessageID]; ok {
-					if msg.MessageID == receivedAck.MessageID {
-						delete(completedActiveAssignments, receivedAck.MessageID)
-					}
+			time.AfterFunc(500*time.Millisecond, func() {
+				timeoutChannel <- newComplete.MessageID
+			})
+		case receivedAck := <-hallAssignmentCompleteAckRx:
+			if msg, ok := completedActiveAssignments[receivedAck.MessageID]; ok {
+				if msg.MessageID == receivedAck.MessageID {
+					delete(completedActiveAssignments, receivedAck.MessageID)
 				}
-			case timedOutMsgID := <-timeoutChannel:
-				
-				for _, msg := range completedActiveAssignments {
-					if msg.MessageID == timedOutMsgID {
-	
-						// fmt.Printf("resending message id %d \n", timedOutMsgID)
-						HallAssignmentCompleteTx <- msg
-						time.AfterFunc(500*time.Millisecond, func() {
-							timeoutChannel <- msg.MessageID
-						})
-						break
-					}
+			}
+		case timedOutMsgID := <-timeoutChannel:
+
+			for _, msg := range completedActiveAssignments {
+				if msg.MessageID == timedOutMsgID {
+
+					// fmt.Printf("resending message id %d \n", timedOutMsgID)
+					HallAssignmentCompleteTx <- msg
+					time.AfterFunc(500*time.Millisecond, func() {
+						timeoutChannel <- msg.MessageID
+					})
+					break
 				}
-	
-			
+			}
+
 		}
 	}
 }

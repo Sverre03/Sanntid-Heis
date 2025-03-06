@@ -1,8 +1,8 @@
 package node
 
 import (
-	"elev/Network/comm"
-	"elev/Network/network/messages"
+	"elev/Network/messageHandler"
+	"elev/Network/messages"
 	"fmt"
 	"time"
 )
@@ -11,7 +11,7 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 
 	timeOfLastContact := time.Time{}
-	msgID, _ := comm.GenerateMessageID(comm.CONNECTION_REQ)
+	msgID, _ := messageHandler.GenerateMessageID(messageHandler.CONNECTION_REQ)
 
 	myConnReq := messages.ConnectionReq{
 		TOLC:      timeOfLastContact,
@@ -97,7 +97,7 @@ func DisconnectedProgram(node *NodeData) nodestate {
 		case <-node.HallAssignmentsRx:
 		case <-node.RequestDoorStateCh:
 		case <-node.HallLightUpdateRx:
-		case <-node.ElevatorHRAStatesRx:
+		case <-node.MyElevatorStatesRx:
 		case <-node.AllElevStatesFromServerRx:
 		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.NewHallReqRx:

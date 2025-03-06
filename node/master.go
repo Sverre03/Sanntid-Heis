@@ -1,7 +1,7 @@
 package node
 
 import (
-	"elev/Network/network/messages"
+	"elev/Network/messages"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/util/msgidbuffer"
@@ -131,7 +131,7 @@ func MasterProgram(node *NodeData) nodestate {
 				return Inactive
 			}
 
-		case currentElevStates := <-node.ElevatorHRAStatesRx:
+		case currentElevStates := <-node.MyElevatorStatesRx:
 			myCurrentState = messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
 			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
 
@@ -160,7 +160,7 @@ func MasterProgram(node *NodeData) nodestate {
 		case <-node.GlobalHallRequestRx:
 		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
-		case <-node.ElevatorHRAStatesRx:
+		case <-node.MyElevatorStatesRx:
 		case <-node.AllElevStatesFromServerRx:
 		case <-node.TOLCFromServerRx:
 		case <-node.ActiveNodeIDsFromServerRx:

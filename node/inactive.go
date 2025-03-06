@@ -32,7 +32,7 @@ func InactiveProgram(node *NodeData) nodestate {
 		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.NewHallReqRx:
 		case <-node.ElevatorHallButtonEventRx:
-		case <-node.ElevatorHRAStatesRx:
+		case <-node.MyElevatorStatesRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
 		case <-node.ConnectionTimeoutEventRx:

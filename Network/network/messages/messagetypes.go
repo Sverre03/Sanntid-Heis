@@ -31,12 +31,9 @@ type HallLightUpdate struct {
 }
 
 // information
-type ElevStates struct {
-	NodeID     int
-	Direction  elevator.MotorDirection
-	Floor      int
-	CabRequest [config.NUM_FLOORS]bool
-	Behavior   string
+type NodeElevState struct {
+	NodeID    int
+	ElevState elevator.ElevatorState
 }
 
 // event - ack

@@ -14,7 +14,7 @@ import (
 
 func MasterProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
-	var myCurrentState messages.ElevStates
+	var myCurrentState messages.NodeElevState
 	activeReq := false
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgidbuffer.MessageIDBuffer

@@ -27,7 +27,7 @@ type NodeData struct {
 	GlobalHallRequests [config.NUM_FLOORS][2]bool
 
 	AckTx        chan messages.Ack
-	ElevStatesTx chan messages.ElevStates
+	ElevStatesTx chan messages.NodeElevState
 
 	HallAssignmentTx  chan messages.NewHallAssignments // Transmits hall assignments to elevators on the network
 	HallAssignmentsRx chan messages.NewHallAssignments // Receives hall assignments from other nodes
@@ -45,9 +45,9 @@ type NodeData struct {
 	ConnectionReqRx    chan messages.ConnectionReq
 	ConnectionReqAckRx chan messages.Ack // Receives acknowledgement for request to connect to another node
 
-	commandTx          chan string                      // Sends commands to the ElevStateListener (defined in Network/comm/receivers.go)
-	ActiveElevStatesRx chan map[int]messages.ElevStates // Receives the state of the other active node's elevators
-	AllElevStatesRx    chan map[int]messages.ElevStates
+	commandTx          chan string                         // Sends commands to the ElevStateListener (defined in Network/comm/receivers.go)
+	ActiveElevStatesRx chan map[int]messages.NodeElevState // Receives the state of the other active node's elevators
+	AllElevStatesRx    chan map[int]messages.NodeElevState
 	TOLCRx             chan time.Time // Receives the Time of Last Contact
 	ActiveNodeIDsRx    chan []int     // Receives the IDs of the active nodes on the network
 
@@ -98,7 +98,7 @@ func Node(id int) *NodeData {
 
 	// broadcast channels
 	node.AckTx = make(chan messages.Ack)
-	node.ElevStatesTx = make(chan messages.ElevStates)
+	node.ElevStatesTx = make(chan messages.NodeElevState)
 	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
 	node.NewHallReqTx = make(chan messages.NewHallRequest)
@@ -120,7 +120,7 @@ func Node(id int) *NodeData {
 	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
 
 	ackRx := make(chan messages.Ack)
-	elevStatesRx := make(chan messages.ElevStates)
+	elevStatesRx := make(chan messages.NodeElevState)
 
 	go bcast.Receiver(config.PORT_NUM, ackRx, elevStatesRx, node.HallAssignmentsRx, node.CabRequestInfoRx, node.GlobalHallRequestRx, node.HallLightUpdateRx, node.ConnectionReqRx, node.NewHallReqRx, node.HallAssignmentCompleteRx)
 
@@ -145,8 +145,8 @@ func Node(id int) *NodeData {
 
 	node.commandTx = make(chan string)
 	node.TOLCRx = make(chan time.Time)
-	node.ActiveElevStatesRx = make(chan map[int]messages.ElevStates)
-	node.AllElevStatesRx = make(chan map[int]messages.ElevStates)
+	node.ActiveElevStatesRx = make(chan map[int]messages.NodeElevState)
+	node.AllElevStatesRx = make(chan map[int]messages.NodeElevState)
 	node.ActiveNodeIDsRx = make(chan []int)
 	go comm.ElevStatesListener(node.ID, node.commandTx, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, elevStatesRx, node.AllElevStatesRx)
 

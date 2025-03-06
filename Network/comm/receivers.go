@@ -61,14 +61,14 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
 func ElevStatesListener(myID int, commandRx <-chan string,
 	timeOfLastContactTx chan<- time.Time,
-	activeElevStatesTx chan<- map[int]messages.ElevStates,
+	activeElevStatesTx chan<- map[int]messages.NodeElevState,
 	activeNodeIDsTx chan<- []int,
-	elevStatesRx <-chan messages.ElevStates,
-	allElevStatesTx chan<- map[int]messages.ElevStates) {
+	elevStatesRx <-chan messages.NodeElevState,
+	allElevStatesTx chan<- map[int]messages.NodeElevState) {
 	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
 	lastSeen := make(map[int]time.Time)
-	knownNodes := make(map[int]messages.ElevStates)
+	knownNodes := make(map[int]messages.NodeElevState)
 	timeOfLastContact := time.Time{}
 	for {
 		select {
@@ -86,7 +86,7 @@ func ElevStatesListener(myID int, commandRx <-chan string,
 
 			switch command {
 			case "getActiveElevStates":
-				activeNodes := make(map[int]messages.ElevStates)
+				activeNodes := make(map[int]messages.NodeElevState)
 				for id, t := range lastSeen {
 					if time.Since(t) < config.CONNECTION_TIMEOUT {
 						activeNodes[id] = knownNodes[id]

@@ -108,7 +108,7 @@ func MasterProgram(node *NodeData) nodestate {
 				if HA.HallButton != elevator.BT_Cab {
 					node.GlobalHallRequests[HA.Floor][HA.HallButton] = false
 				} else {
-					fmt.Println("Some less intelligent cretin sent a hall assignment complete message with the wrong button type (cab btn)")
+					fmt.Printf("Recieved invalid completion %v", HA.HallButton)
 				}
 
 				recentHACompleteBuffer.Add(HA.MessageID)
@@ -147,7 +147,7 @@ func MasterProgram(node *NodeData) nodestate {
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
 			node.commandToServerTx <- "getActiveElevStates"
-
+		
 		case <-node.HallAssignmentsRx:
 		case <-node.RequestDoorStateCh:
 		case <-node.HallAssignmentCompleteAckRx:

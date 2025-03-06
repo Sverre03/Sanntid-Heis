@@ -7,8 +7,6 @@ import (
 func RunTestNode() {
 	Node1 := node.Node(1)
 	go node.SlaveProgram(Node1)
-	Node2 := node.Node(2)
-	go node.MasterProgram(Node2)
 
 	// Node1.ElevStatesTx <- messages.ElevStates{NodeID: 1, Direction: elevator.MD_Up, Behavior: "idle", Floor: 1, CabRequest: [4]bool{false, true, false, false}}
 

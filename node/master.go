@@ -8,7 +8,6 @@ import (
 	"elev/util/config"
 	"elev/util/msgidbuffer"
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -47,29 +46,25 @@ func MasterProgram(node *NodeData) {
 
 			for id := range newElevStates {
 				if newElevStates[id].ElevState.Floor < 0 {
-					fmt.Println("Error: invalid elevator floor for elevator %d ", id)
+					fmt.Printf("Error: invalid elevator floor for elevator %d ", id)
 					return
 				}
 			}
 			if activeReq {
 				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, node.GlobalHallRequests)
 				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
-				for id, hallRequests := range *HRAoutput {
-					nodeID, err := strconv.Atoi(id)
-					if err != nil {
-						fmt.Println("Error: ", err)
-					}
+				
+				for nodeID, hallRequests := range HRAoutput {
 					if nodeID == node.ID {
-						hallAssignmentTaskQueue := hallRequests
-						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTaskQueue)
-					}else{
+						hallAssignmentTasks := hallRequests
+						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTasks)
+					} else {
 						fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, nodeID, hallRequests)
 						//sending hall requests to all nodes assuming all
 						//nodes are connected and not been disconnected after sending out internal states
 						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
 					}
 
-					
 				}
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				activeReq = false

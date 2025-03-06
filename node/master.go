@@ -5,11 +5,9 @@ import (
 	"elev/Network/network/messages"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
-	"elev/util/config"
 	"elev/util/msgidbuffer"
 	"fmt"
 	"strconv"
-	"time"
 )
 
 func MasterProgram(node *NodeData) {
@@ -62,14 +60,13 @@ func MasterProgram(node *NodeData) {
 					if nodeID == node.ID {
 						hallAssignmentTaskQueue := hallRequests
 						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTaskQueue)
-					}else{
+					} else {
 						fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, nodeID, hallRequests)
 						//sending hall requests to all nodes assuming all
 						//nodes are connected and not been disconnected after sending out internal states
 						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
 					}
 
-					
 				}
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				activeReq = false
@@ -122,6 +119,8 @@ func MasterProgram(node *NodeData) {
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
 		case <-node.HallAssignmentsRx:
+		case <-node.RequestDoorStateCh:
+		case <-node.HallAssignmentCompleteAckRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.HallLightUpdateRx:
@@ -137,8 +136,6 @@ func MasterProgram(node *NodeData) {
 					fmt.Println("Error:", err)
 				}
 			}
-		case <-time.After(config.NODE_DOOR_POLL_RATE):
-			node.RequestDoorStateCh <- true
 
 		case currentElevStates := <-node.ElevatorHRAStatesRx:
 			myCurrentState = messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}

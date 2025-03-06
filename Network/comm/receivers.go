@@ -64,15 +64,25 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 	activeElevStatesTx chan<- map[int]messages.NodeElevState,
 	activeNodeIDsTx chan<- []int,
 	elevStatesRx <-chan messages.NodeElevState,
-	allElevStatesTx chan<- map[int]messages.NodeElevState) {
+	allElevStatesTx chan<- map[int]messages.NodeElevState,
+	connectionTimeoutEventTx chan<- bool,
+) {
 	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
 	enableTOLCUpdate := false
+	timeoutTimer := time.NewTimer(config.NODE_CONNECTION_TIMEOUT)
+	timeoutTimer.Stop()
+
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]messages.NodeElevState)
 	timeOfLastContact := time.Time{}
+
 	for {
 		select {
+
+		case <-timeoutTimer.C:
+			enableTOLCUpdate = false
+			connectionTimeoutEventTx <- true
 
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
@@ -80,6 +90,7 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 
 				if enableTOLCUpdate {
 					timeOfLastContact = time.Now()
+					timeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				}
 
 				knownNodes[id] = elevState
@@ -115,11 +126,10 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 			case "getAllElevStates":
 				allElevStatesTx <- knownNodes
 
-			case "enableTOLCUpdate":
+			case "startConnectionTimeoutDetection":
+				timeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				enableTOLCUpdate = true
 
-			case "disableTOLCUpdate":
-				enableTOLCUpdate = false
 			}
 		}
 	}

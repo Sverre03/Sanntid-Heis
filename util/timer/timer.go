@@ -31,5 +31,16 @@ func TimerStop(inTimer *Timer) {
 }
 
 func TimerTimedOut(inTimer Timer) bool {
-	return inTimer.Active && GetWallTime().After(inTimer.EndTime)
+	return inTimer.Active && time.Until(inTimer.EndTime) <= 0
+}
+
+func TimerTimeLeft(inTimer Timer) time.Duration {
+	if !inTimer.Active {
+		return 0
+	}
+	timeLeft := inTimer.EndTime.Sub(GetWallTime())
+	if timeLeft < 0 {
+		return 0
+	}
+	return timeLeft
 }

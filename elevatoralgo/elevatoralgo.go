@@ -36,22 +36,25 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	go elevator.PollButtons(buttonEvent)
 	go elevator.PollFloorSensor(floorEvent)
 	go elevator.PollObstructionSwitch(obstructionEvent)
-	go elevator.PollTimer(doorOpenTimer, doorTimeoutEvent)
-	go elevator.PollTimer(doorStuckTimer, doorStuckEvent)
-	go TransmitHRAElevState(elev, ElevatorHRAStatesTx)
+	go TransmitHRAElevState(&elev, ElevatorHRAStatesTx)
 
-	// Periodic state monitor - logs elevator state every 5 seconds for debugging
+	// Check if the door has been open for its maximum duration
 	go func() {
-		for range time.Tick(5 * time.Second) {
-			fmt.Println("\n--- Elevator State Monitor ---")
-			elevator.PrintElevator(elev)
-			fmt.Printf("Door timer active: %v\n", timer.Active(doorOpenTimer))
-			if timer.Active(doorOpenTimer) {
-				timeLeft := time.Until(doorOpenTimer.EndTime)
-				fmt.Printf("Door timer time left: %.2f seconds\n", timeLeft.Seconds())
+		for range time.Tick(config.INPUT_POLL_RATE) {
+			if doorOpenTimer.Active && timer.TimerTimedOut(doorOpenTimer) {
+				fmt.Println("BACKUP CHECK: Door timer timed out but no event received!")
+				doorTimeoutEvent <- true
 			}
-			fmt.Printf("Door stuck timer active: %v\n", timer.Active(doorStuckTimer))
-			fmt.Println("---------------------------")
+		}
+	}()
+
+	// Check if the door is stuck
+	go func() {
+		for range time.Tick(50 * time.Millisecond) {
+			if doorStuckTimer.Active && timer.TimerTimedOut(doorStuckTimer) {
+				fmt.Println("BACKUP CHECK: Door stuck timer timed out but no event received!")
+				doorStuckEvent <- true
+			}
 		}
 	}()
 
@@ -62,6 +65,8 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 				button.Floor, elevator.ButtonToString(button.Button))
 
 			if (button.Button == elevator.BT_HallDown) || (button.Button == elevator.BT_HallUp) {
+				fmt.Printf("Forwarding hall call to node: Floor %d, Button %s\n",
+					button.Floor, elevator.ButtonToString(button.Button))
 				ElevatorHallButtonEventTx <- elevator.ButtonEvent{ // Forward the hall call to the node
 					Floor:  button.Floor,
 					Button: button.Button,
@@ -101,13 +106,13 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 }
 
 // Transmit the elevator state to the node
-func TransmitHRAElevState(elev elevator.Elevator, ElevatorHRAStatesRx chan elevator.ElevatorState) {
+func TransmitHRAElevState(elev *elevator.Elevator, ElevatorHRAStatesRx chan elevator.ElevatorState) {
 	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
 		ElevatorHRAStatesRx <- elevator.ElevatorState{
 			Behavior:    elev.Behavior,
 			Floor:       elev.Floor,
 			Direction:   elev.Dir,
-			CabRequests: elevator.GetCabRequestsAsElevState(elev),
+			CabRequests: elevator.GetCabRequestsAsElevState(*elev),
 		}
 	}
 }

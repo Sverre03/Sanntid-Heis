@@ -8,7 +8,6 @@ import (
 	"elev/Network/comm"
 	"elev/Network/network/bcast"
 	"elev/Network/network/messages"
-	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/elevatoralgo"
 	"elev/util/config"
@@ -56,11 +55,11 @@ type NodeData struct {
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	// Elevator-Node communication channels
-	ElevatorHallButtonEventTx chan elevator.ButtonEvent             // Transmit assigned hall calls to elevator
-	ElevatorHallButtonEventRx chan elevator.ButtonEvent             // Receives local hall button presses from node
-	ElevatorHRAStatesRx       chan hallRequestAssigner.HRAElevState // Receives the elevator's HRA states
-	IsDoorStuckCh             chan bool                             // Receives the elevator's door state (if it is stuck or not)
-	RequestDoorStateCh        chan bool                             // Sends a request to the elevator to check its door state
+	ElevatorHallButtonEventTx chan elevator.ButtonEvent   // Transmit assigned hall calls to elevator
+	ElevatorHallButtonEventRx chan elevator.ButtonEvent   // Receives local hall button presses from node
+	ElevatorHRAStatesRx       chan elevator.ElevatorState // Receives the elevator's HRA states
+	IsDoorStuckCh             chan bool                   // Receives the elevator's door state (if it is stuck or not)
+	RequestDoorStateCh        chan bool                   // Sends a request to the elevator to check its door state
 
 	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete
@@ -139,7 +138,7 @@ func Node(id int) *NodeData {
 
 	node.ElevatorHallButtonEventTx = make(chan elevator.ButtonEvent)
 	node.ElevatorHallButtonEventRx = make(chan elevator.ButtonEvent)
-	node.ElevatorHRAStatesRx = make(chan hallRequestAssigner.HRAElevState)
+	node.ElevatorHRAStatesRx = make(chan elevator.ElevatorState)
 	node.IsDoorStuckCh = make(chan bool)
 	node.RequestDoorStateCh = make(chan bool)
 	go elevatoralgo.ElevatorProgram(node.ElevatorHallButtonEventRx, node.ElevatorHRAStatesRx, node.ElevatorHallButtonEventTx, node.IsDoorStuckCh, node.RequestDoorStateCh)

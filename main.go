@@ -1,7 +1,6 @@
 package main
 
 import (
-	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/elevatoralgo"
 )
@@ -14,15 +13,20 @@ func main() {
 	ElevatorHallButtonEventRx := make(chan elevator.ButtonEvent)
 	IsDoorStuckCh := make(chan bool)
 	DoorStateRequestCh := make(chan bool)
-	elevatoralgo.ElevatorProgram(ElevatorHallButtonEventTx, ElevatorHRAStatesTx, ElevatorHallButtonEventRx, IsDoorStuckCh, DoorStateRequestCh)
-	// Read from the channels to prevent the program from exiting and to keep the polling routines running
+
+	go elevatoralgo.ElevatorProgram(ElevatorHallButtonEventTx, ElevatorHRAStatesTx, ElevatorHallButtonEventRx, IsDoorStuckCh, DoorStateRequestCh)
 	for {
 		select {
-		case <-ElevatorHallButtonEventTx:
-		case <-ElevatorHRAStatesTx:
 		case <-ElevatorHallButtonEventRx:
+			// Do something
+		case <-ElevatorHRAStatesTx:
+			// Do something
 		case <-IsDoorStuckCh:
+			// Do something
 		case <-DoorStateRequestCh:
+			// Do something
+		case <-ElevatorHallButtonEventTx:
+			// Do something
 		}
 	}
 }

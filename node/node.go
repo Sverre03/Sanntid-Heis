@@ -4,25 +4,30 @@
 package node
 
 import (
-	"context"
 	"elev/Network/comm"
 	"elev/Network/network/bcast"
 	"elev/Network/network/messages"
 	"elev/elevator"
 	"elev/elevatoralgo"
 	"elev/util/config"
-	"fmt"
 	"time"
-
-	"github.com/looplab/fsm"
 )
 
 // NodeData represents a node in the distributed elevator system.
 // It contains the node's state machine, communication channels,
 // and necessary data for the node to function.
+
+type nodestate int
+
+const (
+	Inactive nodestate = iota
+	Disconnected
+	Master
+	Slave
+)
+
 type NodeData struct {
-	ID        int
-	NodeState *fsm.FSM
+	ID int
 
 	GlobalHallRequests [config.NUM_FLOORS][2]bool
 
@@ -73,28 +78,6 @@ func Node(id int) *NodeData {
 	node := &NodeData{
 		ID: id,
 	}
-	node.NodeState = fsm.NewFSM(
-		"inactive",
-		fsm.Events{
-			{Name: "initialize", Src: []string{"inactive"}, Dst: "disconnected"},
-			{Name: "connect", Src: []string{"disconnected"}, Dst: "slave"},
-			{Name: "disconnect", Src: []string{"slave", "master"}, Dst: "disconnected"},
-			{Name: "promote", Src: []string{"slave", "disconnected"}, Dst: "master"},
-			{Name: "demote", Src: []string{"master"}, Dst: "slave"},
-			{Name: "inactivate", Src: []string{"slave", "disconnected", "master"}, Dst: "inactive"},
-		},
-
-		fsm.Callbacks{
-			"enter_state": func(_ context.Context, e *fsm.Event) {
-				fmt.Printf("Node %d skiftet fra %s til %s\node", node.ID, e.Src, e.Dst)
-			},
-
-			"enter_master":       node.onEnterMaster,
-			"enter_slave":        node.onEnterSlave,
-			"enter_disconnected": node.onEnterDisconnected,
-			"enter_inactive":     node.onEnterInactive,
-		},
-	)
 
 	// broadcast channels
 	node.AckTx = make(chan messages.Ack)
@@ -158,20 +141,4 @@ func Node(id int) *NodeData {
 	go comm.LightUpdateTransmitter(lightUpdateTransToBroadcast, node.HallLightUpdateTx, lightUpdateAckRx)
 
 	return node
-}
-
-func (node *NodeData) onEnterInactive(_ context.Context, e *fsm.Event) {
-	InactiveProgram(node)
-}
-
-func (node *NodeData) onEnterDisconnected(_ context.Context, e *fsm.Event) {
-	DisconnectedProgram(node)
-}
-
-func (node *NodeData) onEnterSlave(_ context.Context, e *fsm.Event) {
-	SlaveProgram(node)
-}
-
-func (node *NodeData) onEnterMaster(_ context.Context, e *fsm.Event) {
-	MasterProgram(node)
 }

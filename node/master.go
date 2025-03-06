@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"elev/Network/network/messages"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
@@ -9,7 +8,7 @@ import (
 	"fmt"
 )
 
-func MasterProgram(node *NodeData) {
+func MasterProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
 	var myCurrentState messages.NodeElevState
 	activeNewHallReq := false
@@ -22,6 +21,7 @@ func MasterProgram(node *NodeData) {
 	Select:
 		select {
 		case newHallReq := <-node.NewHallReqRx:
+
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
 			switch newHallReq.HallButton {
 
@@ -119,23 +119,11 @@ func MasterProgram(node *NodeData) {
 
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
-		case <-node.HallAssignmentsRx:
-		case <-node.RequestDoorStateCh:
-		case <-node.HallAssignmentCompleteAckRx:
-		case <-node.CabRequestInfoRx:
-		case <-node.GlobalHallRequestRx:
-		case <-node.HallLightUpdateRx:
-		case <-node.ConnectionReqAckRx:
-		case <-node.ElevatorHRAStatesRx:
-		case <-node.AllElevStatesFromServerRx:
-		case <-node.TOLCFromServerRx:
-		case <-node.ActiveNodeIDsFromServerRx:
-		//Master running its own elevator
+			//Master running its own elevator
 		case isDoorStuck := <-node.IsDoorStuckCh:
 			if isDoorStuck {
-				if err := node.NodeState.Event(context.Background(), "inactivate"); err != nil {
-					fmt.Println("Error:", err)
-				}
+
+				return Inactive
 			}
 
 		case currentElevStates := <-node.ElevatorHRAStatesRx:
@@ -143,7 +131,7 @@ func MasterProgram(node *NodeData) {
 			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
 
 		case newHallReq := <-node.ElevatorHallButtonEventRx:
-			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
+			fmt.Printf("Node %d received a new hall request from my elevator: %v\n", node.ID, newHallReq)
 			switch newHallReq.Button {
 
 			case elevator.BT_HallUp:
@@ -159,6 +147,19 @@ func MasterProgram(node *NodeData) {
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
 			node.commandToServerTx <- "getActiveElevStates"
+
+		case <-node.HallAssignmentsRx:
+		case <-node.RequestDoorStateCh:
+		case <-node.HallAssignmentCompleteAckRx:
+		case <-node.CabRequestInfoRx:
+		case <-node.GlobalHallRequestRx:
+		case <-node.HallLightUpdateRx:
+		case <-node.ConnectionReqAckRx:
+		case <-node.ElevatorHRAStatesRx:
+		case <-node.AllElevStatesFromServerRx:
+		case <-node.TOLCFromServerRx:
+		case <-node.ActiveNodeIDsFromServerRx:
+			// when you get a message here, do nothing
 		}
 	}
 }

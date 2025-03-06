@@ -123,16 +123,34 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	}
 }
 
+// func PollTimer(inTimer timer.Timer, receiver chan<- bool) {
+// 	prev := false
+// 	for {
+// 		time.Sleep(_pollRate)
+// 		v := timer.TimerTimedOut(inTimer)
+// 		if v != prev {
+// 			receiver <- v
+// 			fmt.Println("Timer timed out")
+// 		}
+// 		prev = v
+// 	}
+// }
+
 func PollTimer(inTimer timer.Timer, receiver chan<- bool) {
-	prev := false
-	for {
-		time.Sleep(_pollRate)
-		v := timer.TimerTimedOut(inTimer)
-		if v != prev {
-			receiver <- v
-		}
-		prev = v
-	}
+    prev := false
+    for {
+        time.Sleep(_pollRate)
+        // IMPORTANT FIX: Get current timer status instead of keeping a local reference
+        currentTimerValue := timer.TimerTimedOut(inTimer)
+        
+        // Only send when transitioning from false to true
+        if currentTimerValue && !prev {
+            fmt.Printf("Timer timed out! Active=%v, EndTime=%v\n", 
+                inTimer.Active, inTimer.EndTime.Format("15:04:05.000"))
+            receiver <- true
+        }
+        prev = currentTimerValue
+    }
 }
 
 func GetButton(button ButtonType, floor int) bool {

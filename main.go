@@ -1,7 +1,8 @@
 package main
 
 import (
-	"elev/tests"
+	"elev/elevator"
+	"elev/elevatoralgo"
 )
 
 func main() {

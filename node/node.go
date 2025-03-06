@@ -55,16 +55,17 @@ type NodeData struct {
 	AllElevStatesFromServerRx    chan map[int]messages.NodeElevState
 	TOLCFromServerRx             chan time.Time // Receives the Time of Last Contact
 	ActiveNodeIDsFromServerRx    chan []int     // Receives the IDs of the active nodes on the network
+	ConnectionTimeoutEventRx     chan bool
 
 	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	// Elevator-Node communication channels
 	ElevatorHallButtonAssignmentTx chan [config.NUM_FLOORS][2]bool // Transmits assigned hall calls to elevator, [floor][up/down]
-	ElevatorHallButtonEventRx chan elevator.ButtonEvent       // Receives local hall button presses from node
-	ElevatorHRAStatesRx       chan elevator.ElevatorState     // Receives the elevator's internal state
-	IsDoorStuckCh             chan bool                       // Receives the elevator's door state (if it is stuck or not)
-	RequestDoorStateCh        chan bool                       // Sends a request to the elevator to check its door state
+	ElevatorHallButtonEventRx      chan elevator.ButtonEvent       // Receives local hall button presses from node
+	ElevatorHRAStatesRx            chan elevator.ElevatorState     // Receives the elevator's internal state
+	IsDoorStuckCh                  chan bool                       // Receives the elevator's door state (if it is stuck or not)
+	RequestDoorStateCh             chan bool                       // Sends a request to the elevator to check its door state
 
 	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete
@@ -87,7 +88,6 @@ func CreateNode(id int) *NodeData {
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
 	node.NewHallReqTx = make(chan messages.NewHallRequest)
 	node.HallAssignmentCompleteTx = make(chan messages.HallAssignmentComplete)
-
 	HATransToBcastTx := make(chan messages.NewHallAssignments)         // channel for comm from Hall Assignment Transmitter process to Broadcaster
 	lightUpdateTransToBroadcast := make(chan messages.HallLightUpdate) //channel for communication from light update transmitter process and broadcaster
 	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
@@ -132,7 +132,8 @@ func CreateNode(id int) *NodeData {
 	node.ActiveElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
 	node.AllElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
 	node.ActiveNodeIDsFromServerRx = make(chan []int)
-	go comm.NodeElevStateServer(node.ID, node.commandToServerTx, node.TOLCFromServerRx, node.ActiveElevStatesFromServerRx, node.ActiveNodeIDsFromServerRx, elevStatesRx, node.AllElevStatesFromServerRx)
+	node.ConnectionTimeoutEventRx = make(chan bool)
+	go comm.NodeElevStateServer(node.ID, node.commandToServerTx, node.TOLCFromServerRx, node.ActiveElevStatesFromServerRx, node.ActiveNodeIDsFromServerRx, elevStatesRx, node.AllElevStatesFromServerRx, node.ConnectionTimeoutEventRx)
 
 	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)

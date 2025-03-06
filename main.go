@@ -10,7 +10,7 @@ func main() {
 	// tests.TestTransmitFunctions()
 	// tests.RunTestNode()
 	ElevatorHallButtonEventTx := make(chan elevator.ButtonEvent)
-	ElevatorHRAStatesTx := make(chan hallRequestAssigner.HRAElevState)
+	ElevatorHRAStatesTx := make(chan elevator.ElevatorState)
 	ElevatorHallButtonEventRx := make(chan elevator.ButtonEvent)
 	IsDoorStuckCh := make(chan bool)
 	DoorStateRequestCh := make(chan bool)

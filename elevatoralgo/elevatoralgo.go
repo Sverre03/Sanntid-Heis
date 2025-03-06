@@ -1,7 +1,6 @@
 package elevatoralgo
 
 import (
-	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/util/config"
 	"elev/util/timer"
@@ -11,7 +10,7 @@ import (
 
 // Tx and Rx is from the view of the elevator.
 func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
-	ElevatorHRAStatesTx chan hallRequestAssigner.HRAElevState, ElevatorHallButtonEventRx chan elevator.ButtonEvent, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
+	ElevatorHRAStatesTx chan elevator.ElevatorState, ElevatorHallButtonEventRx chan elevator.ButtonEvent, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
 
 	var elev elevator.Elevator = elevator.NewElevator()
 

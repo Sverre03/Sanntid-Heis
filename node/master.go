@@ -1,16 +1,24 @@
 package node
 
 import (
+	"context"
 	"elev/Network/network/messages"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
+	"elev/util/config"
 	"elev/util/msgidbuffer"
 	"fmt"
 	"strconv"
+	"time"
 )
+
+type taskQueue struct {
+	taskQueue [config.NUM_FLOORS][2]bool
+} //placeholder for testing
 
 func MasterProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
+	taskQueue := taskQueue{}
 	activeReq := false
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgidbuffer.MessageIDBuffer
@@ -32,6 +40,8 @@ func MasterProgram(node *NodeData) {
 			case elevator.BT_Cab:
 				fmt.Println("Received a new hall requests, but the button type was invalid")
 			}
+
+			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeReq = true
 			node.commandTx <- "getActiveElevStates"
 
@@ -45,9 +55,13 @@ func MasterProgram(node *NodeData) {
 					if err != nil {
 						fmt.Println("Error: ", err)
 					}
+					if id == node.ID {
+						taskQueue.taskQueue = hallRequests
+					}
+
 					fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, nodeID, hallRequests)
 					//sending hall requests to all nodes assuming all
-					//nodes are connected nad not been disconnected after sending out internal states
+					//nodes are connected and not been disconnected after sending out internal states
 					node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
 				}
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
@@ -105,11 +119,41 @@ func MasterProgram(node *NodeData) {
 		case <-node.GlobalHallRequestRx:
 		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
-		case <-node.ElevatorHallButtonEventRx:
 		case <-node.ElevatorHRAStatesRx:
 		case <-node.AllElevStatesRx:
 		case <-node.TOLCRx:
 		case <-node.ActiveNodeIDsRx:
+		//Master running its own elevator
+		case isDoorStuck := <-node.IsDoorStuckCh:
+			if isDoorStuck {
+				if err := node.NodeState.Event(context.Background(), "inactivate"); err != nil {
+					fmt.Println("Error:", err)
+				}
+			}
+		case <-time.After(config.NODE_DOOR_POLL_RATE):
+			node.RequestDoorStateCh <- true
+		
+		case currentElevStates := <-node.ElevatorHRAStatesRx:
+			fmt.Printf("Node %d received active elev states: %v\n", node.ID, currentElevStates)
+			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction, Behavior: currentElevStates.Behavior, 
+			CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}	
+		case newHallReq := <-node.ElevatorHallButtonEventRx:
+			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
+			switch newHallReq.Button {
+
+			case elevator.BT_HallUp:
+				node.GlobalHallRequests[newHallReq.Floor][elevator.BT_HallUp] = true
+
+			case elevator.BT_HallDown:
+				node.GlobalHallRequests[newHallReq.Floor][elevator.BT_HallDown] = true
+
+			case elevator.BT_Cab:
+				fmt.Println("Received a new hall requests, but the button type was invalid")
+			}
+
+			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
+			activeReq = true
+			node.commandTx <- "getActiveElevStates"
 		}
 	}
 }

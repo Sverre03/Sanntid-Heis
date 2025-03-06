@@ -46,7 +46,7 @@ func MasterProgram(node *NodeData) {
 			fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
 
 			for id := range newElevStates {
-				if newElevStates[id].Floor < 0 {
+				if newElevStates[id].ElevState.Floor < 0 {
 					fmt.Println("Error: invalid elevator floor for elevator %d ", id)
 					return
 				}
@@ -92,7 +92,7 @@ func MasterProgram(node *NodeData) {
 				for id := range activeConnReq {
 					var cabRequestInfo messages.CabRequestInfo
 					if states, ok := allElevStates[id]; ok {
-						cabRequestInfo = messages.CabRequestInfo{CabRequest: states.CabRequest, ReceiverNodeID: id}
+						cabRequestInfo = messages.CabRequestInfo{CabRequest: states.ElevState.CabRequests, ReceiverNodeID: id}
 					}
 					// sjekke om id finnes i map
 					// hvis ja: send svar
@@ -141,10 +141,8 @@ func MasterProgram(node *NodeData) {
 			node.RequestDoorStateCh <- true
 
 		case currentElevStates := <-node.ElevatorHRAStatesRx:
-			myCurrentState = messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction,
-			Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
-			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction,
-			Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
+			myCurrentState = messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
+			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
 
 		case newHallReq := <-node.ElevatorHallButtonEventRx:
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)

@@ -16,6 +16,11 @@ func SlaveProgram(node *NodeData) nodestate {
 				return Inactive
 			}
 
+		case timeout := <-node.ConnectionTimeoutEventRx:
+			if timeout {
+				return Disconnected
+			}
+
 		case newHA := <-node.HallAssignmentsRx:
 			if newHA.NodeID != node.ID {
 				break

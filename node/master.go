@@ -87,15 +87,13 @@ func MasterProgram(node *NodeData) nodestate {
 		case allElevStates := <-node.AllElevStatesFromServerRx:
 			if len(activeConnReq) != 0 {
 
-				// her antas det at en id eksisterer i allElevStates Mappet dersom den eksisterer i activeConnReq, dette er en feilaktig antagelse
-
 				for id := range activeConnReq {
 					var cabRequestInfo messages.CabRequestInfo
 					if states, ok := allElevStates[id]; ok {
 						cabRequestInfo = messages.CabRequestInfo{CabRequest: states.ElevState.CabRequests, ReceiverNodeID: id}
 					}
 					// sjekke om id finnes i map
-					// hvis ja: send svar
+					// hvis ja: send svar med de tilstandene du kjenner
 					// hvis nei: send svar likevel
 					node.CabRequestInfoTx <- cabRequestInfo
 					delete(activeConnReq, id)
@@ -122,7 +120,11 @@ func MasterProgram(node *NodeData) nodestate {
 
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
-			//Master running its own elevator
+		case timeout := <-node.ConnectionTimeoutEventRx:
+			if timeout {
+				return Disconnected
+			}
+
 		case isDoorStuck := <-node.IsDoorStuckCh:
 			if isDoorStuck {
 
@@ -150,9 +152,7 @@ func MasterProgram(node *NodeData) nodestate {
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
 			node.commandToServerTx <- "getActiveElevStates"
-		
-		
-		
+
 		case <-node.HallAssignmentsRx:
 		case <-node.RequestDoorStateCh:
 		case <-node.HallAssignmentCompleteAckRx:

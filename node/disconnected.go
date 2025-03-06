@@ -61,12 +61,13 @@ func DisconnectedProgram(node *NodeData) nodestate {
 				lastReceivedAck = &connReqAck
 				node.commandToServerTx <- "getTOLC"
 			}
+
 		case TOLC := <-node.TOLCFromServerRx:
 			if lastReceivedAck != nil && node.ID != lastReceivedAck.NodeID && lastReceivedAck.NodeID == currentFriendID {
 
 				if connReq, exists := incomingConnRequests[lastReceivedAck.NodeID]; exists {
-					shouldBeMaster := ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, TOLC, connReq.TOLC)
-					if shouldBeMaster {
+
+					if ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, TOLC, connReq.TOLC) {
 						return Master
 					} else {
 						return Slave
@@ -76,8 +77,10 @@ func DisconnectedProgram(node *NodeData) nodestate {
 			}
 
 		case <-node.GlobalHallRequestRx:
-			// here, we must check if the master knows anything about us
-			// this message transaction should be defined better than it is now, who sends what?
+			// here, we must check if the master knows anything about us, before we become a slave
+			if timeOfLastContact.IsZero() {
+				// do smth
+			}
 			return Slave
 
 		case isDoorStuck := <-node.IsDoorStuckCh:
@@ -85,10 +88,14 @@ func DisconnectedProgram(node *NodeData) nodestate {
 				return Inactive
 			}
 
+		case info := <-node.CabRequestInfoRx:
+			if node.ID == info.ReceiverNodeID {
+
+			}
+			// check if you receive some useful info here
 		// Prevent blocking of unused channels
 		case <-node.HallAssignmentsRx:
 		case <-node.RequestDoorStateCh:
-		case <-node.CabRequestInfoRx:
 		case <-node.HallLightUpdateRx:
 		case <-node.ElevatorHRAStatesRx:
 		case <-node.AllElevStatesFromServerRx:
@@ -100,15 +107,16 @@ func DisconnectedProgram(node *NodeData) nodestate {
 		case <-node.IsDoorStuckCh:
 		case <-node.RequestDoorStateCh:
 		case <-node.ActiveElevStatesFromServerRx:
+		case <-node.ConnectionTimeoutEventRx:
 		}
 	}
 }
 
 func ShouldBeMaster(myID int, otherID int, _currentFriendID int, TOLC time.Time, otherTOLC time.Time) bool {
 	// Compare TOLC values to determine who becomes master
-	if TOLC.Before(otherTOLC) { // The other node has more recent data --> We should be master
+	if TOLC.Before(otherTOLC) { // We have the more recent data --> We should be master
 		return true
-	} else if TOLC.After(otherTOLC) { // We have more recent data --> We should be slave
+	} else if TOLC.After(otherTOLC) { // We dont have more recent data --> We should be slave
 		return false
 	} else { // TOLC values are equal --> Compare node IDs
 		if myID > otherID {

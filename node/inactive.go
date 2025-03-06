@@ -35,6 +35,7 @@ func InactiveProgram(node *NodeData) nodestate {
 		case <-node.ElevatorHRAStatesRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
+		case <-node.ConnectionTimeoutEventRx:
 		}
 	}
 }

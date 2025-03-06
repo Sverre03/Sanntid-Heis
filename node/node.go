@@ -8,7 +8,6 @@ import (
 	"elev/Network/network/bcast"
 	"elev/Network/network/messages"
 	"elev/elevator"
-	"elev/elevatoralgo"
 	"elev/util/config"
 	"time"
 )
@@ -27,8 +26,8 @@ const (
 )
 
 type NodeData struct {
-	ID int
-
+	ID                 int
+	State              nodestate
 	GlobalHallRequests [config.NUM_FLOORS][2]bool
 
 	AckTx        chan messages.Ack
@@ -73,10 +72,11 @@ type NodeData struct {
 	GlobalHallReqTransmitEnableTx chan bool
 }
 
-func Node(id int) *NodeData {
+func CreateNode(id int) *NodeData {
 
 	node := &NodeData{
-		ID: id,
+		ID:    id,
+		State: Inactive,
 	}
 
 	// broadcast channels
@@ -125,7 +125,7 @@ func Node(id int) *NodeData {
 	node.ElevatorHRAStatesRx = make(chan elevator.ElevatorState)
 	node.IsDoorStuckCh = make(chan bool)
 	node.RequestDoorStateCh = make(chan bool)
-	go elevatoralgo.ElevatorProgram(node.ElevatorHallButtonEventRx, node.ElevatorHRAStatesRx, node.ElevatorHallButtonAssignmentTx, node.IsDoorStuckCh, node.RequestDoorStateCh)
+	go elevator.ElevatorProgram(node.ElevatorHallButtonEventRx, node.ElevatorHRAStatesRx, node.ElevatorHallButtonAssignmentTx, node.IsDoorStuckCh, node.RequestDoorStateCh)
 
 	node.commandToServerTx = make(chan string)
 	node.TOLCFromServerRx = make(chan time.Time)

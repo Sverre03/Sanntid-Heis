@@ -5,16 +5,16 @@ import (
 )
 
 type Timer struct {
-	endTime time.Time
-	active  bool
+	EndTime time.Time
+	Active  bool
 }
 
 func Active(inTimer Timer) bool {
-	return inTimer.active
+	return inTimer.Active
 }
 
 func NewTimer() Timer {
-	return Timer{endTime: time.Time{}, active: false}
+	return Timer{EndTime: time.Time{}, Active: false}
 }
 
 func GetWallTime() time.Time {
@@ -22,14 +22,14 @@ func GetWallTime() time.Time {
 }
 
 func TimerStart(inTimer *Timer, duration time.Duration) {
-	inTimer.endTime = GetWallTime().Add(duration)
-	inTimer.active = true
+	inTimer.EndTime = GetWallTime().Add(duration)
+	inTimer.Active = true
 }
 
 func TimerStop(inTimer *Timer) {
-	inTimer.active = false
+	inTimer.Active = false
 }
 
 func TimerTimedOut(inTimer Timer) bool {
-	return inTimer.active && GetWallTime().After(inTimer.endTime)
+	return inTimer.Active && GetWallTime().After(inTimer.EndTime)
 }

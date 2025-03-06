@@ -50,9 +50,7 @@ func SlaveProgram(node *NodeData) {
 			node.NewHallReqTx <- messages.NewHallRequest{Floor: btnEvent.Floor, HallButton: btnEvent.Button}
 
 		case currentElevStates := <-node.ElevatorHRAStatesRx:
-			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, Direction: currentElevStates.Direction,
-				Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
-
+			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
 		case <-node.ActiveElevStatesRx:
 		case <-node.AllElevStatesRx:
 		case <-node.NewHallReqRx:

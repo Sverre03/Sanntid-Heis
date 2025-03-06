@@ -148,7 +148,7 @@ func Node(id int) *NodeData {
 	node.ActiveElevStatesRx = make(chan map[int]messages.NodeElevState)
 	node.AllElevStatesRx = make(chan map[int]messages.NodeElevState)
 	node.ActiveNodeIDsRx = make(chan []int)
-	go comm.ElevStatesListener(node.ID, node.commandTx, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, elevStatesRx, node.AllElevStatesRx)
+	go comm.NodeElevStatesServer(node.ID, node.commandTx, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, elevStatesRx, node.AllElevStatesRx)
 
 	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)

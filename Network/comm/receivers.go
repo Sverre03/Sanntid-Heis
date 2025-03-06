@@ -59,7 +59,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 // you can requests to know the states by sending a string on  commandCh
 // commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
-func ElevStatesListener(myID int, commandRx <-chan string,
+func NodeElevStatesServer(myID int, commandRx <-chan string,
 	timeOfLastContactTx chan<- time.Time,
 	activeElevStatesTx chan<- map[int]messages.NodeElevState,
 	activeNodeIDsTx chan<- []int,
@@ -67,6 +67,7 @@ func ElevStatesListener(myID int, commandRx <-chan string,
 	allElevStatesTx chan<- map[int]messages.NodeElevState) {
 	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
+	enable := false
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]messages.NodeElevState)
 	timeOfLastContact := time.Time{}

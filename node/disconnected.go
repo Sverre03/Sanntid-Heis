@@ -1,16 +1,16 @@
 package node
 
 import (
-	"context"
 	"elev/Network/comm"
 	"elev/Network/network/messages"
 	"fmt"
 	"time"
 )
 
-func DisconnectedProgram(node *NodeData) {
+func DisconnectedProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
-	timeOfLastContact := time.Time{} // placeholder for getting from server
+
+	timeOfLastContact := time.Time{}
 	msgID, _ := comm.GenerateMessageID(comm.CONNECTION_REQ)
 
 	myConnReq := messages.ConnectionReq{
@@ -63,16 +63,13 @@ func DisconnectedProgram(node *NodeData) {
 			}
 		case TOLC := <-node.TOLCFromServerRx:
 			if lastReceivedAck != nil && node.ID != lastReceivedAck.NodeID && lastReceivedAck.NodeID == currentFriendID {
+
 				if connReq, exists := incomingConnRequests[lastReceivedAck.NodeID]; exists {
 					shouldBeMaster := ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, TOLC, connReq.TOLC)
 					if shouldBeMaster {
-						if err := node.NodeState.Event(context.Background(), "promote"); err != nil {
-							fmt.Println("Error:", err)
-						}
+						return Master
 					} else {
-						if err := node.NodeState.Event(context.Background(), "connect"); err != nil {
-							fmt.Println("Error:", err)
-						}
+						return Slave
 					}
 				}
 				lastReceivedAck = nil
@@ -81,17 +78,11 @@ func DisconnectedProgram(node *NodeData) {
 		case <-node.GlobalHallRequestRx:
 			// here, we must check if the master knows anything about us
 			// this message transaction should be defined better than it is now, who sends what?
-			if err := node.NodeState.Event(context.Background(), "connect"); err != nil {
-				fmt.Println("Error:", err)
-			} else {
-				return
-			}
+			return Slave
 
 		case isDoorStuck := <-node.IsDoorStuckCh:
 			if isDoorStuck {
-				if err := node.NodeState.Event(context.Background(), "inactivate"); err != nil {
-					fmt.Println("Error:", err)
-				}
+				return Inactive
 			}
 
 		// Prevent blocking of unused channels

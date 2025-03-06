@@ -1,14 +1,13 @@
 package node
 
 import (
-	"context"
 	"elev/Network/network/messages"
 	"elev/elevator"
 	"elev/util/config"
 	"fmt"
 )
 
-func SlaveProgram(node *NodeData) {
+func SlaveProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now a Slave\n", node.ID)
 	lastHallAssignmentMessageID := uint64(0)
 
@@ -16,10 +15,9 @@ func SlaveProgram(node *NodeData) {
 		select {
 		case isDoorStuck := <-node.IsDoorStuckCh:
 			if isDoorStuck {
-				if err := node.NodeState.Event(context.Background(), "inactivate"); err != nil {
-					fmt.Println("Error:", err)
-				}
+				return Inactive
 			}
+
 		case newHA := <-node.HallAssignmentsRx:
 			if newHA.NodeID != node.ID {
 				break

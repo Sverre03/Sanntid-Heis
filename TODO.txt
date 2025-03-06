@@ -1,7 +1,6 @@
 TODO:
 
 - Elevator
-    Need a channel to notify node that door has been stuck open for 30 seconds
     Add channel for updating hall lights (as hall light must be lit if any of the elevators are performing a hall assignment)
     Add channel for informing the node that a hall assignment is completed
     Change channel for buttoneventsRx to a channel that takes the entire bool array of button assignments 
@@ -10,17 +9,17 @@ TODO:
     setup all transmitters and channels
 
 - Slave
-    Start making the slave program
+    Make slave able to time out (event from server)
 
 - Master
-    Listen to hall button presses from elevator, merge this with the current infrastructure
     Make logic for control of lights
+    Make master able to time out
 
 - Inactive
-    Fix the inactive state
+
 
 - Disconnected 
-    Fix TOLC - request the data from ElevStatesListener ✅
+    Make logic for receiving your own TOLC from server, wait for this before sending out conn req
 
 - Everywhere
     Filter out messages from myself

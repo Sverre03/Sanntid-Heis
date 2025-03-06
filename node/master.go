@@ -12,13 +12,9 @@ import (
 	"time"
 )
 
-type taskQueue struct {
-	taskQueue [config.NUM_FLOORS][2]bool
-} //placeholder for testing
-
 func MasterProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
-	taskQueue := taskQueue{}
+	var myCurrentState messages.ElevStates
 	activeReq := false
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgidbuffer.MessageIDBuffer
@@ -47,6 +43,7 @@ func MasterProgram(node *NodeData) {
 
 		case newElevStates := <-node.ActiveElevStatesRx:
 			fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
+			newElevStates[node.ID] = myCurrentState
 			if activeReq {
 				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, node.GlobalHallRequests)
 				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
@@ -55,8 +52,9 @@ func MasterProgram(node *NodeData) {
 					if err != nil {
 						fmt.Println("Error: ", err)
 					}
-					if id == node.ID {
-						taskQueue.taskQueue = hallRequests
+					if nodeID == node.ID {
+						hallAssignmentTaskQueue := hallRequests
+						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTaskQueue)
 					}
 
 					fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, nodeID, hallRequests)
@@ -132,11 +130,14 @@ func MasterProgram(node *NodeData) {
 			}
 		case <-time.After(config.NODE_DOOR_POLL_RATE):
 			node.RequestDoorStateCh <- true
-		
+
 		case currentElevStates := <-node.ElevatorHRAStatesRx:
-			fmt.Printf("Node %d received active elev states: %v\n", node.ID, currentElevStates)
-			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction, Behavior: currentElevStates.Behavior, 
-			CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}	
+			fmt.Printf("Node %d received elev states: %v\n", node.ID, currentElevStates)
+			myCurrentState = messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction,
+			Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
+			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction,
+			Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
+
 		case newHallReq := <-node.ElevatorHallButtonEventRx:
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
 			switch newHallReq.Button {

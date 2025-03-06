@@ -86,7 +86,6 @@ func ElevStatesListener(myID int, commandRx <-chan string,
 
 			switch command {
 			case "getActiveElevStates":
-
 				activeNodes := make(map[int]messages.ElevStates)
 				for id, t := range lastSeen {
 					if time.Since(t) < config.CONNECTION_TIMEOUT {

@@ -10,7 +10,7 @@ import (
 
 func DisconnectedProgram(node *NodeData) {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
-	timeOfLastContact := time.Time{}                        // placeholder for getting from server
+	timeOfLastContact := time.Time{} // placeholder for getting from server
 	msgID, _ := comm.GenerateMessageID(comm.CONNECTION_REQ)
 
 	myConnReq := messages.ConnectionReq{TOLC: timeOfLastContact, NodeID: node.ID, MessageID: msgID}
@@ -47,9 +47,9 @@ func DisconnectedProgram(node *NodeData) {
 				// check who has the most recent data
 				// here, we must ask on node.commandTx "getTOLC". Then, on return from node.TOLCRx compare
 				lastReceivedAck = &connReqAck
-				node.commandTx <- "getTOLC"
+				node.commandToServerTx <- "getTOLC"
 			}
-		case TOLC := <-node.TOLCRx:
+		case TOLC := <-node.TOLCFromServerRx:
 			if lastReceivedAck != nil && node.ID != lastReceivedAck.NodeID && lastReceivedAck.NodeID == currentFriendID {
 				if connReq, exists := incomingConnRequests[lastReceivedAck.NodeID]; exists {
 					shouldBeMaster := ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, TOLC, connReq.TOLC)
@@ -77,15 +77,15 @@ func DisconnectedProgram(node *NodeData) {
 		case <-node.CabRequestInfoRx:
 		case <-node.HallLightUpdateRx:
 		case <-node.ElevatorHRAStatesRx:
-		case <-node.AllElevStatesRx:
-		case <-node.ActiveNodeIDsRx:
+		case <-node.AllElevStatesFromServerRx:
+		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.NewHallReqRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
 		case <-node.ElevatorHallButtonEventRx:
 		case <-node.IsDoorStuckCh:
 		case <-node.RequestDoorStateCh:
-		case <-node.ActiveElevStatesRx:
+		case <-node.ActiveElevStatesFromServerRx:
 		}
 	}
 }

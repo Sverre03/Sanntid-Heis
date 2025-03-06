@@ -39,9 +39,9 @@ func MasterProgram(node *NodeData) {
 
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
-			node.commandTx <- "getActiveElevStates"
+			node.commandToServerTx <- "getActiveElevStates"
 
-		case newElevStates := <-node.ActiveElevStatesRx:
+		case newElevStates := <-node.ActiveElevStatesFromServerRx:
 			if activeNewHallReq {
 
 				newElevStates[node.ID] = myCurrentState
@@ -81,10 +81,10 @@ func MasterProgram(node *NodeData) {
 			// here, there may need to be some extra logic
 			if connReq.TOLC.IsZero() {
 				activeConnReq[connReq.NodeID] = connReq
-				node.commandTx <- "getAllElevStates"
+				node.commandToServerTx <- "getAllElevStates"
 			}
 
-		case allElevStates := <-node.AllElevStatesRx:
+		case allElevStates := <-node.AllElevStatesFromServerRx:
 			if len(activeConnReq) != 0 {
 
 				// her antas det at en id eksisterer i allElevStates Mappet dersom den eksisterer i activeConnReq, dette er en feilaktig antagelse
@@ -127,9 +127,9 @@ func MasterProgram(node *NodeData) {
 		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
 		case <-node.ElevatorHRAStatesRx:
-		case <-node.AllElevStatesRx:
-		case <-node.TOLCRx:
-		case <-node.ActiveNodeIDsRx:
+		case <-node.AllElevStatesFromServerRx:
+		case <-node.TOLCFromServerRx:
+		case <-node.ActiveNodeIDsFromServerRx:
 		//Master running its own elevator
 		case isDoorStuck := <-node.IsDoorStuckCh:
 			if isDoorStuck {
@@ -160,7 +160,7 @@ func MasterProgram(node *NodeData) {
 
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
-			node.commandTx <- "getActiveElevStates"
+			node.commandToServerTx <- "getActiveElevStates"
 		}
 	}
 }

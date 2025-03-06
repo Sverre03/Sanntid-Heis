@@ -8,7 +8,6 @@ import (
 	"elev/util/config"
 	"elev/util/msgidbuffer"
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -67,6 +66,9 @@ func MasterProgram(node *NodeData) {
 					}
 
 					if nodeID == node.ID {
+						hallAssignmentTasks := hallRequests
+						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTasks)
+					} else {
 						hallAssignmentTaskQueue := hallRequests
 						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTaskQueue)
 
@@ -76,6 +78,7 @@ func MasterProgram(node *NodeData) {
 						//nodes are connected and not been disconnected after sending out internal states
 						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
 					}
+
 
 				}
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}

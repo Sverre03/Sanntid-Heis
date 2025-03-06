@@ -1,20 +1,19 @@
-package elevatoralgo
+package elevator
 
 import (
-	"elev/elevator"
 	"elev/util/config"
 	"elev/util/timer"
 	"fmt"
 	"time"
 )
 
-// Tx and Rx is from the view of the elevator.
-func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
-	ElevatorHRAStatesTx chan elevator.ElevatorState, ElevatorHallButtonAssignmentRx chan [config.NUM_FLOORS][2]bool, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
+// Tx and Rx is from the view of the
+func ElevatorProgram(ElevatorHallButtonEventTx chan ButtonEvent,
+	ElevatorHRAStatesTx chan ElevatorState, ElevatorHallButtonAssignmentRx chan [config.NUM_FLOORS][2]bool, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
 
-	var elev elevator.Elevator = elevator.NewElevator()
+	var elev Elevator = NewElevator()
 
-	buttonEvent := make(chan elevator.ButtonEvent)
+	buttonEvent := make(chan ButtonEvent)
 	floorEvent := make(chan int)
 	doorTimeoutEvent := make(chan bool)
 	doorStuckEvent := make(chan bool)
@@ -23,8 +22,8 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	doorOpenTimer := timer.NewTimer()  // Used to check if the door is open (if it is not closed after a certain time, 3 seconds)
 	doorStuckTimer := timer.NewTimer() // Used to check if the door is stuck (if it is not closed after a certain time, 30 seconds)
 
-	elevator.Init("localhost:15657", config.NUM_FLOORS)
-	elevator.InitFSM(&elev)
+	Init("localhost:15657", config.NUM_FLOORS)
+	InitFSM(&elev)
 
 	prevRequestButton := make([][]bool, config.NUM_FLOORS)
 	for i := range prevRequestButton {
@@ -33,14 +32,14 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 
 	// Start polling routines outside the loop
 	fmt.Println("Starting polling routines")
-	go elevator.PollButtons(buttonEvent)
-	go elevator.PollFloorSensor(floorEvent)
-	go elevator.PollObstructionSwitch(obstructionEvent)
-	// go elevator.PollDoorTimeout(doorOpenTimer, doorTimeoutEvent)
-	// go elevator.PollDoorStuck(doorStuckTimer, doorStuckEvent)
+	go PollButtons(buttonEvent)
+	go PollFloorSensor(floorEvent)
+	go PollObstructionSwitch(obstructionEvent)
+	// go PollDoorTimeout(doorOpenTimer, doorTimeoutEvent)
+	// go PollDoorStuck(doorStuckTimer, doorStuckEvent)
 	go TransmitHRAElevState(&elev, ElevatorHRAStatesTx)
 
-	// Check if the door has been open for its maximum duration
+	// Check if the door has been open for its maximum duration (3 seconds)
 	go func() {
 		for range time.Tick(config.INPUT_POLL_RATE) {
 			if doorOpenTimer.Active && timer.TimerTimedOut(doorOpenTimer) {
@@ -50,9 +49,9 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 		}
 	}()
 
-	// Check if the door is stuck
+	// Check if the door is stuck (30 seconds)
 	go func() {
-		for range time.Tick(50 * time.Millisecond) {
+		for range time.Tick(config.INPUT_POLL_RATE) {
 			if doorStuckTimer.Active && timer.TimerTimedOut(doorStuckTimer) {
 				fmt.Println("Door stuck timer timed out!")
 				doorStuckEvent <- true
@@ -64,17 +63,17 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 		select {
 		case button := <-buttonEvent:
 			fmt.Printf("Button press detected: Floor %d, Button %s\n",
-				button.Floor, elevator.ButtonToString(button.Button))
+				button.Floor, ButtonToString(button.Button))
 
-			if (button.Button == elevator.BT_HallDown) || (button.Button == elevator.BT_HallUp) {
+			if (button.Button == BT_HallDown) || (button.Button == BT_HallUp) {
 				fmt.Printf("Forwarding hall call to node: Floor %d, Button %s\n",
-					button.Floor, elevator.ButtonToString(button.Button))
-				ElevatorHallButtonEventTx <- elevator.ButtonEvent{ // Forward the hall call to the node
+					button.Floor, ButtonToString(button.Button))
+				ElevatorHallButtonEventTx <- ButtonEvent{ // Forward the hall call to the node
 					Floor:  button.Floor,
 					Button: button.Button,
 				}
 			} else {
-				elevator.FsmOnRequestButtonPress(&elev, button.Floor, button.Button, &doorOpenTimer)
+				FsmOnRequestButtonPress(&elev, button.Floor, button.Button, &doorOpenTimer)
 			}
 
 		case hallButtons := <-ElevatorHallButtonAssignmentRx:
@@ -82,25 +81,25 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 			for floor := 0; floor < config.NUM_FLOORS; floor++ {
 				for hallButton := 0; hallButton < 2; hallButton++ {
 					elev.Requests[floor][hallButton] = hallButtons[floor][hallButton]
-					elevator.FsmOnRequestButtonPress(&elev, floor, elevator.ButtonType(hallButton), &doorOpenTimer)
+					FsmOnRequestButtonPress(&elev, floor, ButtonType(hallButton), &doorOpenTimer)
 				}
 			}
-			elevator.SetAllLights(&elev)
+			SetAllLights(&elev)
 
 		case floor := <-floorEvent:
 			fmt.Printf("Floor sensor triggered: %d\n", floor)
-			elevator.FsmOnFloorArrival(&elev, floor, &doorOpenTimer)
+			FsmOnFloorArrival(&elev, floor, &doorOpenTimer)
 
 		case isObstructed := <-obstructionEvent:
 			fmt.Printf("Obstruction state changed: %v\n", isObstructed)
-			elevator.FsmSetObstruction(&elev, isObstructed)
+			FsmSetObstruction(&elev, isObstructed)
 
 		case <-doorTimeoutEvent:
 			fmt.Println("Door timeout event detected")
 			if !timer.Active(doorStuckTimer) {
 				timer.TimerStart(&doorStuckTimer, config.DOOR_STUCK_DURATION)
 			}
-			elevator.FsmOnDoorTimeout(&elev, &doorOpenTimer, &doorStuckTimer)
+			FsmOnDoorTimeout(&elev, &doorOpenTimer, &doorStuckTimer)
 
 		case <-doorStuckEvent:
 			fmt.Println("Door stuck event detected - door has been open too long")
@@ -113,13 +112,13 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 }
 
 // Transmit the elevator state to the node
-func TransmitHRAElevState(elev *elevator.Elevator, ElevatorHRAStatesRx chan elevator.ElevatorState) {
+func TransmitHRAElevState(elev *Elevator, ElevatorHRAStatesRx chan ElevatorState) {
 	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
-		ElevatorHRAStatesRx <- elevator.ElevatorState{
+		ElevatorHRAStatesRx <- ElevatorState{
 			Behavior:    elev.Behavior,
 			Floor:       elev.Floor,
 			Direction:   elev.Dir,
-			CabRequests: elevator.GetCabRequestsAsElevState(*elev),
+			CabRequests: GetCabRequestsAsElevState(*elev),
 		}
 	}
 }

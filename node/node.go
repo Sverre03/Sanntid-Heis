@@ -27,8 +27,8 @@ const (
 )
 
 type NodeData struct {
-	ID int
-
+	ID                 int
+	State              nodestate
 	GlobalHallRequests [config.NUM_FLOORS][2]bool
 
 	AckTx        chan messages.Ack
@@ -73,10 +73,11 @@ type NodeData struct {
 	GlobalHallReqTransmitEnableTx chan bool
 }
 
-func Node(id int) *NodeData {
+func CreateNode(id int) *NodeData {
 
 	node := &NodeData{
-		ID: id,
+		ID:    id,
+		State: Inactive,
 	}
 
 	// broadcast channels

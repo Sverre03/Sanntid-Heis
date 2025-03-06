@@ -5,7 +5,7 @@ import (
 )
 
 func RunTestNode() {
-	Node1 := node.Node(1)
+	Node1 := node.CreateNode(1)
 	go node.SlaveProgram(Node1)
 	Node2 := node.Node(2)
 	go node.MasterProgram(Node2)

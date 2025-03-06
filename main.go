@@ -5,5 +5,6 @@ import (
 )
 
 func main() {
-	tests.TestTransmitFunctions()
+	// tests.TestTransmitFunctions()
+	tests.RunTestNode()
 }

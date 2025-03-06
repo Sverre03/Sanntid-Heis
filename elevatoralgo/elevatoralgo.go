@@ -1,7 +1,6 @@
 package elevatoralgo
 
 import (
-	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/util/config"
 	"elev/util/timer"
@@ -10,7 +9,7 @@ import (
 
 // Tx and Rx is from the view of the elevator.
 func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
-	ElevatorHRAStatesTx chan hallRequestAssigner.HRAElevState, ElevatorHallButtonEventRx chan elevator.ButtonEvent, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
+	ElevatorHRAStatesTx chan elevator.ElevatorState, ElevatorHallButtonEventRx chan elevator.ButtonEvent, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
 
 	var elev elevator.Elevator = elevator.NewElevator()
 
@@ -74,13 +73,13 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 }
 
 // Transmit the elevator state to the node
-func TransmitHRAElevState(elev elevator.Elevator, ElevatorHRAStatesRx chan hallRequestAssigner.HRAElevState) {
+func TransmitHRAElevState(elev elevator.Elevator, ElevatorHRAStatesRx chan elevator.ElevatorState) {
 	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
-		ElevatorHRAStatesRx <- hallRequestAssigner.HRAElevState{
-			Behavior:    elevator.ElevatorBehaviorToString[elev.Behavior],
+		ElevatorHRAStatesRx <- elevator.ElevatorState{
+			Behavior:    elev.Behavior,
 			Floor:       elev.Floor,
-			Direction:   elevator.ElevatorDirectionToString[elev.Dir],
-			CabRequests: elevator.GetCabRequestsAsHRAElevState(elev),
+			Direction:   elev.Dir,
+			CabRequests: elevator.GetCabRequestsAsElevState(elev),
 		}
 	}
 }

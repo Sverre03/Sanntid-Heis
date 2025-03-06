@@ -6,6 +6,7 @@ import (
 	"elev/elevator"
 	"elev/util/config"
 	"fmt"
+	"time"
 )
 
 func SlaveProgram(node *NodeData) {
@@ -45,6 +46,9 @@ func SlaveProgram(node *NodeData) {
 
 		case btnEvent := <-node.ElevatorHallButtonEventRx:
 			node.NewHallReqTx <- messages.NewHallRequest{Floor: btnEvent.Floor, HallButton: btnEvent.Button}
+		case currentElevStates := <-node.ElevatorHRAStatesRx:
+			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction, 
+				Behavior: currentElevStates.Behavior, CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}	
 
 		case <-node.ActiveElevStatesRx:
 		case <-node.AllElevStatesRx:

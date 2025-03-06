@@ -21,6 +21,13 @@ type Elevator struct {
 	IsObstructed bool
 }
 
+type ElevatorState struct{
+	Behavior     ElevatorBehavior
+	Floor        int	
+	Direction   MotorDirection
+	CabRequests [config.NUM_FLOORS]bool
+}
+
 var ElevatorBehaviorToString = map[ElevatorBehavior]string{
 	EB_Idle:     "idle",
 	EB_DoorOpen: "doorOpen",
@@ -33,7 +40,7 @@ var ElevatorDirectionToString = map[MotorDirection]string{
 	MD_Stop: "stop",
 }
 
-func GetCabRequestsAsHRAElevState(elev Elevator) [config.NUM_FLOORS]bool {
+func GetCabRequestsAsElevState(elev Elevator) [config.NUM_FLOORS]bool {
 	var cabRequests [config.NUM_FLOORS]bool
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
 		cabRequests[floor] = elev.Requests[floor][BT_Cab]

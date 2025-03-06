@@ -12,7 +12,7 @@ import (
 // and communicates with the hall request assigner.
 func ElevatorProgram(
 	ElevatorHallButtonEventTx chan ButtonEvent,
-	ElevatorHRAStatesTx chan ElevatorState,
+	ElevatorStateTx chan ElevatorState,
 	ElevatorHallButtonAssignmentRx chan [config.NUM_FLOORS][2]bool,
 	IsDoorStuckCh chan bool,
 	DoorStateRequestCh chan bool) {
@@ -32,93 +32,112 @@ func ElevatorProgram(
 	doorOpenTimer := timer.NewTimer()  // Used to check if the door is open (if it is not closed after a certain time, 3 seconds)
 	doorStuckTimer := timer.NewTimer() // Used to check if the door is stuck (if it is not closed after a certain time, 30 seconds)
 
+	startHardwarePolling(buttonEvent, floorEvent, obstructionEvent)
+
+	go transmitElevatorState(&elev, ElevatorStateTx) // Transmits the elevator state to the node periodically
+
+	startTimerMonitoring(&doorOpenTimer, &doorStuckTimer, doorTimeoutEvent, doorStuckEvent)
+
+	for {
+		select {
+		case button := <-buttonEvent:
+			handleButtonEvent(&elev, button, ElevatorHallButtonEventTx, &doorOpenTimer)
+
+		case hallButtons := <-ElevatorHallButtonAssignmentRx:
+			AssignHallButtons(&elev, hallButtons, &doorOpenTimer)
+
+		case floor := <-floorEvent:
+			FsmOnFloorArrival(&elev, floor, &doorOpenTimer)
+
+		case isObstructed := <-obstructionEvent:
+			FsmSetObstruction(&elev, isObstructed)
+
+		case <-doorTimeoutEvent:
+			handleDoorTimeout(&elev, &doorOpenTimer, &doorStuckTimer)
+
+		case <-doorStuckEvent:
+			IsDoorStuckCh <- true
+
+		case <-time.After(config.INPUT_POLL_RATE):
+		}
+	}
+}
+
+func startHardwarePolling(buttonEvent chan ButtonEvent, floorEvent chan int, obstructionEvent chan bool) {
 	fmt.Println("Starting polling routines")
 	go PollButtons(buttonEvent)
 	go PollFloorSensor(floorEvent)
 	go PollObstructionSwitch(obstructionEvent)
+}
 
-	go TransmitHRAElevState(&elev, ElevatorHRAStatesTx) // Transmits the elevator state to the node periodically
-
+// startTimerMonitoring sets up goroutines to monitor timer events
+func startTimerMonitoring(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer, doorTimeoutEvent chan bool, doorStuckEvent chan bool) {
+	// Monitor door open timeout (3 seconds)
 	go func() {
 		for range time.Tick(config.INPUT_POLL_RATE) {
-			if doorOpenTimer.Active && timer.TimerTimedOut(doorOpenTimer) { // Check if the door has been open for its maximum duration (3 seconds)
+			if doorOpenTimer.Active && timer.TimerTimedOut(*doorOpenTimer) {
 				fmt.Println("Door timer timed out")
 				doorTimeoutEvent <- true
 			}
 		}
 	}()
 
+	// Monitor door stuck timeout (30 seconds)
 	go func() {
 		for range time.Tick(config.INPUT_POLL_RATE) {
-			if doorStuckTimer.Active && timer.TimerTimedOut(doorStuckTimer) { // Check if the door is stuck (being open for more than 30 seconds)
+			if doorStuckTimer.Active && timer.TimerTimedOut(*doorStuckTimer) {
 				fmt.Println("Door stuck timer timed out!")
 				doorStuckEvent <- true
 			}
 		}
 	}()
-
-	for {
-		select {
-		case button := <-buttonEvent:
-			fmt.Printf("Button press detected: Floor %d, Button %s\n",
-				button.Floor, ButtonToString(button.Button))
-
-			if (button.Button == BT_HallDown) || (button.Button == BT_HallUp) {
-				fmt.Printf("Forwarding hall call to node: Floor %d, Button %s\n",
-					button.Floor, ButtonToString(button.Button))
-				ElevatorHallButtonEventTx <- ButtonEvent{ // Forward the hall call to the node
-					Floor:  button.Floor,
-					Button: button.Button,
-				}
-			} else {
-				FsmOnRequestButtonPress(&elev, button.Floor, button.Button, &doorOpenTimer)
-			}
-
-		case hallButtons := <-ElevatorHallButtonAssignmentRx:
-			fmt.Printf("Received hall button assignment")
-			for floor := 0; floor < config.NUM_FLOORS; floor++ {
-				for hallButton := 0; hallButton < 2; hallButton++ {
-					elev.Requests[floor][hallButton] = hallButtons[floor][hallButton]
-					if elev.Requests[floor][hallButton]{
-						FsmOnRequestButtonPress(&elev, floor, ButtonType(hallButton), &doorOpenTimer)
-					}
-				}
-			}
-			SetAllLights(&elev)
-
-		case floor := <-floorEvent:
-			fmt.Printf("Floor sensor triggered: %d\n", floor)
-			FsmOnFloorArrival(&elev, floor, &doorOpenTimer)
-
-		case isObstructed := <-obstructionEvent:
-			fmt.Printf("Obstruction state changed: %v\n", isObstructed)
-			FsmSetObstruction(&elev, isObstructed)
-
-		case <-doorTimeoutEvent:
-			fmt.Println("Door timeout event detected")
-			if !timer.Active(doorStuckTimer) {
-				timer.TimerStart(&doorStuckTimer, config.DOOR_STUCK_DURATION)
-			}
-			FsmOnDoorTimeout(&elev, &doorOpenTimer, &doorStuckTimer)
-
-		case <-doorStuckEvent:
-			fmt.Println("Door stuck event detected - door has been open too long")
-			IsDoorStuckCh <- true
-
-		case <-time.After(config.INPUT_POLL_RATE):
-			// To avoid blocking
-		}
-	}
 }
 
 // Transmit the elevator state to the node
-func TransmitHRAElevState(elev *Elevator, ElevatorHRAStatesRx chan ElevatorState) {
+func transmitElevatorState(elev *Elevator, ElevatorStateRx chan ElevatorState) {
 	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
-		ElevatorHRAStatesRx <- ElevatorState{
+		ElevatorStateRx <- ElevatorState{
 			Behavior:    elev.Behavior,
 			Floor:       elev.Floor,
 			Direction:   elev.Dir,
 			CabRequests: GetCabRequestsAsElevState(*elev),
 		}
 	}
+}
+
+func handleButtonEvent(elev *Elevator, button ButtonEvent, ElevatorHallButtonEventTx chan ButtonEvent, doorOpenTimer *timer.Timer) {
+	fmt.Printf("Button press detected: Floor %d, Button %s\n",
+		button.Floor, ButtonToString(button.Button))
+
+	if (button.Button == BT_HallDown) || (button.Button == BT_HallUp) {
+		fmt.Printf("Forwarding hall call to node: Floor %d, Button %s\n",
+			button.Floor, ButtonToString(button.Button))
+		ElevatorHallButtonEventTx <- ButtonEvent{ // Forward the hall call to the node
+			Floor:  button.Floor,
+			Button: button.Button,
+		}
+	} else {
+		FsmOnRequestButtonPress(elev, button.Floor, button.Button, doorOpenTimer)
+	}
+}
+
+func AssignHallButtons(elev *Elevator, hallButtons [config.NUM_FLOORS][2]bool, doorOpenTimer *timer.Timer) {
+	fmt.Printf("Received hall button assignment")
+	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+		for hallButton := 0; hallButton < 2; hallButton++ {
+			elev.Requests[floor][hallButton] = hallButtons[floor][hallButton]
+			if elev.Requests[floor][hallButton] {
+				FsmOnRequestButtonPress(elev, floor, ButtonType(hallButton), doorOpenTimer)
+			}
+		}
+	}
+	SetAllLights(elev)
+}
+
+func handleDoorTimeout(elev *Elevator, doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer) {
+	fmt.Println("Door timeout event detected")
+	if !timer.Active(*doorStuckTimer) {
+		timer.TimerStart(doorStuckTimer, config.DOOR_STUCK_DURATION)
+	}
+	FsmOnDoorTimeout(elev, doorOpenTimer, doorStuckTimer)
 }

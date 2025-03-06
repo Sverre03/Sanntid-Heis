@@ -22,6 +22,7 @@ func MasterProgram(node *NodeData) {
 	node.GlobalHallReqTransmitEnableTx <- true // start transmitting global hall requests (this means you are a master)
 
 	for {
+	Select:
 		select {
 		case newHallReq := <-node.NewHallReqRx:
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
@@ -42,34 +43,40 @@ func MasterProgram(node *NodeData) {
 			node.commandTx <- "getActiveElevStates"
 
 		case newElevStates := <-node.ActiveElevStatesRx:
-			newElevStates[node.ID] = myCurrentState
-			fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
-
-			for id := range newElevStates {
-				if newElevStates[id].ElevState.Floor < 0 {
-					fmt.Println("Error: invalid elevator floor for elevator %d ", id)
-					return
-				}
-			}
 			if activeReq {
+
+				newElevStates[node.ID] = myCurrentState
+
+				fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
+
+				for id := range newElevStates {
+					if newElevStates[id].ElevState.Floor < 0 {
+						fmt.Printf("Error: invalid elevator floor for elevator %d ", id)
+						break Select
+					}
+				}
+
 				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, node.GlobalHallRequests)
+
 				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
+
 				for id, hallRequests := range *HRAoutput {
 					nodeID, err := strconv.Atoi(id)
 					if err != nil {
 						fmt.Println("Error: ", err)
 					}
+
 					if nodeID == node.ID {
 						hallAssignmentTaskQueue := hallRequests
 						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTaskQueue)
-					}else{
+
+					} else {
 						fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, nodeID, hallRequests)
 						//sending hall requests to all nodes assuming all
 						//nodes are connected and not been disconnected after sending out internal states
 						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
 					}
 
-					
 				}
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				activeReq = false

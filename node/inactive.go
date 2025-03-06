@@ -19,6 +19,7 @@ func InactiveProgram(node *NodeData) nodestate {
 		case <-time.After(config.NODE_DOOR_POLL_RATE):
 			node.RequestDoorStateCh <- true
 
+		// always make sure there are no receive channels in the node that are not present here
 		case <-node.HallAssignmentsRx:
 		case <-node.HallLightUpdateRx:
 		case <-node.CabRequestInfoRx:
@@ -34,7 +35,6 @@ func InactiveProgram(node *NodeData) nodestate {
 		case <-node.ElevatorHRAStatesRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
-			// always make sure there are no receive channels in the node that are not present here
 		}
 	}
 }

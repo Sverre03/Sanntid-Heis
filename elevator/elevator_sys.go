@@ -22,8 +22,8 @@ type Elevator struct {
 }
 
 type ElevatorState struct{
-	Behavior     ElevatorBehavior
-	Floor        int	
+	Behavior    ElevatorBehavior
+	Floor       int	
 	Direction   MotorDirection
 	CabRequests [config.NUM_FLOORS]bool
 }

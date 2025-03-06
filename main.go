@@ -1,32 +1,9 @@
 package main
 
-import (
-	"elev/elevator"
-	"elev/elevatoralgo"
-)
+import "elev/tests"
 
 func main() {
 	// tests.TestTransmitFunctions()
-	// tests.RunTestNode()
-	ElevatorHallButtonEventTx := make(chan elevator.ButtonEvent)
-	ElevatorHRAStatesTx := make(chan elevator.ElevatorState)
-	ElevatorHallButtonEventRx := make(chan elevator.ButtonEvent)
-	IsDoorStuckCh := make(chan bool)
-	DoorStateRequestCh := make(chan bool)
-
-	go elevatoralgo.ElevatorProgram(ElevatorHallButtonEventTx, ElevatorHRAStatesTx, ElevatorHallButtonEventRx, IsDoorStuckCh, DoorStateRequestCh)
-	for {
-		select {
-		case <-ElevatorHallButtonEventRx:
-			// Do something
-		case <-ElevatorHRAStatesTx:
-			// Do something
-		case <-IsDoorStuckCh:
-			// Do something
-		case <-DoorStateRequestCh:
-			// Do something
-		case <-ElevatorHallButtonEventTx:
-			// Do something
-		}
-	}
+	tests.RunTestNode()
+	select {}
 }

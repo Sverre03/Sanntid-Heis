@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -26,7 +27,7 @@ type HRAInput struct {
 	States       map[string]HRAElevState    `json:"states"`
 }
 
-func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [config.NUM_FLOORS][2]bool) *map[string][config.NUM_FLOORS][2]bool {
+func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [config.NUM_FLOORS][2]bool) map[int][config.NUM_FLOORS][2]bool {
 	allElevStatesInputFormat := make(map[string]HRAElevState)
 	for id, nodeState := range allElevStates {
 		allElevStatesInputFormat[fmt.Sprintf("%d", id)] = HRAElevState{
@@ -40,7 +41,7 @@ func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [co
 		HallRequests: hallRequests,
 		States:       allElevStatesInputFormat,
 	}
-	fmt.Printf("HRAalgorithm input: %v\n", input)
+	// fmt.Printf("HRAalgorithm input: %v\n", input)
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -57,7 +58,7 @@ func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [co
 		fmt.Println("json.Marshal error: ", err)
 		return nil
 	}
-	fmt.Printf("jsonBytes: %v\n", string(jsonBytes))
+	// fmt.Printf("jsonBytes: %v\n", string(jsonBytes))
 	ret, err := exec.Command("costFNS/hallRequestAssigner/"+hraExecutable, "-i", string(jsonBytes)).CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error: ", err)
@@ -65,11 +66,21 @@ func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [co
 		return nil
 	}
 
-	output := new(map[string][config.NUM_FLOORS][2]bool)
-	err = json.Unmarshal(ret, &output)
+	
+	HRAoutput := new(map[string][config.NUM_FLOORS][2]bool)
+	err = json.Unmarshal(ret, &HRAoutput)
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
 		return nil
 	}
-	return output
+	
+	HRAoutputFormatting := make(map[int][config.NUM_FLOORS][2]bool) // Convert map[string][config.NUM_FLOORS][2]bool to map[int][config.NUM_FLOORS][2]bool
+	for id, output := range *HRAoutput {
+		id, err := strconv.Atoi(id)
+		if err != nil {
+			fmt.Println("Error: ", err)
+		}
+		HRAoutputFormatting[id] = output
+	}
+	return HRAoutputFormatting // map[int][config.NUM_FLOORS][2]bool
 }

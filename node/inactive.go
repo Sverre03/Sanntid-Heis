@@ -31,10 +31,10 @@ func InactiveProgram(node *NodeData) {
 		case <-node.GlobalHallRequestRx:
 		case <-node.ConnectionReqRx:
 		case <-node.ConnectionReqAckRx:
-		case <-node.ActiveElevStatesRx:
-		case <-node.AllElevStatesRx:
-		case <-node.TOLCRx:
-		case <-node.ActiveNodeIDsRx:
+		case <-node.ActiveElevStatesFromServerRx:
+		case <-node.AllElevStatesFromServerRx:
+		case <-node.TOLCFromServerRx:
+		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.NewHallReqRx:
 		case <-node.ElevatorHallButtonEventRx:
 		case <-node.ElevatorHRAStatesRx:

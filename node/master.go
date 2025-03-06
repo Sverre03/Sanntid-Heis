@@ -7,19 +7,19 @@ import (
 	"elev/elevator"
 	"elev/util/msgidbuffer"
 	"fmt"
-	"strconv"
 )
 
 func MasterProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
 	var myCurrentState messages.NodeElevState
-	activeReq := false
+	activeNewHallReq := false
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgidbuffer.MessageIDBuffer
 
 	node.GlobalHallReqTransmitEnableTx <- true // start transmitting global hall requests (this means you are a master)
 
 	for {
+	Select:
 		select {
 		case newHallReq := <-node.NewHallReqRx:
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
@@ -36,53 +36,54 @@ func MasterProgram(node *NodeData) {
 			}
 
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
-			activeReq = true
-			node.commandTx <- "getActiveElevStates"
+			activeNewHallReq = true
+			node.commandToServerTx <- "getActiveElevStates"
 
-		case newElevStates := <-node.ActiveElevStatesRx:
-			newElevStates[node.ID] = myCurrentState
-			fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
+		case newElevStates := <-node.ActiveElevStatesFromServerRx:
+			if activeNewHallReq {
 
-			for id := range newElevStates {
-				if newElevStates[id].ElevState.Floor < 0 {
-					fmt.Println("Error: invalid elevator floor for elevator %d ", id)
-					return
-				}
-			}
-			if activeReq {
-				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, node.GlobalHallRequests)
-				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
-				for id, hallRequests := range *HRAoutput {
-					nodeID, err := strconv.Atoi(id)
-					if err != nil {
-						fmt.Println("Error: ", err)
+				newElevStates[node.ID] = myCurrentState
+
+				fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
+
+				for id := range newElevStates {
+					if newElevStates[id].ElevState.Floor < 0 {
+						fmt.Printf("Error: invalid elevator floor for elevator %d ", id)
+						break Select
 					}
-					if nodeID == node.ID {
-						hallAssignmentTaskQueue := hallRequests
-						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTaskQueue)
+				}
+
+				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, node.GlobalHallRequests)
+
+				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
+
+				for id, hallRequests := range HRAoutput {
+
+					if id == node.ID {
+						hallAssignmentTasks := hallRequests
+						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTasks)
+
 					} else {
-						fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, nodeID, hallRequests)
+						fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, id, hallRequests)
 						//sending hall requests to all nodes assuming all
 						//nodes are connected and not been disconnected after sending out internal states
-						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: nodeID, HallAssignment: hallRequests, MessageID: 0}
+						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: id, HallAssignment: hallRequests, MessageID: 0}
 					}
 
 				}
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
-				activeReq = false
+				activeNewHallReq = false
 			}
 
 		case connReq := <-node.ConnectionReqRx:
 			// here, there may need to be some extra logic
 			if connReq.TOLC.IsZero() {
 				activeConnReq[connReq.NodeID] = connReq
-				node.commandTx <- "getAllElevStates"
+				node.commandToServerTx <- "getAllElevStates"
 			}
 
-		case allElevStates := <-node.AllElevStatesRx:
+		case allElevStates := <-node.AllElevStatesFromServerRx:
 			if len(activeConnReq) != 0 {
-
-				//If activeConnectionReq is true, send all activeElevStates to nodes in activeConnReq
 
 				// her antas det at en id eksisterer i allElevStates Mappet dersom den eksisterer i activeConnReq, dette er en feilaktig antagelse
 
@@ -126,9 +127,9 @@ func MasterProgram(node *NodeData) {
 		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
 		case <-node.ElevatorHRAStatesRx:
-		case <-node.AllElevStatesRx:
-		case <-node.TOLCRx:
-		case <-node.ActiveNodeIDsRx:
+		case <-node.AllElevStatesFromServerRx:
+		case <-node.TOLCFromServerRx:
+		case <-node.ActiveNodeIDsFromServerRx:
 		//Master running its own elevator
 		case isDoorStuck := <-node.IsDoorStuckCh:
 			if isDoorStuck {
@@ -156,8 +157,8 @@ func MasterProgram(node *NodeData) {
 			}
 
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
-			activeReq = true
-			node.commandTx <- "getActiveElevStates"
+			activeNewHallReq = true
+			node.commandToServerTx <- "getActiveElevStates"
 		}
 	}
 }

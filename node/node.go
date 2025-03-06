@@ -45,11 +45,11 @@ type NodeData struct {
 	ConnectionReqRx    chan messages.ConnectionReq
 	ConnectionReqAckRx chan messages.Ack // Receives acknowledgement for request to connect to another node
 
-	commandTx          chan string                         // Sends commands to the ElevStateListener (defined in Network/comm/receivers.go)
-	ActiveElevStatesRx chan map[int]messages.NodeElevState // Receives the state of the other active node's elevators
-	AllElevStatesRx    chan map[int]messages.NodeElevState
-	TOLCRx             chan time.Time // Receives the Time of Last Contact
-	ActiveNodeIDsRx    chan []int     // Receives the IDs of the active nodes on the network
+	commandToServerTx            chan string                         // Sends commands to the ElevStateListener (defined in Network/comm/receivers.go)
+	ActiveElevStatesFromServerRx chan map[int]messages.NodeElevState // Receives the state of the other active node's elevators
+	AllElevStatesFromServerRx    chan map[int]messages.NodeElevState
+	TOLCFromServerRx             chan time.Time // Receives the Time of Last Contact
+	ActiveNodeIDsFromServerRx    chan []int     // Receives the IDs of the active nodes on the network
 
 	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
@@ -143,12 +143,12 @@ func Node(id int) *NodeData {
 	node.RequestDoorStateCh = make(chan bool)
 	go elevatoralgo.ElevatorProgram(node.ElevatorHallButtonEventRx, node.ElevatorHRAStatesRx, node.ElevatorHallButtonEventTx, node.IsDoorStuckCh, node.RequestDoorStateCh)
 
-	node.commandTx = make(chan string)
-	node.TOLCRx = make(chan time.Time)
-	node.ActiveElevStatesRx = make(chan map[int]messages.NodeElevState)
-	node.AllElevStatesRx = make(chan map[int]messages.NodeElevState)
-	node.ActiveNodeIDsRx = make(chan []int)
-	go comm.NodeElevStatesServer(node.ID, node.commandTx, node.TOLCRx, node.ActiveElevStatesRx, node.ActiveNodeIDsRx, elevStatesRx, node.AllElevStatesRx)
+	node.commandToServerTx = make(chan string)
+	node.TOLCFromServerRx = make(chan time.Time)
+	node.ActiveElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
+	node.AllElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
+	node.ActiveNodeIDsFromServerRx = make(chan []int)
+	go comm.NodeElevStateServer(node.ID, node.commandToServerTx, node.TOLCFromServerRx, node.ActiveElevStatesFromServerRx, node.ActiveNodeIDsFromServerRx, elevStatesRx, node.AllElevStatesFromServerRx)
 
 	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)

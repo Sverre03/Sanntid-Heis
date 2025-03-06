@@ -51,15 +51,15 @@ func SlaveProgram(node *NodeData) {
 
 		case currentElevStates := <-node.ElevatorHRAStatesRx:
 			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
-		case <-node.ActiveElevStatesRx:
-		case <-node.AllElevStatesRx:
+		case <-node.ActiveElevStatesFromServerRx:
+		case <-node.AllElevStatesFromServerRx:
 		case <-node.NewHallReqRx:
-		case <-node.TOLCRx:
+		case <-node.TOLCFromServerRx:
 		case <-node.ConnectionReqRx:
 		case <-node.ConnectionReqAckRx:
 		case <-node.ElevatorHRAStatesRx:
 		case <-node.CabRequestInfoRx:
-		case <-node.ActiveNodeIDsRx:
+		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
 		}

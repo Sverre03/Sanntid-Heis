@@ -67,7 +67,7 @@ func NodeElevStatesServer(myID int, commandRx <-chan string,
 	allElevStatesTx chan<- map[int]messages.NodeElevState) {
 	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
-	enable := false
+	enableTOLCUpdate := false
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]messages.NodeElevState)
 	timeOfLastContact := time.Time{}
@@ -77,7 +77,10 @@ func NodeElevStatesServer(myID int, commandRx <-chan string,
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
 			if id != myID { // Check if we received our own message
-				timeOfLastContact = time.Now()
+
+				if enableTOLCUpdate {
+					timeOfLastContact = time.Now()
+				}
 
 				knownNodes[id] = elevState
 				lastSeen[id] = time.Now()
@@ -111,6 +114,12 @@ func NodeElevStatesServer(myID int, commandRx <-chan string,
 
 			case "getAllElevStates":
 				allElevStatesTx <- knownNodes
+
+			case "enableTOLCUpdate":
+				enableTOLCUpdate = true
+
+			case "disableTOLCUpdate":
+				enableTOLCUpdate = false
 			}
 		}
 	}

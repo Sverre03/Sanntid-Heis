@@ -1,12 +1,9 @@
 package main
 
-import (
-	"elev/elevator"
-	"elev/elevatoralgo"
-)
+import "elev/tests"
 
 func main() {
 	// tests.TestTransmitFunctions()
 	tests.RunTestNode()
-	select{}
+	select {}
 }

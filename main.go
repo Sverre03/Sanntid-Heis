@@ -4,7 +4,7 @@ import "elev/node"
 
 func main() {
 
-	mainNode := node.CreateNode(1)
+	mainNode := node.MakeNode(1)
 	mainNode.State = node.Master
 	for {
 

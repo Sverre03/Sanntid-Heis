@@ -3,17 +3,19 @@ TODO:
 - Elevator
     Add channel for updating hall lights (as hall light must be lit if any of the elevators are performing a hall assignment)
     Add channel for informing the node that a hall assignment is completed
-    Change channel for buttoneventsRx to a channel that takes the entire bool array of button assignments 
+    Add channel for sending cab buttons from node to elevator
 
 - Node
     setup all transmitters and channels
 
 - Slave
-    Make slave able to time out (event from server)
 
 - Master
     Make logic for control of lights
-    Make master able to time out
+    Make logic for detecting a node connect/disconnect
+
+- NodeElevStateServer
+    Notify if a node has fallen out 
 
 - Inactive
 

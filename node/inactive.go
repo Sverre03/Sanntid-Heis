@@ -16,6 +16,7 @@ func InactiveProgram(node *NodeData) nodestate {
 			if !isDoorStuck {
 				return Disconnected
 			}
+
 		case <-time.After(config.NODE_DOOR_POLL_RATE):
 			node.RequestDoorStateCh <- true
 
@@ -35,7 +36,7 @@ func InactiveProgram(node *NodeData) nodestate {
 		case <-node.MyElevatorStatesRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
-		case <-node.ConnectionTimeoutEventRx:
+		case <-node.ConnectionLossEventRx:
 		}
 	}
 }

@@ -9,16 +9,23 @@ func SlaveProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now a Slave\n", node.ID)
 	lastHallAssignmentMessageID := uint64(0)
 
+	var nextNodeState nodestate
+
+	node.commandToServerTx <- "startConnectionTimeoutDetection"
+
+ForLoop:
 	for {
 		select {
 		case isDoorStuck := <-node.IsDoorStuckCh:
 			if isDoorStuck {
-				return Inactive
+				nextNodeState = Inactive
+				break ForLoop
 			}
 
-		case timeout := <-node.ConnectionTimeoutEventRx:
+		case timeout := <-node.ConnectionLossEventRx:
 			if timeout {
-				return Disconnected
+				nextNodeState = Disconnected
+				break ForLoop
 			}
 
 		case newHA := <-node.HallAssignmentsRx:
@@ -43,6 +50,7 @@ func SlaveProgram(node *NodeData) nodestate {
 
 		case currentElevStates := <-node.MyElevatorStatesRx:
 			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, ElevState: currentElevStates}
+
 		case <-node.ActiveElevStatesFromServerRx:
 		case <-node.AllElevStatesFromServerRx:
 		case <-node.NewHallReqRx:
@@ -57,4 +65,5 @@ func SlaveProgram(node *NodeData) nodestate {
 		}
 
 	}
+	return nextNodeState
 }

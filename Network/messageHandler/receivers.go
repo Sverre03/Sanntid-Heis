@@ -57,7 +57,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 // server that tracks the states of all elevators by listening to the elevStatesRx channel
 // you can requests to know the states by sending a string on  commandCh
-// commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC", startConnectionTimeoutDetection
+// commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC", "startConnectionTimeoutDetection"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
 func NodeElevStateServer(myID int, commandRx <-chan string,
 	timeOfLastContactTx chan<- time.Time,

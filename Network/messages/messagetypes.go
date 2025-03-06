@@ -56,7 +56,7 @@ type NewHallRequest struct {
 	HallButton elevator.ButtonType
 }
 
-// WHen a slave finishes an assigned hall order, it sends this message
+// When a slave finishes an assigned hall order, it sends this message
 type HallAssignmentComplete struct {
 	Floor      int
 	HallButton elevator.ButtonType

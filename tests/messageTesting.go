@@ -9,13 +9,6 @@ import (
 	"time"
 )
 
-func crazy() {
-	for {
-		fmt.Println("Test is active")
-		time.Sleep(time.Millisecond * 500)
-	}
-}
-
 func testMessageIDGenerator() error {
 	for i := uint64(0); i < 4; i++ {
 		if j, _ := messageHandler.GenerateMessageID(messageHandler.MessageIDType(i)); j > (i+1)*config.MSG_ID_PARTITION_SIZE || j < i*config.MSG_ID_PARTITION_SIZE {

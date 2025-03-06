@@ -5,7 +5,6 @@ import "elev/node"
 func main() {
 
 	mainNode := node.MakeNode(1)
-	mainNode.State = node.Master
 	for {
 
 		switch mainNode.State {

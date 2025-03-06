@@ -40,7 +40,7 @@ func InactiveProgram(node *NodeData) {
 		case <-node.ElevatorHRAStatesRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
-
+			// always make sure there are no receive channels in the node that are not present here
 		}
 	}
 }

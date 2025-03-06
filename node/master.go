@@ -14,7 +14,7 @@ import (
 
 func MasterProgram(node *NodeData) {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
-	var myCurrentState messages.ElevStates
+	var myCurrentState messages.NodeElevState
 	activeReq := false
 	activeConnReq := make(map[int]messages.ConnectionReq) // do we need an ack on this
 	var recentHACompleteBuffer msgidbuffer.MessageIDBuffer
@@ -133,10 +133,10 @@ func MasterProgram(node *NodeData) {
 
 		case currentElevStates := <-node.ElevatorHRAStatesRx:
 			fmt.Printf("Node %d received elev states: %v\n", node.ID, currentElevStates)
-			myCurrentState = messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction,
-			Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
-			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction,
-			Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
+			myCurrentState = messages.NodeElevState{NodeID: node.ID, Direction: currentElevStates.Direction,
+				Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
+			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, Direction: currentElevStates.Direction,
+				Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
 
 		case newHallReq := <-node.ElevatorHallButtonEventRx:
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)

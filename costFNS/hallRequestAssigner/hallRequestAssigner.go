@@ -26,14 +26,14 @@ type HRAInput struct {
 	States       map[string]HRAElevState    `json:"states"`
 }
 
-func HRAalgorithm(allElevStates map[int]messages.ElevStates, hallRequests [config.NUM_FLOORS][2]bool) *map[string][config.NUM_FLOORS][2]bool {
+func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [config.NUM_FLOORS][2]bool) *map[string][config.NUM_FLOORS][2]bool {
 	allElevStatesInputFormat := make(map[string]HRAElevState)
-	for id, state := range allElevStates {
+	for id, nodeState := range allElevStates {
 		allElevStatesInputFormat[fmt.Sprintf("%d", id)] = HRAElevState{
-			Behavior:    state.Behavior,
-			Floor:       state.Floor,
-			Direction:   strings.ToLower(elevator.MotorDirectionToString(state.Direction)),
-			CabRequests: state.CabRequest,
+			Behavior:    elevator.ElevatorBehaviorToString[nodeState.ElevState.Behavior],
+			Floor:       nodeState.ElevState.Floor,
+			Direction:   strings.ToLower(elevator.MotorDirectionToString(nodeState.ElevState.Direction)),
+			CabRequests: nodeState.ElevState.CabRequests,
 		}
 	}
 	input := HRAInput{
@@ -73,4 +73,3 @@ func HRAalgorithm(allElevStates map[int]messages.ElevStates, hallRequests [confi
 	}
 	return output
 }
-

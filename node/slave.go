@@ -24,13 +24,16 @@ func SlaveProgram(node *NodeData) {
 			if newHA.NodeID != node.ID {
 				break
 			}
+
 			node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
 
 			if lastHallAssignmentMessageID != newHA.MessageID {
+
 				for i := 0; i < config.NUM_FLOORS; i++ {
 					if newHA.HallAssignment[i][elevator.BT_HallUp] {
 						node.ElevatorHallButtonEventTx <- elevator.ButtonEvent{Floor: i, Button: elevator.BT_HallUp}
 					}
+
 					if newHA.HallAssignment[i][elevator.BT_HallDown] {
 						node.ElevatorHallButtonEventTx <- elevator.ButtonEvent{Floor: i, Button: elevator.BT_HallDown}
 					}
@@ -45,8 +48,9 @@ func SlaveProgram(node *NodeData) {
 
 		case btnEvent := <-node.ElevatorHallButtonEventRx:
 			node.NewHallReqTx <- messages.NewHallRequest{Floor: btnEvent.Floor, HallButton: btnEvent.Button}
+
 		case currentElevStates := <-node.ElevatorHRAStatesRx:
-			node.ElevStatesTx <- messages.ElevStates{NodeID: node.ID, Direction: currentElevStates.Direction,
+			node.ElevStatesTx <- messages.NodeElevState{NodeID: node.ID, Direction: currentElevStates.Direction,
 				Behavior: elevator.ElevatorBehaviorToString[currentElevStates.Behavior], CabRequest: currentElevStates.CabRequests, Floor: currentElevStates.Floor}
 
 		case <-node.ActiveElevStatesRx:

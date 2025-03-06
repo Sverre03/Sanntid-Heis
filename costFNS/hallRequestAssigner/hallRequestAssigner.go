@@ -41,7 +41,7 @@ func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [co
 		HallRequests: hallRequests,
 		States:       allElevStatesInputFormat,
 	}
-	fmt.Printf("HRAalgorithm input: %v\n", input)
+	// fmt.Printf("HRAalgorithm input: %v\n", input)
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -58,7 +58,7 @@ func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [co
 		fmt.Println("json.Marshal error: ", err)
 		return nil
 	}
-	fmt.Printf("jsonBytes: %v\n", string(jsonBytes))
+	// fmt.Printf("jsonBytes: %v\n", string(jsonBytes))
 	ret, err := exec.Command("costFNS/hallRequestAssigner/"+hraExecutable, "-i", string(jsonBytes)).CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error: ", err)

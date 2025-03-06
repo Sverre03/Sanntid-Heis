@@ -93,7 +93,7 @@ func CreateNode(id int) *NodeData {
 	HACompleteTransToBcast := make(chan messages.HallAssignmentComplete)
 
 	// broadcast all messages on channels to udp process
-	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HACompleteTransToBcast, HATransToBcastTx, node.CabRequestInfoTx, globalHallReqTransToBroadcast, lightUpdateTransToBroadcast, node.ConnectionReqTx, node.NewHallReqTx, node.HallAssignmentCompleteTx)
+	go bcast.Broadcaster(config.PORT_NUM, node.AckTx, node.ElevStatesTx, HACompleteTransToBcast, HATransToBcastTx, node.CabRequestInfoTx, globalHallReqTransToBroadcast, lightUpdateTransToBroadcast, node.ConnectionReqTx, node.NewHallReqTx)
 
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)

@@ -146,7 +146,6 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 	hallAssignmentCompleteAckRx <-chan messages.Ack) {
 	
 	timeoutChannel := make(chan uint64, 2)
-
 	completedActiveAssignments := make(map[uint64]messages.HallAssignmentComplete) //mapping message id to hall assignment complete message
 	
 	for {
@@ -158,6 +157,7 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 				}
 				newComplete.MessageID = new_msg_id
 				completedActiveAssignments[new_msg_id] = newComplete
+				fmt.Printf("Hall Assignment %v is completed\n", newComplete)
 				HallAssignmentCompleteTx <- newComplete
 
 				time.AfterFunc(500*time.Millisecond, func() {

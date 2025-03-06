@@ -7,12 +7,22 @@ import (
 	"time"
 )
 
-// Tx and Rx is from the view of the
-func ElevatorProgram(ElevatorHallButtonEventTx chan ButtonEvent,
-	ElevatorHRAStatesTx chan ElevatorState, ElevatorHallButtonAssignmentRx chan [config.NUM_FLOORS][2]bool, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
+// ElevatorProgram operates a single elevator
+// It manages the elevator state machine, events from hardware,
+// and communicates with the hall request assigner.
+func ElevatorProgram(
+	ElevatorHallButtonEventTx chan ButtonEvent,
+	ElevatorHRAStatesTx chan ElevatorState,
+	ElevatorHallButtonAssignmentRx chan [config.NUM_FLOORS][2]bool,
+	IsDoorStuckCh chan bool,
+	DoorStateRequestCh chan bool) {
 
-	var elev Elevator = NewElevator()
+	// Initialize the elevator
+	elev := NewElevator()
+	Init("localhost:15657", config.NUM_FLOORS)
+	InitFSM(&elev)
 
+	// Channels for events
 	buttonEvent := make(chan ButtonEvent)
 	floorEvent := make(chan int)
 	doorTimeoutEvent := make(chan bool)
@@ -22,37 +32,25 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan ButtonEvent,
 	doorOpenTimer := timer.NewTimer()  // Used to check if the door is open (if it is not closed after a certain time, 3 seconds)
 	doorStuckTimer := timer.NewTimer() // Used to check if the door is stuck (if it is not closed after a certain time, 30 seconds)
 
-	Init("localhost:15657", config.NUM_FLOORS)
-	InitFSM(&elev)
-
-	prevRequestButton := make([][]bool, config.NUM_FLOORS)
-	for i := range prevRequestButton {
-		prevRequestButton[i] = make([]bool, config.NUM_BUTTONS)
-	}
-
-	// Start polling routines outside the loop
 	fmt.Println("Starting polling routines")
 	go PollButtons(buttonEvent)
 	go PollFloorSensor(floorEvent)
 	go PollObstructionSwitch(obstructionEvent)
-	// go PollDoorTimeout(doorOpenTimer, doorTimeoutEvent)
-	// go PollDoorStuck(doorStuckTimer, doorStuckEvent)
-	go TransmitHRAElevState(&elev, ElevatorHRAStatesTx)
 
-	// Check if the door has been open for its maximum duration (3 seconds)
+	go TransmitHRAElevState(&elev, ElevatorHRAStatesTx) // Transmits the elevator state to the node periodically
+
 	go func() {
 		for range time.Tick(config.INPUT_POLL_RATE) {
-			if doorOpenTimer.Active && timer.TimerTimedOut(doorOpenTimer) {
+			if doorOpenTimer.Active && timer.TimerTimedOut(doorOpenTimer) { // Check if the door has been open for its maximum duration (3 seconds)
 				fmt.Println("Door timer timed out")
 				doorTimeoutEvent <- true
 			}
 		}
 	}()
 
-	// Check if the door is stuck (30 seconds)
 	go func() {
 		for range time.Tick(config.INPUT_POLL_RATE) {
-			if doorStuckTimer.Active && timer.TimerTimedOut(doorStuckTimer) {
+			if doorStuckTimer.Active && timer.TimerTimedOut(doorStuckTimer) { // Check if the door is stuck (being open for more than 30 seconds)
 				fmt.Println("Door stuck timer timed out!")
 				doorStuckEvent <- true
 			}

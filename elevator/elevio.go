@@ -135,7 +135,7 @@ func PollDoorTimeout(inTimer timer.Timer, receiver chan<- bool) {
 
 // Check if the door is stuck
 func PollDoorStuck(inTimer timer.Timer, receiver chan<- bool) {
-	for range time.Tick(50 * time.Millisecond) {
+	for range time.Tick(config.INPUT_POLL_RATE) {
 		if inTimer.Active && timer.TimerTimedOut(inTimer) {
 			fmt.Println("Door stuck timer timed out!")
 			receiver <- true

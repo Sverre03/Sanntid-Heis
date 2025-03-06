@@ -4,24 +4,32 @@ import (
 	"time"
 )
 
-var (
-	timerEndTime time.Time
-	timerActive  bool
-)
+type Timer struct {
+	endTime time.Time
+	active  bool
+}
+
+func Active(inTimer Timer) bool {
+	return inTimer.active
+}
+
+func NewTimer() Timer {
+	return Timer{endTime: time.Time{}, active: false}
+}
 
 func GetWallTime() time.Time {
 	return time.Now()
 }
 
-func TimerStart(duration time.Duration) {
-	timerEndTime = GetWallTime().Add(duration)
-	timerActive = true
+func TimerStart(inTimer *Timer, duration time.Duration) {
+	inTimer.endTime = GetWallTime().Add(duration)
+	inTimer.active = true
 }
 
-func TimerStop() {
-	timerActive = false
+func TimerStop(inTimer *Timer) {
+	inTimer.active = false
 }
 
-func TimerTimedOut() bool {
-	return timerActive && GetWallTime().After(timerEndTime)
+func TimerTimedOut(inTimer Timer) bool {
+	return inTimer.active && GetWallTime().After(inTimer.endTime)
 }

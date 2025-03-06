@@ -3,15 +3,39 @@ package comm
 import (
 	"elev/Network/network/messages"
 	"elev/util/config"
+	"errors"
+	"math/rand"
 	"time"
 )
+
+type MessageIDType uint64
+
+const (
+	NEW_HALL_ASSIGNMENT      MessageIDType = 0
+	HALL_LIGHT_UPDATE        MessageIDType = 1
+	CONNECTION_REQ           MessageIDType = 2
+	HALL_ASSIGNMENT_COMPLETE MessageIDType = 3
+)
+
+// generates a message ID that corresponsds to the message type
+func GenerateMessageID(partition MessageIDType) (uint64, error) {
+	offset := uint64(partition)
+
+	if offset > uint64(HALL_ASSIGNMENT_COMPLETE) {
+		return 0, errors.New("invalid messageIDType")
+	}
+
+	i := uint64(rand.Int63n(int64(config.MSG_ID_PARTITION_SIZE)))
+	i += uint64((config.MSG_ID_PARTITION_SIZE) * offset)
+
+	return i, nil
+}
 
 // Listens to incoming acknowledgment messages from UDP, distributes them to their corresponding channels
 func IncomingAckDistributor(ackRx <-chan messages.Ack,
 	hallAssignmentsAck chan<- messages.Ack,
 	lightUpdateAck chan<- messages.Ack,
 	connectionReqAck chan<- messages.Ack,
-	cabReqInfoAck chan<- messages.Ack,
 	hallAssignmentCompleteAck chan<- messages.Ack) {
 
 	for ackMsg := range ackRx {
@@ -25,9 +49,6 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(CONNECTION_REQ)+1) {
 			connectionReqAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(CAB_REQ_INFO)+1) {
-			cabReqInfoAck <- ackMsg
-
 		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(HALL_ASSIGNMENT_COMPLETE)+1) {
 			hallAssignmentCompleteAck <- ackMsg
 		}
@@ -38,7 +59,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 // you can requests to know the states by sending a string on  commandCh
 // commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
-func ElevStatesListener(commandRx <-chan string,
+func ElevStatesListener(myID int, commandRx <-chan string,
 	timeOfLastContactTx chan<- time.Time,
 	activeElevStatesTx chan<- map[int]messages.ElevStates,
 	activeNodeIDsTx chan<- []int,
@@ -54,8 +75,7 @@ func ElevStatesListener(commandRx <-chan string,
 
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
-			// here, we must check if the id is ours. Placeholder for MyID is 0 for now.
-			if id != 0 {
+			if id != myID { // Check if we received our own message
 				timeOfLastContact = time.Now()
 
 				knownNodes[id] = elevState

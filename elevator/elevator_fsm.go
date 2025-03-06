@@ -29,7 +29,7 @@ func FsmOnInitBetweenFloors(elev Elevator) {
 	elev.Behavior = EB_Moving
 }
 
-func FsmOnRequestButtonPress(elev Elevator, btnFloor int, btnType ButtonType) {
+func FsmOnRequestButtonPress(elev Elevator, btnFloor int, btnType ButtonType, doorOpenTimer *timer.Timer) {
 	fmt.Printf("\n\n%s(%d, %s)\n", "fsmOnRequestButtonPress", btnFloor, ButtonToString(btnType))
 	PrintElevator(elev)
 
@@ -37,7 +37,7 @@ func FsmOnRequestButtonPress(elev Elevator, btnFloor int, btnType ButtonType) {
 	case EB_DoorOpen:
 		// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
 		if RequestsShouldClearImmediately(elev, btnFloor, btnType) {
-			timer.TimerStart(config.DOOR_OPEN_DURATION)
+			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
 		} else {
 			elev.Requests[btnFloor][btnType] = true
 		}
@@ -51,7 +51,7 @@ func FsmOnRequestButtonPress(elev Elevator, btnFloor int, btnType ButtonType) {
 		switch pair.Behavior {
 		case EB_DoorOpen:
 			SetDoorOpenLamp(true)
-			timer.TimerStart(config.DOOR_OPEN_DURATION)
+			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
 			elev = RequestsClearAtCurrentFloor(elev)
 		case EB_Moving:
 			SetMotorDirection(elev.Dir)
@@ -69,7 +69,7 @@ func FsmSetObstruction(elev Elevator, isObstructed bool) {
 	elev.IsObstructed = isObstructed
 }
 
-func FsmOnFloorArrival(elev Elevator, newFloor int) {
+func FsmOnFloorArrival(elev Elevator, newFloor int, doorOpenTimer *timer.Timer) {
 	fmt.Printf("\n\n%s(%d)\n", "fsmOnFloorArrival", newFloor)
 	PrintElevator(elev)
 
@@ -82,7 +82,7 @@ func FsmOnFloorArrival(elev Elevator, newFloor int) {
 			SetMotorDirection(MD_Stop)
 			SetDoorOpenLamp(true)
 			elev = RequestsClearAtCurrentFloor(elev)
-			timer.TimerStart(config.DOOR_OPEN_DURATION)
+			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
 			SetAllLights(elev)
 			elev.Behavior = EB_DoorOpen
 		}
@@ -93,17 +93,19 @@ func FsmOnFloorArrival(elev Elevator, newFloor int) {
 	PrintElevator(elev)
 }
 
-func FsmOnDoorTimeout(elev Elevator) {
+func FsmOnDoorTimeout(elev Elevator, doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer) {
 	fmt.Printf("\n\n%s()\n", "fsmOnDoorTimeout")
 	PrintElevator(elev)
 
 	switch elev.Behavior {
 	case EB_DoorOpen:
 		if elev.IsObstructed {
-			timer.TimerStart(config.DOOR_OPEN_DURATION) // Keep the door open
+			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
 		} else {
-			timer.TimerStop()
+			timer.TimerStop(doorOpenTimer)
+			timer.TimerStop(doorStuckTimer)
 			SetDoorOpenLamp(false)
+
 			pair := RequestsChooseDirection(elev)
 			elev.Dir = pair.Dir
 			elev.Behavior = pair.Behavior
@@ -114,7 +116,8 @@ func FsmOnDoorTimeout(elev Elevator) {
 
 			switch elev.Behavior {
 			case EB_DoorOpen:
-				timer.TimerStart(config.DOOR_OPEN_DURATION)
+				timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
+				timer.TimerStart(doorStuckTimer, config.DOOR_STUCK_DURATION)
 				elev = RequestsClearAtCurrentFloor(elev)
 				SetAllLights(elev)
 			case EB_Moving, EB_Idle:

@@ -1,0 +1,26 @@
+TODO:
+
+- Elevator
+    Need a channel to notify node that door has been stuck open for 30 seconds
+    Add channel for updating hall lights (as hall light must be lit if any of the elevators are performing a hall assignment)
+    Add channel for informing the node that a hall assignment is completed
+
+- Node
+    setup all transmitters and channels
+
+- Slave
+    Start making the slave program
+
+- Master
+    Listen to hall button presses from elevator, merge this with the current infrastructure
+    Make logic for control of lights
+
+- Inactive
+    Fix the inactive state
+
+- Disconnected 
+    Fix TOLC - request the data from ElevStatesListener ✅
+
+- Everywhere
+    Filter out messages from myself
+    

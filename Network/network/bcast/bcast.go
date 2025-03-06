@@ -10,9 +10,9 @@ import (
 
 const BUF_SIZE = 1024
 
-// Transmitter encodes received values from `chans` into type-tagged JSON, then broadcasts
+// Broadcaster encodes received values from `chans` into type-tagged JSON, then broadcasts
 // it on the specified 'port'. It takes multiple channels as input.
-func Transmitter(port int, chans ...interface{}) {
+func Broadcaster(port int, chans ...interface{}) {
 	checkArgs(chans...)
 	typeNames := make([]string, len(chans))
 	selectCases := make([]reflect.SelectCase, len(typeNames))
@@ -84,7 +84,7 @@ type typeTaggedJSON struct {
 	JSON   []byte
 }
 
-// Checks that args to Transmitter / Receiver are valid:
+// Checks that args to Broadcaster / Receiver are valid:
 //   - All args must be channels
 //   - Element types of channels must be encodable with JSON
 //   - No element types are repeated

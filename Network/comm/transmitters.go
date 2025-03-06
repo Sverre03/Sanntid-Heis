@@ -3,35 +3,9 @@ package comm
 import (
 	"elev/Network/network/messages"
 	"elev/util/config"
-	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 )
-
-type MessageIDType uint64
-
-const (
-	NEW_HALL_ASSIGNMENT      MessageIDType = 0
-	HALL_LIGHT_UPDATE        MessageIDType = 1
-	CONNECTION_REQ           MessageIDType = 2
-	CAB_REQ_INFO             MessageIDType = 3
-	HALL_ASSIGNMENT_COMPLETE MessageIDType = 4
-)
-
-// generates a message ID that corresponsds to the message type
-func GenerateMessageID(partition MessageIDType) (uint64, error) {
-	offset := uint64(partition)
-
-	if offset > uint64(HALL_ASSIGNMENT_COMPLETE) {
-		return 0, errors.New("invalid messageIDType")
-	}
-
-	i := uint64(rand.Int63n(int64(config.MSG_ID_PARTITION_SIZE)))
-	i += uint64((config.MSG_ID_PARTITION_SIZE) * offset)
-
-	return i, nil
-}
 
 // Transmits Hall assignments from outgoingHallAssignments channel to their designated elevators and handles ack
 func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments,
@@ -59,7 +33,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 			HallAssignmentsTx <- newAssignment
 
 			// check for whether message is not acknowledged within duration
-			time.AfterFunc(time.Millisecond*500, func() {
+			time.AfterFunc(500*time.Millisecond, func() {
 				timeoutChannel <- newAssignment.MessageID
 			})
 
@@ -71,7 +45,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 
 					// fmt.Printf("resending message id %d \n", timedOutMsgID)
 					HallAssignmentsTx <- msg
-					time.AfterFunc(time.Millisecond*500, func() {
+					time.AfterFunc(500*time.Millisecond, func() {
 						timeoutChannel <- msg.MessageID
 					})
 					break
@@ -137,7 +111,7 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 
 			hallLightUpdateTx <- newLightUpdate
 
-			time.AfterFunc(time.Millisecond*500, func() {
+			time.AfterFunc(500*time.Millisecond, func() {
 				timeoutCh <- newLightUpdate.MessageID
 			})
 
@@ -148,7 +122,7 @@ func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
 
 					// send the message again
 					hallLightUpdateTx <- msg
-					time.AfterFunc(time.Millisecond*500, func() {
+					time.AfterFunc(500*time.Millisecond, func() {
 						timeoutCh <- msg.MessageID
 					})
 					break

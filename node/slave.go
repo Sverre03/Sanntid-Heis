@@ -3,8 +3,6 @@ package node
 import (
 	"context"
 	"elev/Network/network/messages"
-	"elev/elevator"
-	"elev/util/config"
 	"fmt"
 )
 
@@ -28,16 +26,7 @@ func SlaveProgram(node *NodeData) {
 			node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
 
 			if lastHallAssignmentMessageID != newHA.MessageID {
-
-				for i := 0; i < config.NUM_FLOORS; i++ {
-					if newHA.HallAssignment[i][elevator.BT_HallUp] {
-						node.ElevatorHallButtonEventTx <- elevator.ButtonEvent{Floor: i, Button: elevator.BT_HallUp}
-					}
-
-					if newHA.HallAssignment[i][elevator.BT_HallDown] {
-						node.ElevatorHallButtonEventTx <- elevator.ButtonEvent{Floor: i, Button: elevator.BT_HallDown}
-					}
-				}
+				node.ElevatorHallButtonAssignmentTx <- newHA.HallAssignment
 			}
 		case lightUpdate := <-node.HallLightUpdateRx:
 			// set the lights

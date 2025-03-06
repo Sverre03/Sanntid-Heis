@@ -6,13 +6,13 @@ import (
 )
 
 func NodeElevatorCommTest() {
-	ElevatorHallButtonEventTx := make(chan elevator.ButtonEvent)
+	ElevatorHallButtonAssignmentTx := make(chan [config.NUM_FLOORS][2]bool)
 	ElevatorHRAStatesTx := make(chan elevator.ElevatorState)
 	ElevatorHallButtonEventRx := make(chan elevator.ButtonEvent)
 	IsDoorStuckCh := make(chan bool)
 	DoorStateRequestCh := make(chan bool)
 
-	go elevatoralgo.ElevatorProgram(ElevatorHallButtonEventTx, ElevatorHRAStatesTx, ElevatorHallButtonEventRx, IsDoorStuckCh, DoorStateRequestCh)
+	go elevatoralgo.ElevatorProgram(ElevatorHallButtonAssignmentTx, ElevatorHRAStatesTx, ElevatorHallButtonEventRx, IsDoorStuckCh, DoorStateRequestCh)
 	for {
 		select {
 		case <-ElevatorHallButtonEventRx:
@@ -23,7 +23,7 @@ func NodeElevatorCommTest() {
 			// Do something
 		case <-DoorStateRequestCh:
 			// Do something
-		case <-ElevatorHallButtonEventTx:
+		case <-ElevatorHallButtonAssignmentTx:
 			// Do something
 		}
 	}

@@ -36,13 +36,15 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	go elevator.PollButtons(buttonEvent)
 	go elevator.PollFloorSensor(floorEvent)
 	go elevator.PollObstructionSwitch(obstructionEvent)
+	// go elevator.PollDoorTimeout(doorOpenTimer, doorTimeoutEvent)
+	// go elevator.PollDoorStuck(doorStuckTimer, doorStuckEvent)
 	go TransmitHRAElevState(&elev, ElevatorHRAStatesTx)
 
 	// Check if the door has been open for its maximum duration
 	go func() {
 		for range time.Tick(config.INPUT_POLL_RATE) {
 			if doorOpenTimer.Active && timer.TimerTimedOut(doorOpenTimer) {
-				fmt.Println("BACKUP CHECK: Door timer timed out but no event received!")
+				fmt.Println("Door timer timed out")
 				doorTimeoutEvent <- true
 			}
 		}
@@ -52,7 +54,7 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 	go func() {
 		for range time.Tick(50 * time.Millisecond) {
 			if doorStuckTimer.Active && timer.TimerTimedOut(doorStuckTimer) {
-				fmt.Println("BACKUP CHECK: Door stuck timer timed out but no event received!")
+				fmt.Println("Door stuck timer timed out!")
 				doorStuckEvent <- true
 			}
 		}

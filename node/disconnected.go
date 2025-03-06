@@ -11,7 +11,7 @@ import (
 func DisconnectedProgram(node *NodeData) {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 	timeOfLastContact := time.Time{}                        // placeholder for getting from server
-	msgID, _ := comm.GenerateMessageID(comm.CONNECTION_REQ) // placeholder for using "getmessageid function"
+	msgID, _ := comm.GenerateMessageID(comm.CONNECTION_REQ)
 
 	myConnReq := messages.ConnectionReq{TOLC: timeOfLastContact, NodeID: node.ID, MessageID: msgID}
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
@@ -67,10 +67,25 @@ func DisconnectedProgram(node *NodeData) {
 			}
 
 			// timeout should be a const variable
-		case <-time.After(time.Millisecond * 500):
+		case <-time.After(500 * time.Millisecond):
 			// start sending a conn request :)
 			// isConnRequestActive = true
 			node.ConnectionReqTx <- myConnReq
+
+		// Prevent blocking of unused channels
+		case <-node.HallAssignmentsRx:
+		case <-node.CabRequestInfoRx:
+		case <-node.HallLightUpdateRx:
+		case <-node.ElevatorHRAStatesRx:
+		case <-node.AllElevStatesRx:
+		case <-node.ActiveNodeIDsRx:
+		case <-node.NewHallReqRx:
+		case <-node.HallAssignmentCompleteRx:
+		case <-node.HallAssignmentCompleteAckRx:
+		case <-node.ElevatorHallButtonEventRx:
+		case <-node.IsDoorStuckCh:
+		case <-node.RequestDoorStateCh:
+		case <-node.ActiveElevStatesRx:
 		}
 	}
 }

@@ -123,35 +123,42 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	}
 }
 
-// func PollTimer(inTimer timer.Timer, receiver chan<- bool) {
-// 	prev := false
-// 	for {
-// 		time.Sleep(_pollRate)
-// 		v := timer.TimerTimedOut(inTimer)
-// 		if v != prev {
-// 			receiver <- v
-// 			fmt.Println("Timer timed out")
-// 		}
-// 		prev = v
-// 	}
-// }
-
-func PollTimer(inTimer timer.Timer, receiver chan<- bool) {
-    prev := false
-    for {
-        time.Sleep(_pollRate)
-        // IMPORTANT FIX: Get current timer status instead of keeping a local reference
-        currentTimerValue := timer.TimerTimedOut(inTimer)
-        
-        // Only send when transitioning from false to true
-        if currentTimerValue && !prev {
-            fmt.Printf("Timer timed out! Active=%v, EndTime=%v\n", 
-                inTimer.Active, inTimer.EndTime.Format("15:04:05.000"))
-            receiver <- true
-        }
-        prev = currentTimerValue
-    }
+// Check if the door has been open for its maximum duration
+func PollDoorTimeout(inTimer timer.Timer, receiver chan<- bool) {
+	for range time.Tick(config.INPUT_POLL_RATE) {
+		if inTimer.Active && timer.TimerTimedOut(inTimer) {
+			fmt.Println("Door timer timed out")
+			receiver <- true
+		}
+	}
 }
+
+// Check if the door is stuck
+func PollDoorStuck(inTimer timer.Timer, receiver chan<- bool) {
+	for range time.Tick(50 * time.Millisecond) {
+		if inTimer.Active && timer.TimerTimedOut(inTimer) {
+			fmt.Println("Door stuck timer timed out!")
+			receiver <- true
+		}
+	}
+}
+
+// func PollTimer(inTimer timer.Timer, receiver chan<- bool) {
+//     prev := false
+//     for {
+//         time.Sleep(_pollRate)
+//         // IMPORTANT FIX: Get current timer status instead of keeping a local reference
+//         currentTimerValue := timer.TimerTimedOut(inTimer)
+
+//         // Only send when transitioning from false to true
+//         if currentTimerValue && !prev {
+//             fmt.Printf("Timer timed out! Active=%v, EndTime=%v\n",
+//                 inTimer.Active, inTimer.EndTime.Format("15:04:05.000"))
+//             receiver <- true
+//         }
+//         prev = currentTimerValue
+//     }
+// }
 
 func GetButton(button ButtonType, floor int) bool {
 	a := read([4]byte{6, byte(button), byte(floor), 0})

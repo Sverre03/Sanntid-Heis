@@ -10,7 +10,7 @@ import (
 
 // Tx and Rx is from the view of the elevator.
 func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
-	ElevatorHRAStatesTx chan elevator.ElevatorState, ElevatorHallButtonEventRx chan elevator.ButtonEvent, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
+	ElevatorHRAStatesTx chan elevator.ElevatorState, ElevatorHallButtonAssignmentRx chan [config.NUM_FLOORS][2]bool, IsDoorStuckCh chan bool, DoorStateRequestCh chan bool) {
 
 	var elev elevator.Elevator = elevator.NewElevator()
 
@@ -77,10 +77,15 @@ func ElevatorProgram(ElevatorHallButtonEventTx chan elevator.ButtonEvent,
 				elevator.FsmOnRequestButtonPress(&elev, button.Floor, button.Button, &doorOpenTimer)
 			}
 
-		case button := <-ElevatorHallButtonEventRx:
-			fmt.Printf("Received hall button assignment: Floor %d, Button %s\n",
-				button.Floor, elevator.ButtonToString(button.Button))
-			elevator.FsmOnRequestButtonPress(&elev, button.Floor, button.Button, &doorOpenTimer)
+		case hallButtons := <-ElevatorHallButtonAssignmentRx:
+			fmt.Printf("Received hall button assignment")
+			for floor := 0; floor < config.NUM_FLOORS; floor++ {
+				for hallButton := 0; hallButton < 2; hallButton++ {
+					elev.Requests[floor][hallButton] = hallButtons[floor][hallButton]
+					elevator.FsmOnRequestButtonPress(&elev, floor, elevator.ButtonType(hallButton), &doorOpenTimer)
+				}
+			}
+			elevator.SetAllLights(&elev)
 
 		case floor := <-floorEvent:
 			fmt.Printf("Floor sensor triggered: %d\n", floor)

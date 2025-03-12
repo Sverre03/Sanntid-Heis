@@ -14,6 +14,9 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	timeOfLastContact := time.Time{}
 	msgID, _ := messageHandler.GenerateMessageID(messageHandler.CONNECTION_REQ)
 
+	node.commandToServerTx <- "getTOLC"
+	timeOfLastContact = <-node.TOLCFromServerRx
+
 	myConnReq := messages.ConnectionReq{
 		TOLC:      timeOfLastContact,
 		NodeID:    node.ID,
@@ -62,24 +65,21 @@ ForLoop:
 				// check who has the most recent data
 				// here, we must ask on node.commandTx "getTOLC". Then, on return from node.TOLCRx compare
 				lastReceivedAck = &connReqAck
-				node.commandToServerTx <- "getTOLC"
-			}
 
-		case TOLC := <-node.TOLCFromServerRx:
-			if lastReceivedAck != nil && node.ID != lastReceivedAck.NodeID && lastReceivedAck.NodeID == currentFriendID {
+				if lastReceivedAck != nil && node.ID != lastReceivedAck.NodeID && lastReceivedAck.NodeID == currentFriendID {
 
-				if connReq, exists := incomingConnRequests[lastReceivedAck.NodeID]; exists {
+					if connReq, exists := incomingConnRequests[lastReceivedAck.NodeID]; exists {
 
-					if ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, TOLC, connReq.TOLC) {
-						nextNodeState = Master
-					} else {
-						nextNodeState = Slave
+						if ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, timeOfLastContact, connReq.TOLC) {
+							nextNodeState = Master
+						} else {
+							nextNodeState = Slave
+						}
+						break ForLoop
 					}
-					break ForLoop
+					lastReceivedAck = nil
 				}
-				lastReceivedAck = nil
 			}
-
 		case <-node.GlobalHallRequestRx:
 			// here, we must check if the master knows anything about us, before we become a slave
 			if timeOfLastContact.IsZero() {

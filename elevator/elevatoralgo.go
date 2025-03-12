@@ -13,7 +13,8 @@ import (
 func ElevatorProgram(
 	ElevatorHallButtonEventTx chan ButtonEvent,
 	ElevatorStateTx chan ElevatorState,
-	ElevatorHallButtonAssignmentRx chan [config.NUM_FLOORS][2]bool,
+	ElevatorHallAssignmentRx chan [config.NUM_FLOORS][2]bool,
+	ElevatorHallAssignmentCompleteTx chan ButtonEvent,
 	IsDoorStuckCh chan bool,
 	DoorStateRequestCh chan bool) {
 
@@ -43,7 +44,7 @@ func ElevatorProgram(
 		case button := <-buttonEvent:
 			handleButtonEvent(&elev, button, ElevatorHallButtonEventTx, &doorOpenTimer)
 
-		case hallButtons := <-ElevatorHallButtonAssignmentRx:
+		case hallButtons := <-ElevatorHallAssignmentRx:
 			AssignHallButtons(&elev, hallButtons, &doorOpenTimer)
 
 		case floor := <-floorEvent:

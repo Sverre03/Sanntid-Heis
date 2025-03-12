@@ -60,11 +60,12 @@ type NodeData struct {
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	// Elevator-Node communication channels
-	ElevatorHallButtonAssignmentTx chan [config.NUM_FLOORS][2]bool // Transmits assigned hall calls to elevator, [floor][up/down]
-	ElevatorHallButtonEventRx      chan elevator.ButtonEvent       // Receives local hall button presses from node
-	MyElevatorStatesRx             chan elevator.ElevatorState     // Receives the elevator's internal state
-	IsDoorStuckCh                  chan bool                       // Receives the elevator's door state (if it is stuck or not)
-	RequestDoorStateCh             chan bool                       // Sends a request to the elevator to check its door state
+	ElevatorHallAssignmentTx         chan [config.NUM_FLOORS][2]bool // Transmits assigned hall calls to elevator, [floor][up/down]
+	ElevatorHallButtonEventRx        chan elevator.ButtonEvent       // Receives local hall button presses from node
+	ElevatorHallAssignmentCompleteRx chan elevator.ButtonEvent       // Receives completed hall assignments
+	MyElevatorStatesRx               chan elevator.ElevatorState     // Receives the elevator's internal state
+	IsDoorStuckCh                    chan bool                       // Receives the elevator's door state (if it is stuck or not)
+	RequestDoorStateCh               chan bool                       // Sends a request to the elevator to check its door state
 
 	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete // Send a hall assignment complete to the hall assignment complete transmitter
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
@@ -147,16 +148,18 @@ func MakeNode(id int) *NodeData {
 		node.HallAssignmentCompleteTx,
 		node.HallAssignmentCompleteAckRx)
 
-	node.ElevatorHallButtonAssignmentTx = make(chan [config.NUM_FLOORS][2]bool)
+	node.ElevatorHallAssignmentTx = make(chan [config.NUM_FLOORS][2]bool)
 	node.ElevatorHallButtonEventRx = make(chan elevator.ButtonEvent)
 	node.MyElevatorStatesRx = make(chan elevator.ElevatorState)
+	node.ElevatorHallAssignmentCompleteRx = make(chan elevator.ButtonEvent)
 	node.IsDoorStuckCh = make(chan bool)
 	node.RequestDoorStateCh = make(chan bool)
 
 	// the physical elevator program
 	go elevator.ElevatorProgram(node.ElevatorHallButtonEventRx,
 		node.MyElevatorStatesRx,
-		node.ElevatorHallButtonAssignmentTx,
+		node.ElevatorHallAssignmentTx,
+		node.ElevatorHallAssignmentCompleteRx,
 		node.IsDoorStuckCh,
 		node.RequestDoorStateCh)
 

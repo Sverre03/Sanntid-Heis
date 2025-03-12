@@ -3,6 +3,7 @@ TODO:
 - Elevator
     Add channel for updating hall lights (as hall light must be lit if any of the elevators are performing a hall assignment)
     Add channel for informing the node that a hall assignment is completed
+    Merge channel for IsDoorStuck with checking if elevator is initialised (not in-between floors at startup)
     Add channel for sending cab buttons from node to elevator
 
 - Node

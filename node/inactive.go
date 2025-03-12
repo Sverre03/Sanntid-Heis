@@ -17,7 +17,7 @@ func InactiveProgram(node *NodeData) nodestate {
 				return Disconnected
 			}
 
-		case <-time.After(config.NODE_DOOR_POLL_RATE):
+		case <-time.After(config.NODE_DOOR_POLL_INTERVAL):
 			node.RequestDoorStateCh <- true
 
 		// always make sure there are no receive channels in the node that are not present here

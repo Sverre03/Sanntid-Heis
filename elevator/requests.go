@@ -51,48 +51,48 @@ func RequestsHere(e Elevator) bool {
 
 func RequestsChooseDirection(e Elevator) DirBehaviorPair {
 	switch e.Dir {
-	case MD_Up:
+	case DirectionUp:
 		if RequestsAbove(e) {
-			return DirBehaviorPair{MD_Up, EB_Moving}
+			return DirBehaviorPair{DirectionUp, Moving}
 		} else if RequestsHere(e) {
-			return DirBehaviorPair{MD_Down, EB_DoorOpen}
+			return DirBehaviorPair{DirectionDown, DoorOpen}
 		} else if RequestsBelow(e) {
-			return DirBehaviorPair{MD_Down, EB_Moving}
+			return DirBehaviorPair{DirectionDown, Moving}
 		} else {
-			return DirBehaviorPair{MD_Stop, EB_Idle}
+			return DirBehaviorPair{DirectionStop, Idle}
 		}
-	case MD_Down:
+	case DirectionDown:
 		if RequestsBelow(e) {
-			return DirBehaviorPair{MD_Down, EB_Moving}
+			return DirBehaviorPair{DirectionDown, Moving}
 		} else if RequestsHere(e) {
-			return DirBehaviorPair{MD_Up, EB_DoorOpen}
+			return DirBehaviorPair{DirectionUp, DoorOpen}
 		} else if RequestsAbove(e) {
-			return DirBehaviorPair{MD_Up, EB_Moving}
+			return DirBehaviorPair{DirectionUp, Moving}
 		} else {
-			return DirBehaviorPair{MD_Stop, EB_Idle}
+			return DirBehaviorPair{DirectionStop, Idle}
 		}
-	case MD_Stop:
+	case DirectionStop:
 		if RequestsHere(e) {
-			return DirBehaviorPair{MD_Stop, EB_DoorOpen}
+			return DirBehaviorPair{DirectionStop, DoorOpen}
 		} else if RequestsAbove(e) {
-			return DirBehaviorPair{MD_Up, EB_Moving}
+			return DirBehaviorPair{DirectionUp, Moving}
 		} else if RequestsBelow(e) {
-			return DirBehaviorPair{MD_Down, EB_Moving}
+			return DirBehaviorPair{DirectionDown, Moving}
 		} else {
-			return DirBehaviorPair{MD_Stop, EB_Idle}
+			return DirBehaviorPair{DirectionStop, Idle}
 		}
 	default:
-		return DirBehaviorPair{MD_Stop, EB_Idle}
+		return DirBehaviorPair{DirectionStop, Idle}
 	}
 }
 
 func RequestsShouldStop(e Elevator) bool {
 	switch e.Dir {
-	case MD_Down:
-		return e.Requests[e.Floor][BT_HallDown] || e.Requests[e.Floor][BT_Cab] || !RequestsBelow(e)
-	case MD_Up:
-		return e.Requests[e.Floor][BT_HallUp] || e.Requests[e.Floor][BT_Cab] || !RequestsAbove(e)
-	case MD_Stop:
+	case DirectionDown:
+		return e.Requests[e.Floor][ButtonHallDown] || e.Requests[e.Floor][ButtonCab] || !RequestsBelow(e)
+	case DirectionUp:
+		return e.Requests[e.Floor][ButtonHallUp] || e.Requests[e.Floor][ButtonCab] || !RequestsAbove(e)
+	case DirectionStop:
 		fallthrough
 	default:
 		return true
@@ -100,30 +100,48 @@ func RequestsShouldStop(e Elevator) bool {
 }
 
 func RequestsShouldClearImmediately(e Elevator, btnFloor int, btnType ButtonType) bool {
-	return e.Floor == btnFloor && ((e.Dir == MD_Up && btnType == BT_HallUp) || (e.Dir == MD_Down && btnType == BT_HallDown) || e.Dir == MD_Stop || btnType == BT_Cab)
+	return e.Floor == btnFloor && ((e.Dir == DirectionUp && btnType == ButtonHallUp) || (e.Dir == DirectionDown && btnType == ButtonHallDown) || e.Dir == DirectionStop || btnType == ButtonCab)
 }
 
-func RequestsClearAtCurrentFloor(e Elevator) Elevator {
+func RequestsClearAtCurrentFloor(e Elevator) (Elevator, []ButtonEvent) {
 	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
-		return e
+		return e, nil
 	}
-	e.Requests[e.Floor][BT_Cab] = false
+	e.Requests[e.Floor][ButtonCab] = false
+
+	clearedRequests := make([]ButtonEvent, 0)
+
 	switch e.Dir {
-	case MD_Up:
-		if !RequestsAbove(e) && !e.Requests[e.Floor][BT_HallUp] {
-			e.Requests[e.Floor][BT_HallDown] = false
+	case DirectionUp:
+		if e.Requests[e.Floor][ButtonHallUp] {
+			e.Requests[e.Floor][ButtonHallUp] = false
+			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallUp})
 		}
-		e.Requests[e.Floor][BT_HallUp] = false
-	case MD_Down:
-		if !RequestsBelow(e) && !e.Requests[e.Floor][BT_HallDown] {
-			e.Requests[e.Floor][BT_HallUp] = false
+		if !RequestsAbove(e) && !e.Requests[e.Floor][ButtonHallUp] {
+			e.Requests[e.Floor][ButtonHallDown] = false
+			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallDown})
 		}
-		e.Requests[e.Floor][BT_HallDown] = false
-	case MD_Stop:
+	case DirectionDown:
+		if e.Requests[e.Floor][ButtonHallDown] {
+			e.Requests[e.Floor][ButtonHallDown] = false
+			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallDown})
+		}
+		if !RequestsBelow(e) && !e.Requests[e.Floor][ButtonHallDown] {
+			e.Requests[e.Floor][ButtonHallUp] = false
+			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallUp})
+		}
+	case DirectionStop:
 		fallthrough
 	default:
-		e.Requests[e.Floor][BT_HallUp] = false
-		e.Requests[e.Floor][BT_HallDown] = false
+		if e.Requests[e.Floor][ButtonHallUp] {
+			e.Requests[e.Floor][ButtonHallUp] = false
+			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallUp})
+		}
+
+		if e.Requests[e.Floor][ButtonHallDown] {
+			e.Requests[e.Floor][ButtonHallDown] = false
+			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallDown})
+		}
 	}
-	return e
+	return e, clearedRequests
 }

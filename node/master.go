@@ -58,13 +58,13 @@ ForLoop:
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
 			switch newHallReq.HallButton {
 
-			case elevator.BT_HallUp:
-				node.GlobalHallRequests[newHallReq.Floor][elevator.BT_HallUp] = true
+			case elevator.ButtonHallUp:
+				node.GlobalHallRequests[newHallReq.Floor][elevator.ButtonHallUp] = true
 
-			case elevator.BT_HallDown:
-				node.GlobalHallRequests[newHallReq.Floor][elevator.BT_HallDown] = true
+			case elevator.ButtonHallDown:
+				node.GlobalHallRequests[newHallReq.Floor][elevator.ButtonHallDown] = true
 
-			case elevator.BT_Cab:
+			case elevator.ButtonCab:
 				fmt.Println("Received a new hall requests, but the button type was invalid")
 				break Select
 			}
@@ -80,13 +80,13 @@ ForLoop:
 			fmt.Printf("Node %d received a new hall request from my elevator: %v\n", node.ID, newHallReq)
 			switch newHallReq.Button {
 
-			case elevator.BT_HallUp:
-				node.GlobalHallRequests[newHallReq.Floor][elevator.BT_HallUp] = true
+			case elevator.ButtonHallUp:
+				node.GlobalHallRequests[newHallReq.Floor][elevator.ButtonHallUp] = true
 
-			case elevator.BT_HallDown:
-				node.GlobalHallRequests[newHallReq.Floor][elevator.BT_HallDown] = true
+			case elevator.ButtonHallDown:
+				node.GlobalHallRequests[newHallReq.Floor][elevator.ButtonHallDown] = true
 
-			case elevator.BT_Cab:
+			case elevator.ButtonCab:
 				fmt.Println("Received a new hall requests, but the button type was invalid")
 				break Select
 			}
@@ -94,6 +94,22 @@ ForLoop:
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
 			node.commandToServerTx <- "getActiveElevStates"
+
+		case completedHallReq := <-node.HallAssignmentCompleteRx:
+			if completedHallReq.HallButton != elevator.ButtonCab {
+				// Notify other nodes that the hall request/assignment is completed
+				hallAssignmentCompleteMsg := messages.HallAssignmentComplete{
+					Floor:      completedHallReq.Floor,
+					HallButton: completedHallReq.HallButton,
+					MessageID:  completedHallReq.MessageID,
+				}
+
+				node.HallAssignmentCompleteTx <- hallAssignmentCompleteMsg
+				fmt.Printf("Node %d sent hall assignment complete message\n", node.ID)
+
+				node.GlobalHallRequests[completedHallReq.Floor][completedHallReq.HallButton] = false
+				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+			}
 
 		case newElevStates := <-node.ActiveElevStatesFromServerRx:
 			if activeNewHallReq {
@@ -161,7 +177,7 @@ ForLoop:
 			// check that this is not a message you have already received
 			if !recentHACompleteBuffer.Contains(HA.MessageID) {
 
-				if HA.HallButton != elevator.BT_Cab {
+				if HA.HallButton != elevator.ButtonCab {
 					node.GlobalHallRequests[HA.Floor][HA.HallButton] = false
 				} else {
 					fmt.Printf("Received invalid completed hall assignment complete message, completion %v", HA.HallButton)

@@ -9,27 +9,26 @@ import (
 	"time"
 )
 
-const _pollRate = 20 * time.Millisecond
+const pollInterval = 20 * time.Millisecond
 
-var _initialized bool = false
-
-var _mtx sync.Mutex
-var _conn net.Conn
+var isDriverInitialized bool = false
+var driverMutex sync.Mutex
+var serverConnection net.Conn
 
 type MotorDirection int
 
 const (
-	MD_Up   MotorDirection = 1
-	MD_Down                = -1
-	MD_Stop                = 0
+	DirectionUp   MotorDirection = 1
+	DirectionDown                = -1
+	DirectionStop                = 0
 )
 
 type ButtonType int
 
 const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
+	ButtonHallUp   ButtonType = 0
+	ButtonHallDown            = 1
+	ButtonCab                 = 2
 )
 
 type ButtonEvent struct {
@@ -38,17 +37,17 @@ type ButtonEvent struct {
 }
 
 func Init(addr string, numFloors int) {
-	if _initialized {
+	if isDriverInitialized {
 		fmt.Println("Driver already initialized!")
 		return
 	}
-	_mtx = sync.Mutex{}
+	driverMutex = sync.Mutex{}
 	var err error
-	_conn, err = net.Dial("tcp", addr)
+	serverConnection, err = net.Dial("tcp", addr)
 	if err != nil {
 		panic(err.Error())
 	}
-	_initialized = true
+	isDriverInitialized = true
 }
 
 func SetMotorDirection(dir MotorDirection) {
@@ -74,10 +73,10 @@ func SetStopLamp(value bool) {
 func PollButtons(receiver chan<- ButtonEvent) {
 	prev := make([][3]bool, config.NUM_FLOORS)
 	for {
-		time.Sleep(_pollRate)
+		time.Sleep(pollInterval)
 		for floor := 0; floor < config.NUM_FLOORS; floor++ {
 			for button := ButtonType(0); button < 3; button++ {
-				v := GetButton(button, floor)
+				v := IsButtonPressed(button, floor)
 				if v != prev[floor][button] && v {
 					receiver <- ButtonEvent{floor, ButtonType(button)}
 				}
@@ -90,7 +89,7 @@ func PollButtons(receiver chan<- ButtonEvent) {
 func PollFloorSensor(receiver chan<- int) {
 	prev := -1
 	for {
-		time.Sleep(_pollRate)
+		time.Sleep(pollInterval)
 		v := GetFloor()
 		if v != prev && v != -1 {
 			receiver <- v
@@ -102,8 +101,8 @@ func PollFloorSensor(receiver chan<- int) {
 func PollStopButton(receiver chan<- bool) {
 	prev := false
 	for {
-		time.Sleep(_pollRate)
-		v := GetStop()
+		time.Sleep(pollInterval)
+		v := IsStopPressed()
 		if v != prev {
 			receiver <- v
 		}
@@ -114,8 +113,8 @@ func PollStopButton(receiver chan<- bool) {
 func PollObstructionSwitch(receiver chan<- bool) {
 	prev := false
 	for {
-		time.Sleep(_pollRate)
-		v := GetObstruction()
+		time.Sleep(pollInterval)
+		v := IsObstruction()
 		if v != prev {
 			receiver <- v
 		}
@@ -125,7 +124,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 
 // Check if the door has been open for its maximum duration
 func PollDoorTimeout(inTimer timer.Timer, receiver chan<- bool) {
-	for range time.Tick(config.INPUT_POLL_RATE) {
+	for range time.Tick(config.INPUT_POLL_INTERVAL) {
 		if inTimer.Active && timer.TimerTimedOut(inTimer) {
 			fmt.Println("Door timer timed out")
 			receiver <- true
@@ -135,7 +134,7 @@ func PollDoorTimeout(inTimer timer.Timer, receiver chan<- bool) {
 
 // Check if the door is stuck
 func PollDoorStuck(inTimer timer.Timer, receiver chan<- bool) {
-	for range time.Tick(config.INPUT_POLL_RATE) {
+	for range time.Tick(config.INPUT_POLL_INTERVAL) {
 		if inTimer.Active && timer.TimerTimedOut(inTimer) {
 			fmt.Println("Door stuck timer timed out!")
 			receiver <- true
@@ -146,7 +145,7 @@ func PollDoorStuck(inTimer timer.Timer, receiver chan<- bool) {
 // func PollTimer(inTimer timer.Timer, receiver chan<- bool) {
 //     prev := false
 //     for {
-//         time.Sleep(_pollRate)
+//         time.Sleep(pollInterval)
 //         // IMPORTANT FIX: Get current timer status instead of keeping a local reference
 //         currentTimerValue := timer.TimerTimedOut(inTimer)
 
@@ -160,7 +159,7 @@ func PollDoorStuck(inTimer timer.Timer, receiver chan<- bool) {
 //     }
 // }
 
-func GetButton(button ButtonType, floor int) bool {
+func IsButtonPressed(button ButtonType, floor int) bool {
 	a := read([4]byte{6, byte(button), byte(floor), 0})
 	return toBool(a[1])
 }
@@ -174,27 +173,27 @@ func GetFloor() int {
 	}
 }
 
-func GetStop() bool {
+func IsStopPressed() bool {
 	a := read([4]byte{8, 0, 0, 0})
 	return toBool(a[1])
 }
 
-func GetObstruction() bool {
+func IsObstruction() bool {
 	a := read([4]byte{9, 0, 0, 0})
 	return toBool(a[1])
 }
 
 func read(in [4]byte) [4]byte {
-	_mtx.Lock()
-	defer _mtx.Unlock()
+	driverMutex.Lock()
+	defer driverMutex.Unlock()
 
-	_, err := _conn.Write(in[:])
+	_, err := serverConnection.Write(in[:])
 	if err != nil {
 		panic("Lost connection to Elevator Server")
 	}
 
 	var out [4]byte
-	_, err = _conn.Read(out[:])
+	_, err = serverConnection.Read(out[:])
 	if err != nil {
 		panic("Lost connection to Elevator Server")
 	}
@@ -203,10 +202,10 @@ func read(in [4]byte) [4]byte {
 }
 
 func write(in [4]byte) {
-	_mtx.Lock()
-	defer _mtx.Unlock()
+	driverMutex.Lock()
+	defer driverMutex.Unlock()
 
-	_, err := _conn.Write(in[:])
+	_, err := serverConnection.Write(in[:])
 	if err != nil {
 		panic("Lost connection to Elevator Server")
 	}
@@ -228,26 +227,26 @@ func toBool(a byte) bool {
 	return b
 }
 
-func ButtonToString(button ButtonType) string {
+func (button ButtonType) String() string {
 	switch button {
-	case BT_HallUp:
+	case ButtonHallUp:
 		return "HallUp"
-	case BT_HallDown:
+	case ButtonHallDown:
 		return "HallDown"
-	case BT_Cab:
+	case ButtonCab:
 		return "Cab"
 	default:
 		return "Unknown"
 	}
 }
 
-func MotorDirectionToString(dir MotorDirection) string {
+func (dir MotorDirection) String() string {
 	switch dir {
-	case MD_Up:
+	case DirectionUp:
 		return "Up"
-	case MD_Down:
+	case DirectionDown:
 		return "Down"
-	case MD_Stop:
+	case DirectionStop:
 		return "Stop"
 	default:
 		return "Unknown"

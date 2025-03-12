@@ -48,7 +48,7 @@ func ElevatorProgram(
 			AssignHallButtons(&elev, hallButtons, &doorOpenTimer)
 
 		case floor := <-floorEvent:
-			FsmOnFloorArrival(&elev, floor, &doorOpenTimer)
+			FsmOnFloorArrival(&elev, floor, &doorOpenTimer, ElevatorHallAssignmentCompleteTx)
 
 		case isObstructed := <-obstructionEvent:
 			FsmSetObstruction(&elev, isObstructed)
@@ -59,7 +59,7 @@ func ElevatorProgram(
 		case <-doorStuckEvent:
 			IsDoorStuckCh <- true
 
-		case <-time.After(config.INPUT_POLL_RATE):
+		case <-time.After(config.INPUT_POLL_INTERVAL):
 		}
 	}
 }
@@ -75,7 +75,7 @@ func startHardwarePolling(buttonEvent chan ButtonEvent, floorEvent chan int, obs
 func startTimerMonitoring(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer, doorTimeoutEvent chan bool, doorStuckEvent chan bool) {
 	// Monitor door open timeout (3 seconds)
 	go func() {
-		for range time.Tick(config.INPUT_POLL_RATE) {
+		for range time.Tick(config.INPUT_POLL_INTERVAL) {
 			if doorOpenTimer.Active && timer.TimerTimedOut(*doorOpenTimer) {
 				fmt.Println("Door timer timed out")
 				doorTimeoutEvent <- true
@@ -85,7 +85,7 @@ func startTimerMonitoring(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Time
 
 	// Monitor door stuck timeout (30 seconds)
 	go func() {
-		for range time.Tick(config.INPUT_POLL_RATE) {
+		for range time.Tick(config.INPUT_POLL_INTERVAL) {
 			if doorStuckTimer.Active && timer.TimerTimedOut(*doorStuckTimer) {
 				fmt.Println("Door stuck timer timed out!")
 				doorStuckEvent <- true
@@ -108,11 +108,11 @@ func transmitElevatorState(elev *Elevator, ElevatorStateRx chan ElevatorState) {
 
 func handleButtonEvent(elev *Elevator, button ButtonEvent, ElevatorHallButtonEventTx chan ButtonEvent, doorOpenTimer *timer.Timer) {
 	fmt.Printf("Button press detected: Floor %d, Button %s\n",
-		button.Floor, ButtonToString(button.Button))
+		button.Floor, button.Button.String())
 
-	if (button.Button == BT_HallDown) || (button.Button == BT_HallUp) {
+	if (button.Button == ButtonHallDown) || (button.Button == ButtonHallUp) {
 		fmt.Printf("Forwarding hall call to node: Floor %d, Button %s\n",
-			button.Floor, ButtonToString(button.Button))
+			button.Floor, button.Button.String())
 		ElevatorHallButtonEventTx <- ButtonEvent{ // Forward the hall call to the node
 			Floor:  button.Floor,
 			Button: button.Button,

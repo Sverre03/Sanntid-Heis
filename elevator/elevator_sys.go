@@ -8,9 +8,9 @@ import (
 type ElevatorBehavior int
 
 const (
-	EB_Idle ElevatorBehavior = iota
-	EB_DoorOpen
-	EB_Moving
+	Idle ElevatorBehavior = iota
+	DoorOpen
+	Moving
 )
 
 type Elevator struct {
@@ -21,38 +21,38 @@ type Elevator struct {
 	IsObstructed bool
 }
 
-type ElevatorState struct{
+type ElevatorState struct {
 	Behavior    ElevatorBehavior
-	Floor       int	
+	Floor       int
 	Direction   MotorDirection
 	CabRequests [config.NUM_FLOORS]bool
 }
 
 var ElevatorBehaviorToString = map[ElevatorBehavior]string{
-	EB_Idle:     "idle",
-	EB_DoorOpen: "doorOpen",
-	EB_Moving:   "moving",
+	Idle:     "idle",
+	DoorOpen: "doorOpen",
+	Moving:   "moving",
 }
 
 var ElevatorDirectionToString = map[MotorDirection]string{
-	MD_Up:   "up",
-	MD_Down: "down",
-	MD_Stop: "stop",
+	DirectionUp:   "up",
+	DirectionDown: "down",
+	DirectionStop: "stop",
 }
 
 func GetCabRequestsAsElevState(elev Elevator) [config.NUM_FLOORS]bool {
 	var cabRequests [config.NUM_FLOORS]bool
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
-		cabRequests[floor] = elev.Requests[floor][BT_Cab]
+		cabRequests[floor] = elev.Requests[floor][ButtonCab]
 	}
 	return cabRequests
 }
 
 func NewElevator() Elevator {
 	return Elevator{
-		Behavior: EB_Idle,
+		Behavior: Idle,
 		Floor:    -1,
-		Dir:      MD_Stop,
+		Dir:      DirectionStop,
 		Requests: [config.NUM_FLOORS][config.NUM_BUTTONS]bool{},
 	}
 }
@@ -60,9 +60,9 @@ func NewElevator() Elevator {
 func PrintElevator(e Elevator) {
 	behavior := ElevatorBehaviorToString[e.Behavior]
 	dir := "Stop"
-	if e.Dir == MD_Up {
+	if e.Dir == DirectionUp {
 		dir = "Up"
-	} else if e.Dir == MD_Down {
+	} else if e.Dir == DirectionDown {
 		dir = "Down"
 	}
 	fmt.Printf("Floor: %d\n", e.Floor)

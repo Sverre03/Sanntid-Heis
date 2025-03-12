@@ -33,7 +33,7 @@ func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [co
 		allElevStatesInputFormat[fmt.Sprintf("%d", id)] = HRAElevState{
 			Behavior:    elevator.ElevatorBehaviorToString[nodeState.ElevState.Behavior],
 			Floor:       nodeState.ElevState.Floor,
-			Direction:   strings.ToLower(elevator.MotorDirectionToString(nodeState.ElevState.Direction)),
+			Direction:   strings.ToLower(nodeState.ElevState.Direction.String()),
 			CabRequests: nodeState.ElevState.CabRequests,
 		}
 	}

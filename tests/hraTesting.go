@@ -25,8 +25,8 @@ package tests
 
 // 	fmt.Printf("GlobalHallRequest: %v\n", GlobalHallRequest)
 
-// 	newMessage1 = messages.NodeElevState{NodeID: 1, Direction: elevator.MD_Up, Floor: 1, CabRequest: [config.NUM_FLOORS]bool{false, false, false, false}, Behavior: "idle"}
-// 	newMessage2 = messages.NodeElevState{NodeID: 2, Direction: elevator.MD_Down, Floor: 2, CabRequest: [config.NUM_FLOORS]bool{false, false, false, false}, Behavior: "idle"}
+// 	newMessage1 = messages.NodeElevState{NodeID: 1, Direction: elevator.DirectionUp, Floor: 1, CabRequest: [config.NUM_FLOORS]bool{false, false, false, false}, Behavior: "idle"}
+// 	newMessage2 = messages.NodeElevState{NodeID: 2, Direction: elevator.DirectionDown, Floor: 2, CabRequest: [config.NUM_FLOORS]bool{false, false, false, false}, Behavior: "idle"}
 
 // 	allElevStates := make(map[int]messages.NodeElevState)
 // 	allElevStates[0] = newMessage1

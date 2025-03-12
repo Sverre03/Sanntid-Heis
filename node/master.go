@@ -71,6 +71,9 @@ ForLoop:
 
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
+
+			// send the global hall requests to the server for broadcast to update other nodes
+			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 			node.commandToServerTx <- "getActiveElevStates"
 
 		case newHallReq := <-node.ElevatorHallButtonEventRx:
@@ -99,6 +102,7 @@ ForLoop:
 
 				fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
 
+				// check that the floor is valid - can be its own function
 				for id := range newElevStates {
 					if newElevStates[id].ElevState.Floor < 0 {
 						fmt.Printf("Error: invalid elevator floor for elevator %d ", id)
@@ -113,12 +117,13 @@ ForLoop:
 				for id, hallRequests := range HRAoutput {
 
 					if id == node.ID {
-						hallAssignmentTasks := hallRequests
-						node.ElevatorHallButtonAssignmentTx <- hallRequests
-						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallAssignmentTasks)
+						// here, we must update the lights of our own elevator
+						node.ElevatorHallAssignmentTx <- hallRequests
+						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallRequests)
 
 					} else {
 						fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, id, hallRequests)
+
 						// distribute the orders!
 						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: id, HallAssignment: hallRequests, MessageID: 0}
 

@@ -14,7 +14,6 @@ TODO:
 - Master
     Make logic for control of lights
     Make logic for detecting a node connect/disconnect
-
 - NodeElevStateServer
     Notify if a node has fallen out 
 
@@ -23,6 +22,7 @@ TODO:
 
 - Disconnected 
     Make logic for receiving your own TOLC from server, wait for this before sending out conn req
+    make logic for receiving your states from master
 
 - Everywhere
     Filter out messages from myself

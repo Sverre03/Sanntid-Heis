@@ -36,8 +36,9 @@ ForLoop:
 			node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
 
 			if lastHallAssignmentMessageID != newHA.MessageID {
-				node.ElevatorHallButtonAssignmentTx <- newHA.HallAssignment
+				node.ElevatorHallAssignmentTx <- newHA.HallAssignment
 			}
+
 		case lightUpdate := <-node.HallLightUpdateRx:
 			// set the lights
 			fmt.Println(lightUpdate)

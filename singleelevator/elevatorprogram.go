@@ -1,4 +1,4 @@
-package single_elevator
+package singleelevator
 
 import (
 	"elev/Network/messages"

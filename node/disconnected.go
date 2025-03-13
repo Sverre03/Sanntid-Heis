@@ -1,7 +1,7 @@
 package node
 
 import (
-	"elev/Network/messageHandler"
+	"elev/Network/messagehandler"
 	"elev/Network/messages"
 	"fmt"
 	"time"
@@ -12,7 +12,7 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 
 	timeOfLastContact := time.Time{}
-	msgID, _ := messageHandler.GenerateMessageID(messageHandler.CONNECTION_REQ)
+	msgID, _ := messagehandler.GenerateMessageID(messagehandler.CONNECTION_REQ)
 
 	node.commandToServerTx <- "getTOLC"
 	timeOfLastContact = <-node.TOLCFromServerRx

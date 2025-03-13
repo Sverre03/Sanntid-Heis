@@ -1,4 +1,4 @@
-package messageHandler
+package messagehandler
 
 import (
 	"elev/Network/messages"

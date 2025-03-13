@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"elev/Network/messageHandler"
+	"elev/Network/messagehandler"
 	"elev/Network/messages"
 	"elev/util/config"
 	"errors"
@@ -11,7 +11,7 @@ import (
 
 func testMessageIDGenerator() error {
 	for i := uint64(0); i < 4; i++ {
-		if j, _ := messageHandler.GenerateMessageID(messageHandler.MessageIDType(i)); j > (i+1)*config.MSG_ID_PARTITION_SIZE || j < i*config.MSG_ID_PARTITION_SIZE {
+		if j, _ := messagehandler.GenerateMessageID(messagehandler.MessageIDType(i)); j > (i+1)*config.MSG_ID_PARTITION_SIZE || j < i*config.MSG_ID_PARTITION_SIZE {
 			return fmt.Errorf("message id outside value area for messagetype %d", i)
 		}
 
@@ -29,7 +29,7 @@ func testLightUpdateTransmitter() error {
 
 	hallLightUpdate := messages.HallLightUpdate{LightStates: [config.NUM_FLOORS][2]bool{}, MessageID: 0, ActiveElevatorIDs: activeElevIDs}
 
-	go messageHandler.LightUpdateTransmitter(hallLightUpdateTx, outgoingLightUpdates, hallLightUpdateAck)
+	go messagehandler.LightUpdateTransmitter(hallLightUpdateTx, outgoingLightUpdates, hallLightUpdateAck)
 
 	outgoingLightUpdates <- hallLightUpdate
 
@@ -110,7 +110,7 @@ func testHAss() error {
 	OutgoingNewHallAssignments := make(chan messages.NewHallAssignments, 1)
 	HallAssignmentsAck := make(chan messages.Ack, 1)
 
-	go messageHandler.HallAssignmentsTransmitter(HallAssignmentsTx, OutgoingNewHallAssignments, HallAssignmentsAck)
+	go messagehandler.HallAssignmentsTransmitter(HallAssignmentsTx, OutgoingNewHallAssignments, HallAssignmentsAck)
 
 	dummyHallAssignment1 := messages.NewHallAssignments{NodeID: id, HallAssignment: [config.NUM_FLOORS][2]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
 	dummyHallAssignment2 := messages.NewHallAssignments{NodeID: id + 1, HallAssignment: [config.NUM_FLOORS][2]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
@@ -170,7 +170,7 @@ func testGlobalHallReqTransmitter() error {
 
 	haveReceived := false
 
-	go messageHandler.GlobalHallRequestsTransmitter(transmitEnableCh, GlobalHallRequestTx, requestsForBroadcastCh)
+	go messagehandler.GlobalHallRequestsTransmitter(transmitEnableCh, GlobalHallRequestTx, requestsForBroadcastCh)
 
 	var currentHallRequests [config.NUM_FLOORS][2]bool
 
@@ -237,12 +237,12 @@ func testAckDistr() error {
 
 	receivedAcks := [4]bool{false, false, false, false}
 
-	go messageHandler.IncomingAckDistributor(ackRx, hallAssignmentsAck, lightUpdateAck, ConnectionReqAck, HallAssignmentCompleteAck)
+	go messagehandler.IncomingAckDistributor(ackRx, hallAssignmentsAck, lightUpdateAck, ConnectionReqAck, HallAssignmentCompleteAck)
 
 	numAckSent := 0
 	for i := 0; i < 4; i++ {
 
-		id, e := messageHandler.GenerateMessageID(messageHandler.MessageIDType(i))
+		id, e := messagehandler.GenerateMessageID(messagehandler.MessageIDType(i))
 
 		if e != nil {
 			err = e

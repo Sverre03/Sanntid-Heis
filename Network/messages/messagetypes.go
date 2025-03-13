@@ -11,10 +11,10 @@ type MessageType int
 
 // Message types for elevator-to-node communication
 const (
-	MsgHallButtonEvent MessageType = iota
-	MsgHallAssignmentComplete
-	MsgElevatorState
-	MsgDoorStuck
+	MsgHallButtonEvent        MessageType = iota // Receives local hall button presses from node
+	MsgHallAssignmentComplete                    // Receives completed hall assignments
+	MsgElevatorState                             // Receives the elevator's internal state
+	MsgDoorStuck                                 // Receives the elevator's door state (if it is stuck or not)
 )
 
 // ElevatorToNodeMsg encapsulates all messages sent from elevator to node
@@ -27,8 +27,8 @@ type ElevatorToNodeMsg struct {
 
 // Message types for node-to-elevator communication
 const (
-	MsgHallAssignment MessageType = iota
-	MsgRequestDoorState
+	MsgHallAssignment   MessageType = iota // Transmits assigned hall calls to elevator, [floor][up/down]
+	MsgRequestDoorState                    // Sends a request to the elevator to check its door state
 )
 
 // NodeToElevatorMsg encapsulates all messages sent from node to elevator

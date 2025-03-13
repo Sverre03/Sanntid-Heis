@@ -80,6 +80,23 @@ ForLoop:
 					lastReceivedAck = nil
 				}
 			}
+
+		case elevMsg := <-node.FromElevator:
+			switch elevMsg.Type {
+			case messages.MsgDoorStuck:
+				if elevMsg.IsDoorStuck {
+					nextNodeState = Inactive
+					break ForLoop
+				}
+			// Else do nothing
+			case messages.MsgHallButtonEvent:
+				// do smth
+			case messages.MsgHallAssignmentComplete:
+				// do smth
+			case messages.MsgElevatorState:
+				// do smth
+			}
+
 		case <-node.GlobalHallRequestRx:
 			// here, we must check if the master knows anything about us, before we become a slave
 			if timeOfLastContact.IsZero() {
@@ -87,12 +104,6 @@ ForLoop:
 			}
 			nextNodeState = Slave
 			break ForLoop
-
-		case isDoorStuck := <-node.IsDoorStuckCh:
-			if isDoorStuck {
-				nextNodeState = Inactive
-				break ForLoop
-			}
 
 		case info := <-node.CabRequestInfoRx:
 			if node.ID == info.ReceiverNodeID {
@@ -103,17 +114,12 @@ ForLoop:
 			// check if you receive some useful info here
 		// Prevent blocking of unused channels
 		case <-node.HallAssignmentsRx:
-		case <-node.RequestDoorStateCh:
 		case <-node.HallLightUpdateRx:
-		case <-node.MyElevatorStatesRx:
 		case <-node.AllElevStatesFromServerRx:
 		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.NewHallReqRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
-		case <-node.ElevatorHallButtonEventRx:
-		case <-node.IsDoorStuckCh:
-		case <-node.RequestDoorStateCh:
 		case <-node.ActiveElevStatesFromServerRx:
 		case <-node.ConnectionLossEventRx:
 		}

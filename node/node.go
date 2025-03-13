@@ -4,10 +4,10 @@
 package node
 
 import (
-	messageHandlers "elev/Network/messageHandler"
+	"elev/Network/messageHandler"
 	"elev/Network/messages"
 	"elev/Network/network/bcast"
-	"elev/elevator"
+	"elev/single_elevator"
 	"elev/util/config"
 	"time"
 )
@@ -59,13 +59,15 @@ type NodeData struct {
 	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
-	// Elevator-Node communication channels
-	ElevatorHallAssignmentTx         chan [config.NUM_FLOORS][2]bool // Transmits assigned hall calls to elevator, [floor][up/down]
-	ElevatorHallButtonEventRx        chan elevator.ButtonEvent       // Receives local hall button presses from node
-	ElevatorHallAssignmentCompleteRx chan elevator.ButtonEvent       // Receives completed hall assignments
-	MyElevatorStatesRx               chan elevator.ElevatorState     // Receives the elevator's internal state
-	IsDoorStuckCh                    chan bool                       // Receives the elevator's door state (if it is stuck or not)
-	RequestDoorStateCh               chan bool                       // Sends a request to the elevator to check its door state
+	// Elevator-Node communication
+	ToElevator   chan messages.NodeToElevatorMsg
+	FromElevator chan messages.ElevatorToNodeMsg
+	// ElevatorHallAssignmentTx         chan [config.NUM_FLOORS][2]bool // Transmits assigned hall calls to elevator, [floor][up/down]
+	// ElevatorHallButtonEventRx        chan elevator.ButtonEvent       // Receives local hall button presses from node
+	// ElevatorHallAssignmentCompleteRx chan elevator.ButtonEvent // Receives completed hall assignments
+	// MyElevatorStatesRx               chan elevator.ElevatorState     // Receives the elevator's internal state
+	// IsDoorStuckCh                    chan bool                       // Receives the elevator's door state (if it is stuck or not)
+	// RequestDoorStateCh               chan bool                       // Sends a request to the elevator to check its door state
 
 	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete // Send a hall assignment complete to the hall assignment complete transmitter
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
@@ -135,7 +137,7 @@ func MakeNode(id int) *NodeData {
 	node.HallAssignmentCompleteAckRx = make(chan messages.Ack)
 
 	// process for distributing incoming acks in ackRx to different processes
-	go messageHandlers.IncomingAckDistributor(ackRx,
+	go messageHandler.IncomingAckDistributor(ackRx,
 		hallAssignmentsAckRx,
 		lightUpdateAckRx,
 		node.ConnectionReqAckRx,
@@ -143,25 +145,30 @@ func MakeNode(id int) *NodeData {
 
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
 	// process responsible for sending and making sure hall assignments are acknowledged
-	go messageHandlers.HallAssignmentsTransmitter(HATransToBcastTx, node.HallAssignmentTx, hallAssignmentsAckRx)
-	go messageHandlers.HallAssignmentCompleteTransmitter(HACompleteTransToBcast,
+	go messageHandler.HallAssignmentsTransmitter(HATransToBcastTx, node.HallAssignmentTx, hallAssignmentsAckRx)
+	go messageHandler.HallAssignmentCompleteTransmitter(HACompleteTransToBcast,
 		node.HallAssignmentCompleteTx,
 		node.HallAssignmentCompleteAckRx)
 
-	node.ElevatorHallAssignmentTx = make(chan [config.NUM_FLOORS][2]bool)
-	node.ElevatorHallButtonEventRx = make(chan elevator.ButtonEvent)
-	node.MyElevatorStatesRx = make(chan elevator.ElevatorState)
-	node.ElevatorHallAssignmentCompleteRx = make(chan elevator.ButtonEvent)
-	node.IsDoorStuckCh = make(chan bool)
-	node.RequestDoorStateCh = make(chan bool)
+	// node.ElevatorHallAssignmentTx = make(chan [config.NUM_FLOORS][2]bool)
+	// node.ElevatorHallButtonEventRx = make(chan elevator.ButtonEvent)
+	// node.MyElevatorStatesRx = make(chan elevator.ElevatorState)
+	// node.ElevatorHallAssignmentCompleteRx = make(chan elevator.ButtonEvent)
+	// node.IsDoorStuckCh = make(chan bool)
+	// node.RequestDoorStateCh = make(chan bool)
+
+	node.ToElevator = make(chan messages.NodeToElevatorMsg)
+	node.FromElevator = make(chan messages.ElevatorToNodeMsg)
 
 	// the physical elevator program
-	go elevator.ElevatorProgram(node.ElevatorHallButtonEventRx,
-		node.MyElevatorStatesRx,
-		node.ElevatorHallAssignmentTx,
-		node.ElevatorHallAssignmentCompleteRx,
-		node.IsDoorStuckCh,
-		node.RequestDoorStateCh)
+	go single_elevator.ElevatorProgram(node.ToElevator, node.FromElevator)
+
+	// go elevator.ElevatorProgram(node.ElevatorHallButtonEventRx,
+	// 	node.MyElevatorStatesRx,
+	// 	node.ElevatorHallAssignmentTx,
+	// 	node.ElevatorHallAssignmentCompleteRx,
+	// 	node.IsDoorStuckCh,
+	// 	node.RequestDoorStateCh)
 
 	node.commandToServerTx = make(chan string)
 	node.TOLCFromServerRx = make(chan time.Time)
@@ -171,7 +178,7 @@ func MakeNode(id int) *NodeData {
 	node.ConnectionLossEventRx = make(chan bool)
 
 	// process that listens to active nodes on network
-	go messageHandlers.NodeElevStateServer(node.ID,
+	go messageHandler.NodeElevStateServer(node.ID,
 		node.commandToServerTx,
 		node.TOLCFromServerRx,
 		node.ActiveElevStatesFromServerRx,
@@ -184,14 +191,14 @@ func MakeNode(id int) *NodeData {
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)
 
 	// start the transmitter function
-	go messageHandlers.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx,
+	go messageHandler.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx,
 		globalHallReqTransToBroadcast,
 		node.GlobalHallRequestTx)
 
 	node.HallLightUpdateTx = make(chan messages.HallLightUpdate)
 
 	// start the light update transmitter function
-	go messageHandlers.LightUpdateTransmitter(lightUpdateTransToBroadcast, node.HallLightUpdateTx, lightUpdateAckRx)
+	go messageHandler.LightUpdateTransmitter(lightUpdateTransToBroadcast, node.HallLightUpdateTx, lightUpdateAckRx)
 
 	return node
 }

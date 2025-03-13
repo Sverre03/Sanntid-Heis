@@ -58,6 +58,14 @@ func SetButtonLamp(button ButtonType, floor int, value bool) {
 	write([4]byte{2, byte(button), byte(floor), toByte(value)})
 }
 
+func SetAllLights(elev *Elevator) {
+	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
+			SetButtonLamp(ButtonType(btn), floor, elev.Requests[floor][btn])
+		}
+	}
+}
+
 func SetFloorIndicator(floor int) {
 	write([4]byte{3, byte(floor), 0, 0})
 }

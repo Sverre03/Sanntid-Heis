@@ -6,6 +6,38 @@ import (
 	"time"
 )
 
+// MessageType identifies the type of message being sent
+type MessageType int
+
+// Message types for elevator-to-node communication
+const (
+	MsgHallButtonEvent MessageType = iota
+	MsgHallAssignmentComplete
+	MsgElevatorState
+	MsgDoorStuck
+)
+
+// ElevatorToNodeMsg encapsulates all messages sent from elevator to node
+type ElevatorToNodeMsg struct {
+	Type        MessageType
+	ButtonEvent elevator.ButtonEvent   // For hall button events and completed hall assignments
+	ElevState   elevator.ElevatorState // For elevator state updates
+	IsDoorStuck bool                   // For door stuck status
+}
+
+// Message types for node-to-elevator communication
+const (
+	MsgHallAssignment MessageType = iota
+	MsgRequestDoorState
+)
+
+// NodeToElevatorMsg encapsulates all messages sent from node to elevator
+type NodeToElevatorMsg struct {
+	Type            MessageType
+	HallAssignments [config.NUM_FLOORS][2]bool // For assigning hall calls to the elevator
+	CheckDoorState  bool                       // For checking the door state
+}
+
 // a struct for acknowledging a message is received
 type Ack struct {
 	MessageID uint64 // the id of the message you received

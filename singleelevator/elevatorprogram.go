@@ -11,14 +11,9 @@ import (
 )
 
 // ElevatorProgram operates a single elevator
-// It manages the elevator state machine, events from hardware,
-// and communicates with the hall request assigner.
+// It manages the elevator state machine, hardware events,
+// and communicates with the node.
 func ElevatorProgram(
-	// ElevatorHallButtonEventTx chan ButtonEvent,
-	// ElevatorStateTx chan ElevatorState,
-	// ElevatorHallAssignmentRx chan [config.NUM_FLOORS][2]bool,
-	// IsDoorStuckCh chan bool,
-	// DoorStateRequestCh chan bool) {
 	nodeToElevator chan messages.NodeToElevatorMsg,
 	elevatorToNode chan messages.ElevatorToNodeMsg) {
 
@@ -34,52 +29,24 @@ func ElevatorProgram(
 	doorStuckEvent := make(chan bool)
 	obstructionEvent := make(chan bool)
 
-	doorOpenTimer := timer.NewTimer()  // Used to check if the door is open (if it is not closed after a certain time, 3 seconds)
-	doorStuckTimer := timer.NewTimer() // Used to check if the door is stuck (if it is not closed after a certain time, 30 seconds)
+	// Timers
+	doorOpenTimer := timer.NewTimer()  // 3-second door open timer
+	doorStuckTimer := timer.NewTimer() // 30-second timer to detect stuck doors
 
+	// Start hardware monitoring routines
 	startHardwarePolling(buttonEvent, floorEvent, obstructionEvent)
-	startTimerMonitoring(&doorOpenTimer, &doorStuckTimer, doorTimeoutEvent, doorStuckEvent)
+	startTimerPolling(&doorOpenTimer, &doorStuckTimer, doorTimeoutEvent, doorStuckEvent)
 
-	// go transmitElevatorState(&elev, ElevatorStateTx) // Transmits the elevator state to the node periodically
-	go func() {
-		for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
-			elevatorToNode <- messages.ElevatorToNodeMsg{
-				Type: messages.MsgElevatorState,
-				ElevState: elevator.ElevatorState{
-					Behavior:    elev.Behavior,
-					Floor:       elev.Floor,
-					Direction:   elev.Dir,
-					CabRequests: elevator.GetCabRequestsAsElevState(elev),
-				},
-			}
-		}
-	}()
+	// Transmits the elevator state to the node periodically
+	go transmitElevatorState(&elev, elevatorToNode)
 
 	for {
 		select {
 		case button := <-buttonEvent:
-			if (button.Button == elevator.ButtonHallDown) || (button.Button == elevator.ButtonHallUp) {
-				elevatorToNode <- messages.ElevatorToNodeMsg{ // Forward the hall call to the node
-					Type: messages.MsgHallButtonEvent,
-					ButtonEvent: elevator.ButtonEvent{
-						Floor:  button.Floor,
-						Button: button.Button,
-					},
-				}
-			} else {
-				elevator_fsm.FsmOnRequestButtonPress(&elev, button.Floor, button.Button, &doorOpenTimer)
-			}
+			handleButtonPress(button, &elev, &doorOpenTimer, elevatorToNode)
+
 		case msg := <-nodeToElevator:
-			switch msg.Type {
-			case messages.MsgHallAssignment:
-				AssignHallButtons(&elev, msg.HallAssignments, &doorOpenTimer)
-			case messages.MsgRequestDoorState:
-				// Handle door state request
-				// elevatorToNode <- messages.ElevatorToNodeMsg{
-				// 	Type:      messages.MsgDoorStuck,
-				// 	DoorStuck: true,
-				// }
-			}
+			handleNodeMessage(msg, &elev, &doorOpenTimer, elevatorToNode)
 
 		case floor := <-floorEvent:
 			elevator_fsm.FsmOnFloorArrival(&elev, floor, &doorOpenTimer, elevatorToNode)
@@ -91,7 +58,6 @@ func ElevatorProgram(
 			handleDoorTimeout(&elev, &doorOpenTimer, &doorStuckTimer)
 
 		case <-doorStuckEvent:
-			// IsDoorStuckCh <- true
 			elevatorToNode <- messages.ElevatorToNodeMsg{
 				Type:        messages.MsgDoorStuck,
 				IsDoorStuck: true,
@@ -102,6 +68,7 @@ func ElevatorProgram(
 	}
 }
 
+// Sets up goroutines to poll hardware events
 func startHardwarePolling(buttonEvent chan elevator.ButtonEvent, floorEvent chan int, obstructionEvent chan bool) {
 	fmt.Println("Starting polling routines")
 	go elevator.PollButtons(buttonEvent)
@@ -109,8 +76,8 @@ func startHardwarePolling(buttonEvent chan elevator.ButtonEvent, floorEvent chan
 	go elevator.PollObstructionSwitch(obstructionEvent)
 }
 
-// startTimerMonitoring sets up goroutines to monitor timer events
-func startTimerMonitoring(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer, doorTimeoutEvent chan bool, doorStuckEvent chan bool) {
+// Sets up goroutines to poll timer events
+func startTimerPolling(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer, doorTimeoutEvent chan bool, doorStuckEvent chan bool) {
 	// Monitor door open timeout (3 seconds)
 	go func() {
 		for range time.Tick(config.INPUT_POLL_INTERVAL) {
@@ -132,35 +99,60 @@ func startTimerMonitoring(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Time
 	}()
 }
 
-// // Transmit the elevator state to the node
-// func transmitElevatorState(elev *Elevator, ElevatorStateRx chan ElevatorState) {
-// 	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
-// 		ElevatorStateRx <- ElevatorState{
-// 			Behavior:    elev.Behavior,
-// 			Floor:       elev.Floor,
-// 			Direction:   elev.Dir,
-// 			CabRequests: GetCabRequestsAsElevState(*elev),
-// 		}
-// 	}
-// }
-
-func handleButtonEvent(elev *elevator.Elevator, button elevator.ButtonEvent, ElevatorHallButtonEventTx chan elevator.ButtonEvent, doorOpenTimer *timer.Timer) {
-	fmt.Printf("Button press detected: Floor %d, Button %s\n",
-		button.Floor, button.Button.String())
-
-	if (button.Button == elevator.ButtonHallDown) || (button.Button == elevator.ButtonHallUp) {
-		fmt.Printf("Forwarding hall call to node: Floor %d, Button %s\n",
-			button.Floor, button.Button.String())
-		ElevatorHallButtonEventTx <- elevator.ButtonEvent{ // Forward the hall call to the node
-			Floor:  button.Floor,
-			Button: button.Button,
+// Transmits the elevator state to the node periodically
+func transmitElevatorState(elev *elevator.Elevator, elevatorToNode chan messages.ElevatorToNodeMsg) {
+	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
+		elevatorToNode <- messages.ElevatorToNodeMsg{
+			Type: messages.MsgElevatorState,
+			ElevState: elevator.ElevatorState{
+				Behavior:    elev.Behavior,
+				Floor:       elev.Floor,
+				Direction:   elev.Dir,
+				CabRequests: elevator.GetCabRequestsAsElevState(*elev),
+			},
 		}
-	} else {
-		elevator_fsm.FsmOnRequestButtonPress(elev, button.Floor, button.Button, doorOpenTimer)
 	}
 }
 
-func AssignHallButtons(elev *elevator.Elevator, hallButtons [config.NUM_FLOORS][2]bool, doorOpenTimer *timer.Timer) {
+// Processes button press events
+func handleButtonPress(
+	button elevator.ButtonEvent,
+	elev *elevator.Elevator,
+	doorOpenTimer *timer.Timer,
+	elevatorToNode chan messages.ElevatorToNodeMsg) {
+
+	if button.Button == elevator.ButtonCab { // Handle cab calls internally
+		elevator_fsm.FsmOnRequestButtonPress(elev, button.Floor, button.Button, doorOpenTimer)
+	} else {
+		elevatorToNode <- messages.ElevatorToNodeMsg{
+			Type:        messages.MsgHallButtonEvent,
+			ButtonEvent: button,
+		}
+	}
+}
+
+// handleNodeMessage processes messages from the node
+func handleNodeMessage(
+	msg messages.NodeToElevatorMsg,
+	elev *elevator.Elevator,
+	doorOpenTimer *timer.Timer,
+	elevatorToNode chan messages.ElevatorToNodeMsg) {
+
+	switch msg.Type {
+	case messages.MsgHallAssignment:
+		assignHallButtons(elev, msg.HallAssignments, doorOpenTimer)
+
+	case messages.MsgRequestDoorState:
+		// If door state is requested, send current status
+		// isDoorStuck := timer.Active(*doorOpenTimer) && timer.TimerTimeLeft(*doorOpenTimer) > config.DOOR_STUCK_DURATION
+		// elevatorToNode <- messages.ElevatorToNodeMsg{
+		// 	Type:        messages.MsgDoorStuck,
+		// 	IsDoorStuck: isDoorStuck,
+		// }
+	}
+}
+
+func assignHallButtons(elev *elevator.Elevator, hallButtons [config.NUM_FLOORS][2]bool, doorOpenTimer *timer.Timer) {
 	fmt.Printf("Received hall button assignment")
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
 		for hallButton := 0; hallButton < 2; hallButton++ {

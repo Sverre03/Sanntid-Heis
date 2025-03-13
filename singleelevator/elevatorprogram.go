@@ -18,9 +18,8 @@ func ElevatorProgram(
 	elevatorToNode chan messages.ElevatorToNodeMsg) {
 
 	// Initialize the elevator
-	elev := elevator.NewElevator()
 	elevator.Init("localhost:15657", config.NUM_FLOORS)
-	elevator_fsm.InitFSM(&elev)
+	elevator_fsm.InitFSM()
 
 	// Channels for events
 	buttonEvent := make(chan elevator.ButtonEvent)
@@ -38,24 +37,24 @@ func ElevatorProgram(
 	startTimerPolling(&doorOpenTimer, &doorStuckTimer, doorTimeoutEvent, doorStuckEvent)
 
 	// Transmits the elevator state to the node periodically
-	go transmitElevatorState(&elev, elevatorToNode)
+	go transmitElevatorState(elevator_fsm.GetElevator(), elevatorToNode)
 
 	for {
 		select {
 		case button := <-buttonEvent:
-			handleButtonPress(button, &elev, &doorOpenTimer, elevatorToNode)
+			handleButtonPress(button, &doorOpenTimer, elevatorToNode)
 
 		case msg := <-nodeToElevator:
-			handleNodeMessage(msg, &elev, &doorOpenTimer, elevatorToNode)
+			handleNodeMessage(msg, &doorOpenTimer, elevatorToNode)
 
 		case floor := <-floorEvent:
-			elevator_fsm.FsmOnFloorArrival(&elev, floor, &doorOpenTimer, elevatorToNode)
+			elevator_fsm.FsmOnFloorArrival(floor, &doorOpenTimer, elevatorToNode)
 
 		case isObstructed := <-obstructionEvent:
-			elevator_fsm.FsmSetObstruction(&elev, isObstructed)
+			elevator_fsm.FsmSetObstruction(isObstructed)
 
 		case <-doorTimeoutEvent:
-			handleDoorTimeout(&elev, &doorOpenTimer, &doorStuckTimer)
+			handleDoorTimeout(&doorOpenTimer, &doorStuckTimer)
 
 		case <-doorStuckEvent:
 			elevatorToNode <- messages.ElevatorToNodeMsg{
@@ -100,7 +99,7 @@ func startTimerPolling(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer, 
 }
 
 // Transmits the elevator state to the node periodically
-func transmitElevatorState(elev *elevator.Elevator, elevatorToNode chan messages.ElevatorToNodeMsg) {
+func transmitElevatorState(elev elevator.Elevator, elevatorToNode chan messages.ElevatorToNodeMsg) {
 	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
 		elevatorToNode <- messages.ElevatorToNodeMsg{
 			Type: messages.MsgElevatorState,
@@ -108,7 +107,7 @@ func transmitElevatorState(elev *elevator.Elevator, elevatorToNode chan messages
 				Behavior:    elev.Behavior,
 				Floor:       elev.Floor,
 				Direction:   elev.Dir,
-				CabRequests: elevator.GetCabRequestsAsElevState(*elev),
+				CabRequests: elevator.GetCabRequestsAsElevState(elev),
 			},
 		}
 	}
@@ -117,12 +116,11 @@ func transmitElevatorState(elev *elevator.Elevator, elevatorToNode chan messages
 // Processes button press events
 func handleButtonPress(
 	button elevator.ButtonEvent,
-	elev *elevator.Elevator,
 	doorOpenTimer *timer.Timer,
 	elevatorToNode chan messages.ElevatorToNodeMsg) {
 
 	if button.Button == elevator.ButtonCab { // Handle cab calls internally
-		elevator_fsm.FsmOnRequestButtonPress(elev, button.Floor, button.Button, doorOpenTimer)
+		elevator_fsm.FsmOnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
 	} else {
 		elevatorToNode <- messages.ElevatorToNodeMsg{
 			Type:        messages.MsgHallButtonEvent,
@@ -134,13 +132,12 @@ func handleButtonPress(
 // handleNodeMessage processes messages from the node
 func handleNodeMessage(
 	msg messages.NodeToElevatorMsg,
-	elev *elevator.Elevator,
 	doorOpenTimer *timer.Timer,
 	elevatorToNode chan messages.ElevatorToNodeMsg) {
 
 	switch msg.Type {
 	case messages.MsgHallAssignment:
-		assignHallButtons(elev, msg.HallAssignments, doorOpenTimer)
+		assignHallButtons(msg.HallAssignments, doorOpenTimer)
 
 	case messages.MsgRequestDoorState:
 		// If door state is requested, send current status
@@ -152,23 +149,22 @@ func handleNodeMessage(
 	}
 }
 
-func assignHallButtons(elev *elevator.Elevator, hallButtons [config.NUM_FLOORS][2]bool, doorOpenTimer *timer.Timer) {
+func assignHallButtons(hallButtons [config.NUM_FLOORS][2]bool, doorOpenTimer *timer.Timer) {
 	fmt.Printf("Received hall button assignment")
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
 		for hallButton := 0; hallButton < 2; hallButton++ {
-			elev.Requests[floor][hallButton] = hallButtons[floor][hallButton]
-			if elev.Requests[floor][hallButton] {
-				elevator_fsm.FsmOnRequestButtonPress(elev, floor, elevator.ButtonType(hallButton), doorOpenTimer)
+			if hallButtons[floor][hallButton] {
+				elevator_fsm.FsmOnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
 			}
 		}
 	}
-	elevator.SetAllLights(elev)
+	// elevator.SetAllLights(elev)
 }
 
-func handleDoorTimeout(elev *elevator.Elevator, doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer) {
+func handleDoorTimeout(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer) {
 	fmt.Println("Door timeout event detected")
 	if !timer.Active(*doorStuckTimer) {
 		timer.TimerStart(doorStuckTimer, config.DOOR_STUCK_DURATION)
 	}
-	elevator_fsm.FsmOnDoorTimeout(elev, doorOpenTimer, doorStuckTimer)
+	elevator_fsm.FsmOnDoorTimeout(doorOpenTimer, doorStuckTimer)
 }

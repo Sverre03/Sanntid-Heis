@@ -8,29 +8,37 @@ import (
 	"fmt"
 )
 
-func InitFSM(elev *elevator.Elevator) {
+var elev elevator.Elevator
+
+func GetElevator() elevator.Elevator {
+	return elev
+}
+
+func InitFSM() {
+	elev = elevator.NewElevator()
+
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
 		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
 			elevator.SetButtonLamp(elevator.ButtonType(btn), floor, false)
 		}
 	}
-	FsmOnInitBetweenFloors(elev)
+	FsmOnInitBetweenFloors()
 }
 
-func FsmOnInitBetweenFloors(elev *elevator.Elevator) {
+func FsmOnInitBetweenFloors() {
 	elevator.SetMotorDirection(elevator.DirectionDown)
 	elev.Dir = elevator.DirectionDown
 	elev.Behavior = elevator.Moving
 }
 
-func FsmOnRequestButtonPress(elev *elevator.Elevator, btnFloor int, btnType elevator.ButtonType, doorOpenTimer *timer.Timer) {
+func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *timer.Timer) {
 	fmt.Printf("\n\n%s(%d, %s)\n", "fsmOnRequestButtonPress", btnFloor, btnType.String())
-	elevator.PrintElevator(*elev)
+	elevator.PrintElevator(elev)
 
 	switch elev.Behavior {
 	case elevator.DoorOpen:
 		// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
-		if elevator.RequestsShouldClearImmediately(*elev, btnFloor, btnType) {
+		if elevator.RequestsShouldClearImmediately(elev, btnFloor, btnType) {
 			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
 		} else {
 			elev.Requests[btnFloor][btnType] = true
@@ -39,15 +47,15 @@ func FsmOnRequestButtonPress(elev *elevator.Elevator, btnFloor int, btnType elev
 		elev.Requests[btnFloor][btnType] = true
 	case elevator.Idle:
 		elev.Requests[btnFloor][btnType] = true
-		pair := elevator.RequestsChooseDirection(*elev)
+		pair := elevator.RequestsChooseDirection(elev)
 		elev.Dir = pair.Dir
 		elev.Behavior = pair.Behavior
 		switch pair.Behavior {
 		case elevator.DoorOpen:
 			elevator.SetDoorOpenLamp(true)
 			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
-			updatedElev, _ := elevator.RequestsClearAtCurrentFloor(*elev)
-			*elev = updatedElev
+			updatedElev, _ := elevator.RequestsClearAtCurrentFloor(elev)
+			elev = updatedElev
 
 		case elevator.Moving:
 			elevator.SetMotorDirection(elev.Dir)
@@ -55,31 +63,31 @@ func FsmOnRequestButtonPress(elev *elevator.Elevator, btnFloor int, btnType elev
 		}
 	}
 
-	elevator.SetAllLights(elev)
+	elevator.SetAllLights(&elev)
 
 	fmt.Println("\nNew state:")
-	elevator.PrintElevator(*elev)
+	elevator.PrintElevator(elev)
 }
 
-func FsmSetObstruction(elev *elevator.Elevator, isObstructed bool) {
+func FsmSetObstruction(isObstructed bool) {
 	elev.IsObstructed = isObstructed
 }
 
-func FsmOnFloorArrival(elev *elevator.Elevator, newFloor int, doorOpenTimer *timer.Timer, elevatorToNode chan messages.ElevatorToNodeMsg) {
+func FsmOnFloorArrival(newFloor int, doorOpenTimer *timer.Timer, elevatorToNode chan messages.ElevatorToNodeMsg) {
 	fmt.Printf("\n\n%s(%d)\n", "fsmOnFloorArrival", newFloor)
-	elevator.PrintElevator(*elev)
+	elevator.PrintElevator(elev)
 
 	elev.Floor = newFloor
 	elevator.SetFloorIndicator(elev.Floor)
 
 	switch elev.Behavior {
 	case elevator.Moving:
-		if elevator.RequestsShouldStop(*elev) {
+		if elevator.RequestsShouldStop(elev) {
 			elevator.SetMotorDirection(elevator.DirectionStop)
 			elevator.SetDoorOpenLamp(true)
 
-			updatedElev, clearedRequests := elevator.RequestsClearAtCurrentFloor(*elev)
-			*elev = updatedElev
+			updatedElev, clearedRequests := elevator.RequestsClearAtCurrentFloor(elev)
+			elev = updatedElev
 
 			for _, request := range clearedRequests {
 				elevatorToNode <- messages.ElevatorToNodeMsg{
@@ -89,19 +97,19 @@ func FsmOnFloorArrival(elev *elevator.Elevator, newFloor int, doorOpenTimer *tim
 			}
 
 			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
-			elevator.SetAllLights(elev)
+			elevator.SetAllLights(&elev)
 			elev.Behavior = elevator.DoorOpen
 		}
 	default:
 	}
 
 	fmt.Println("\nNew state:")
-	elevator.PrintElevator(*elev)
+	elevator.PrintElevator(elev)
 }
 
-func FsmOnDoorTimeout(elev *elevator.Elevator, doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer) {
+func FsmOnDoorTimeout(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer) {
 	fmt.Printf("\n\n%s()\n", "fsmOnDoorTimeout")
-	elevator.PrintElevator(*elev)
+	elevator.PrintElevator(elev)
 
 	switch elev.Behavior {
 	case elevator.DoorOpen:
@@ -112,7 +120,7 @@ func FsmOnDoorTimeout(elev *elevator.Elevator, doorOpenTimer *timer.Timer, doorS
 			timer.TimerStop(doorStuckTimer)
 			elevator.SetDoorOpenLamp(false)
 
-			pair := elevator.RequestsChooseDirection(*elev)
+			pair := elevator.RequestsChooseDirection(elev)
 			elev.Dir = pair.Dir
 			elev.Behavior = pair.Behavior
 
@@ -125,10 +133,10 @@ func FsmOnDoorTimeout(elev *elevator.Elevator, doorOpenTimer *timer.Timer, doorS
 				timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
 				timer.TimerStart(doorStuckTimer, config.DOOR_STUCK_DURATION)
 
-				updatedElev, _ := elevator.RequestsClearAtCurrentFloor(*elev)
-				*elev = updatedElev
+				updatedElev, _ := elevator.RequestsClearAtCurrentFloor(elev)
+				elev = updatedElev
 
-				elevator.SetAllLights(elev)
+				elevator.SetAllLights(&elev)
 			case elevator.Moving, elevator.Idle:
 				elevator.SetDoorOpenLamp(false)
 				elevator.SetMotorDirection(elev.Dir)
@@ -138,5 +146,5 @@ func FsmOnDoorTimeout(elev *elevator.Elevator, doorOpenTimer *timer.Timer, doorS
 	}
 
 	fmt.Println("\nNew state:")
-	elevator.PrintElevator(*elev)
+	elevator.PrintElevator(elev)
 }

@@ -57,10 +57,9 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 // server that tracks the states of all elevators by listening to the elevStatesRx channel
 // you can requests to know the states by sending a string on  commandCh
-// commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "getTOLC", "startConnectionTimeoutDetection"
+// commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "startConnectionTimeoutDetection"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
 func NodeElevStateServer(myID int, commandRx <-chan string,
-	timeOfLastContactTx chan<- time.Time,
 	activeElevStatesTx chan<- map[int]messages.NodeElevState,
 	activeNodeIDsTx chan<- []int,
 	elevStatesRx <-chan messages.NodeElevState,
@@ -75,7 +74,6 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]messages.NodeElevState)
-	timeOfLastContact := time.Time{}
 
 	for {
 		select {
@@ -89,7 +87,6 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 			if id != myID { // Check if we received our own message
 
 				if enableTOLCUpdate {
-					timeOfLastContact = time.Now()
 					timeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				}
 
@@ -119,9 +116,6 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 				}
 
 				activeNodeIDsTx <- activeIDs
-
-			case "getTOLC":
-				timeOfLastContactTx <- timeOfLastContact
 
 			case "getAllElevStates":
 				allElevStatesTx <- knownNodes

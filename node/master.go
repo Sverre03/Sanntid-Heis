@@ -5,6 +5,7 @@ import (
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"fmt"
+	"time"
 )
 
 const bufferSize = 5
@@ -240,11 +241,11 @@ ForLoop:
 		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
 		case <-node.AllElevStatesFromServerRx:
-		case <-node.TOLCFromServerRx:
 		case <-node.ActiveNodeIDsFromServerRx:
 			// when you get a message on any of these channels, do nothing
 		}
 	}
 	node.GlobalHallReqTransmitEnableTx <- false // stop transmitting global hall requests
+	node.TOLC = time.Now()
 	return nextNodeState
 }

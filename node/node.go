@@ -29,6 +29,7 @@ type NodeData struct {
 	ID                 int
 	State              nodestate
 	GlobalHallRequests [config.NUM_FLOORS][2]bool
+	TOLC               time.Time
 
 	AckTx        chan messages.Ack           // Send acks to udp broadcaster
 	ElevStatesTx chan messages.NodeElevState // send your elev states to udp broadcaster
@@ -52,7 +53,6 @@ type NodeData struct {
 	commandToServerTx            chan string                         // Sends commands to the NodeElevStateServer (defined in Network/comm/receivers.go)
 	ActiveElevStatesFromServerRx chan map[int]messages.NodeElevState // Receives the state of the other active node's elevators
 	AllElevStatesFromServerRx    chan map[int]messages.NodeElevState // receives the state of all nodes ever been made contact with
-	TOLCFromServerRx             chan time.Time                      // Receives the Time of Last Contact
 	ActiveNodeIDsFromServerRx    chan []int                          // Receives the IDs of the active nodes on the network
 	ConnectionLossEventRx        chan bool                           // if no contact have been made within a timeout, "true" is sent on this channel
 
@@ -76,6 +76,7 @@ func MakeNode(id int) *NodeData {
 	node := &NodeData{
 		ID:    id,
 		State: Inactive,
+		TOLC:  time.Time{},
 	}
 
 	// broadcast channels
@@ -165,7 +166,6 @@ func MakeNode(id int) *NodeData {
 	// 	node.RequestDoorStateCh)
 
 	node.commandToServerTx = make(chan string)
-	node.TOLCFromServerRx = make(chan time.Time)
 	node.ActiveElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
 	node.AllElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
 	node.ActiveNodeIDsFromServerRx = make(chan []int)
@@ -174,7 +174,6 @@ func MakeNode(id int) *NodeData {
 	// process that listens to active nodes on network
 	go messagehandler.NodeElevStateServer(node.ID,
 		node.commandToServerTx,
-		node.TOLCFromServerRx,
 		node.ActiveElevStatesFromServerRx,
 		node.ActiveNodeIDsFromServerRx,
 		elevStatesRx,

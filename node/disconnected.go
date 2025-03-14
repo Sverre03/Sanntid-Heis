@@ -11,16 +11,12 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	// note: this function could use a rewrite
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 
-	timeOfLastContact := time.Time{}
-	msgID, _ := messagehandler.GenerateMessageID(messagehandler.CONNECTION_REQ)
-
-	node.commandToServerTx <- "getTOLC"
-	timeOfLastContact = <-node.TOLCFromServerRx
+	connectionReqMsgID, _ := messagehandler.GenerateMessageID(messagehandler.CONNECTION_REQ)
 
 	myConnReq := messages.ConnectionReq{
-		TOLC:      timeOfLastContact,
+		TOLC:      node.TOLC,
 		NodeID:    node.ID,
-		MessageID: msgID,
+		MessageID: connectionReqMsgID,
 	}
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
 	var nextNodeState nodestate
@@ -70,7 +66,7 @@ ForLoop:
 
 					if connReq, exists := incomingConnRequests[lastReceivedAck.NodeID]; exists {
 
-						if ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, timeOfLastContact, connReq.TOLC) {
+						if ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, node.TOLC, connReq.TOLC) {
 							nextNodeState = Master
 						} else {
 							nextNodeState = Slave
@@ -99,7 +95,7 @@ ForLoop:
 
 		case <-node.GlobalHallRequestRx:
 			// here, we must check if the master knows anything about us, before we become a slave
-			if timeOfLastContact.IsZero() {
+			if node.TOLC.IsZero() {
 				// do smth
 			}
 			nextNodeState = Slave

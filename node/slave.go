@@ -4,6 +4,7 @@ import (
 	"elev/Network/messages"
 	"elev/elevator"
 	"fmt"
+	"time"
 )
 
 func SlaveProgram(node *NodeData) nodestate {
@@ -18,7 +19,9 @@ ForLoop:
 	for {
 		select {
 		case elevMsg := <-node.FromElevator:
+
 			switch elevMsg.Type {
+
 			case messages.MsgDoorStuck:
 				if elevMsg.IsDoorStuck {
 					nextNodeState = Inactive
@@ -32,23 +35,20 @@ ForLoop:
 				}
 
 			case messages.MsgHallAssignmentComplete:
+
 				// Forward completed hall assignments
 				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
-					hallAssignmentCompleteMsg := messages.HallAssignmentComplete{
+
+					node.HallAssignmentCompleteTx <- messages.HallAssignmentComplete{
 						Floor:      elevMsg.ButtonEvent.Floor,
 						HallButton: elevMsg.ButtonEvent.Button,
-						MessageID:  uint64(0), // Placeholder, Generate message ID as needed
+						MessageID:  uint64(0),
 					}
-
-					node.HallAssignmentCompleteTx <- hallAssignmentCompleteMsg
 					fmt.Printf("Node %d sent hall assignment complete message\n", node.ID)
-
-					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = false
-					node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				}
 
 			case messages.MsgElevatorState:
-				// Forward elevator state to network
+				// Transmit elevator states to network
 				node.ElevStatesTx <- messages.NodeElevState{
 					NodeID:    node.ID,
 					ElevState: elevMsg.ElevState,
@@ -81,12 +81,12 @@ ForLoop:
 			fmt.Println(lightUpdate)
 
 		case hallReqFromMaster := <-node.GlobalHallRequestRx:
+			node.TOLC = time.Now()
 			node.GlobalHallRequests = hallReqFromMaster.HallRequests
 
 		case <-node.ActiveElevStatesFromServerRx:
 		case <-node.AllElevStatesFromServerRx:
 		case <-node.NewHallReqRx:
-		case <-node.TOLCFromServerRx:
 		case <-node.ConnectionReqRx:
 		case <-node.ConnectionReqAckRx:
 		case <-node.CabRequestInfoRx:

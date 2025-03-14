@@ -43,7 +43,6 @@ func InactiveProgram(node *NodeData) nodestate {
 		case <-node.ConnectionReqAckRx:
 		case <-node.ActiveElevStatesFromServerRx:
 		case <-node.AllElevStatesFromServerRx:
-		case <-node.TOLCFromServerRx:
 		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.NewHallReqRx:
 		case <-node.HallAssignmentCompleteRx:

@@ -1,7 +1,7 @@
 package node
 
 import (
-	"elev/Network/messages"
+	"elev/singleelevator"
 	"elev/util/config"
 	"fmt"
 	"time"
@@ -9,32 +9,19 @@ import (
 
 func InactiveProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Inactive\n", node.ID)
-
+	var nextNodeState nodestate
+ForLoop:
 	for {
 		select {
 
-		case elevMsg := <-node.FromElevator:
-			switch elevMsg.Type {
-			case messages.MsgDoorStuck:
-				if elevMsg.IsDoorStuck {
-					return Disconnected
-				}
-			// Else do nothing
-			case messages.MsgHallButtonEvent:
-				// do smth
-			case messages.MsgHallAssignmentComplete:
-				// do smth
-			case messages.MsgElevatorState:
-				// do smth
+		case elevMsg := <-node.ElevatorEventRx:
+			// check whether the door is not stuck
+			if !elevMsg.IsDoorStuck && elevMsg.EventType == singleelevator.DoorStuckEvent {
+				nextNodeState = Inactive
+				break ForLoop
 			}
 
 		case <-time.After(config.NODE_DOOR_POLL_INTERVAL):
-			// node.RequestDoorStateCh <- true
-			node.ToElevator <- messages.NodeToElevatorMsg{
-				Type: messages.MsgRequestDoorState,
-			}
-
-		// always make sure there are no receive channels in the node that are not present here
 		case <-node.HallAssignmentsRx:
 		case <-node.HallLightUpdateRx:
 		case <-node.CabRequestInfoRx:
@@ -50,4 +37,5 @@ func InactiveProgram(node *NodeData) nodestate {
 		case <-node.ConnectionLossEventRx:
 		}
 	}
+	return nextNodeState
 }

@@ -4,6 +4,7 @@ import (
 	"elev/Network/messages"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
+	"elev/singleelevator"
 	"fmt"
 	"time"
 )
@@ -46,6 +47,7 @@ func MasterProgram(node *NodeData) nodestate {
 	var recentHACompleteBuffer MessageIDBuffer
 	var nextNodeState nodestate
 
+	// inform the global hall request transmitter of the new global hall requests
 	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 	node.GlobalHallReqTransmitEnableTx <- true // start transmitting global hall requests (this means you are a master)
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
@@ -54,71 +56,50 @@ ForLoop:
 	for {
 	Select:
 		select {
-		case elevMsg := <-node.FromElevator:
-			switch elevMsg.Type {
-			case messages.MsgDoorStuck:
+		case elevMsg := <-node.ElevatorEventRx:
+			switch elevMsg.EventType {
+
+			case singleelevator.DoorStuckEvent:
+
 				if elevMsg.IsDoorStuck {
-					fmt.Println("Door is stuck, exiting master")
 					nextNodeState = Inactive
 					break ForLoop
 				}
 
-			case messages.MsgHallButtonEvent:
-				// Handle hall button event
-				fmt.Printf("Node %d received a new hall request from my elevator: %v\n", node.ID, elevMsg.ButtonEvent)
-				switch elevMsg.ButtonEvent.Button {
-				case elevator.ButtonHallUp:
-					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevator.ButtonHallUp] = true
-				case elevator.ButtonHallDown:
-					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevator.ButtonHallDown] = true
-				case elevator.ButtonCab:
-					fmt.Println("Received a hall request, but the button type was invalid")
-					break Select
-				}
+				break Select
 
-				fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
-				activeNewHallReq = true
-				node.commandToServerTx <- "getActiveElevStates"
-
-			case messages.MsgHallAssignmentComplete:
-				// Handle completed hall assignments
+			case singleelevator.HallButtonEvent:
 				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
-					hallAssignmentCompleteMsg := messages.HallAssignmentComplete{
-						Floor:      elevMsg.ButtonEvent.Floor,
-						HallButton: elevMsg.ButtonEvent.Button,
-						MessageID:  uint64(0), // Placeholder, Generate message ID as needed
-					}
-
-					node.HallAssignmentCompleteTx <- hallAssignmentCompleteMsg
-					fmt.Printf("Node %d sent hall assignment complete message\n", node.ID)
-
-					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = false
-					node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = true
+					activeNewHallReq = true
 				}
 
-			case messages.MsgElevatorState:
-				// Update and broadcast elevator state
-				node.ElevStatesTx <- messages.NodeElevState{
-					NodeID:    node.ID,
-					ElevState: elevMsg.ElevState,
+			case singleelevator.LocalHallAssignmentCompleteEvent:
+				// update the global hall assignments
+				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
+					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = false
 				}
 			}
+
+			if activeNewHallReq {
+				fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
+				node.commandToServerTx <- "getActiveElevStates"
+			}
+
+			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+
+		case myStates := <-node.MyElevStatesRx:
+			myElevState = messages.NodeElevState{NodeID: node.ID, ElevState: myStates}
+
 		case newHallReq := <-node.NewHallReqRx:
 
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
-			switch newHallReq.HallButton {
-
-			case elevator.ButtonHallUp:
-				node.GlobalHallRequests[newHallReq.Floor][elevator.ButtonHallUp] = true
-
-			case elevator.ButtonHallDown:
-				node.GlobalHallRequests[newHallReq.Floor][elevator.ButtonHallDown] = true
-
-			case elevator.ButtonCab:
+			if newHallReq.HallButton == elevator.ButtonCab {
 				fmt.Println("Received a new hall requests, but the button type was invalid")
 				break Select
 			}
 
+			node.GlobalHallRequests[newHallReq.Floor][newHallReq.HallButton] = true
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 			activeNewHallReq = true
 
@@ -126,38 +107,15 @@ ForLoop:
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 			node.commandToServerTx <- "getActiveElevStates"
 
-		case completedHallReq := <-node.HallAssignmentCompleteRx:
-			if completedHallReq.HallButton != elevator.ButtonCab {
-				// Notify other nodes that the hall request/assignment is completed
-				hallAssignmentCompleteMsg := messages.HallAssignmentComplete{
-					Floor:      completedHallReq.Floor,
-					HallButton: completedHallReq.HallButton,
-					MessageID:  completedHallReq.MessageID,
-				}
-
-				node.HallAssignmentCompleteTx <- hallAssignmentCompleteMsg
-				fmt.Printf("Node %d sent hall assignment complete message\n", node.ID)
-
-				node.GlobalHallRequests[completedHallReq.Floor][completedHallReq.HallButton] = false
-				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
-			}
-
-		case newElevStates := <-node.ActiveElevStatesFromServerRx:
+		case activeElevStates := <-node.ActiveElevStatesFromServerRx:
 			if activeNewHallReq {
 
-				newElevStates[node.ID] = myElevState
+				// add my elevator to the list of active elevators
+				activeElevStates[node.ID] = myElevState
 
-				fmt.Printf("Node %d received active elev states: %v\n", node.ID, newElevStates)
+				fmt.Printf("Node %d received active elev states: %v\n", node.ID, activeElevStates)
 
-				// check that the floor is valid - can be its own function
-				for id := range newElevStates {
-					if newElevStates[id].ElevState.Floor < 0 {
-						fmt.Printf("Error: invalid elevator floor for elevator %d ", id)
-						break Select
-					}
-				}
-
-				HRAoutput := hallRequestAssigner.HRAalgorithm(newElevStates, node.GlobalHallRequests)
+				HRAoutput := hallRequestAssigner.HRAalgorithm(activeElevStates, node.GlobalHallRequests)
 
 				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
 
@@ -165,10 +123,7 @@ ForLoop:
 
 					if id == node.ID {
 						// here, we must update the lights of our own elevator
-						node.ToElevator <- messages.NodeToElevatorMsg{
-							Type:            messages.MsgHallAssignment,
-							HallAssignments: hallRequests,
-						}
+						node.ElevAssignmentLightUpdateTx <- makeAssignmentAndLightMessage(hallRequests, node.GlobalHallRequests)
 						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallRequests)
 
 					} else {
@@ -223,7 +178,7 @@ ForLoop:
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 
 			}
-
+			// ack the message no matter the state of the message
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
 		case timeout := <-node.ConnectionLossEventRx:

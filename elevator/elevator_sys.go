@@ -14,11 +14,12 @@ const (
 )
 
 type Elevator struct {
-	Floor        int
-	Dir          MotorDirection
-	Behavior     ElevatorBehavior
-	Requests     [config.NUM_FLOORS][config.NUM_BUTTONS]bool
-	IsObstructed bool
+	Floor           int
+	Dir             MotorDirection
+	Behavior        ElevatorBehavior
+	Requests        [config.NUM_FLOORS][config.NUM_BUTTONS]bool
+	IsObstructed    bool
+	HallLightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // state of the hall lights
 }
 
 type ElevatorState struct {

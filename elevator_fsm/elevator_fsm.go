@@ -1,7 +1,6 @@
 package elevator_fsm
 
 import (
-	"elev/Network/messages"
 	"elev/elevator"
 	"elev/util/config"
 	"elev/util/timer"
@@ -73,7 +72,10 @@ func FsmSetObstruction(isObstructed bool) {
 	elev.IsObstructed = isObstructed
 }
 
-func FsmOnFloorArrival(newFloor int, doorOpenTimer *timer.Timer, elevatorToNode chan messages.ElevatorToNodeMsg) {
+func FsmOnFloorArrival(newFloor int, doorOpenTimer *timer.Timer) []elevator.ButtonEvent {
+
+	// rememmber and return the events cleared if the elevator stopped
+	var clearedRequests []elevator.ButtonEvent
 	fmt.Printf("\n\n%s(%d)\n", "fsmOnFloorArrival", newFloor)
 	elevator.PrintElevator(elev)
 
@@ -83,18 +85,13 @@ func FsmOnFloorArrival(newFloor int, doorOpenTimer *timer.Timer, elevatorToNode 
 	switch elev.Behavior {
 	case elevator.Moving:
 		if elevator.RequestsShouldStop(elev) {
+			var updatedElev elevator.Elevator
+
 			elevator.SetMotorDirection(elevator.DirectionStop)
 			elevator.SetDoorOpenLamp(true)
 
-			updatedElev, clearedRequests := elevator.RequestsClearAtCurrentFloor(elev)
+			updatedElev, clearedRequests = elevator.RequestsClearAtCurrentFloor(elev)
 			elev = updatedElev
-
-			for _, request := range clearedRequests {
-				elevatorToNode <- messages.ElevatorToNodeMsg{
-					Type:        messages.MsgHallAssignmentComplete,
-					ButtonEvent: request,
-				}
-			}
 
 			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
 			elevator.SetAllLights(&elev)
@@ -105,6 +102,11 @@ func FsmOnFloorArrival(newFloor int, doorOpenTimer *timer.Timer, elevatorToNode 
 
 	fmt.Println("\nNew state:")
 	elevator.PrintElevator(elev)
+	return clearedRequests
+}
+
+func SetHallLights(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) {
+	elev.HallLightStates = lightStates
 }
 
 func FsmOnDoorTimeout(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer) {
@@ -117,6 +119,7 @@ func FsmOnDoorTimeout(doorOpenTimer *timer.Timer, doorStuckTimer *timer.Timer) {
 			timer.TimerStart(doorOpenTimer, config.DOOR_OPEN_DURATION)
 		} else {
 			timer.TimerStop(doorOpenTimer)
+			// stop the doorStuckTimer!
 			timer.TimerStop(doorStuckTimer)
 			elevator.SetDoorOpenLamp(false)
 

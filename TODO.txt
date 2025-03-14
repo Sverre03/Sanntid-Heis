@@ -1,5 +1,8 @@
 TODO:
 
+ALL TRANSMITTERS NEED TO BE ENABLED/DISABLED BASED ON WHAT STATE YOU ARE IN
+THIS IS A GOOD ARGUMENT TO REDUCE THE NUMBER OF TRANSMITTERS
+
 - Elevator
     Add channel for updating hall lights (as hall light must be lit if any of the elevators are performing a hall assignment)
     Merge channel for IsDoorStuck with checking if elevator is initialised (not in-between floors at startup)
@@ -14,6 +17,9 @@ TODO:
 - Master
     Make logic for control of lights
     Make logic for detecting a node connect/disconnect
+
+- In Elevator_sys.go
+    Why is there struct elevator and a struct  elevator states that contain the exact same fields except one?
 
 - NodeElevStateServer
     Notify if a node has fallen out 

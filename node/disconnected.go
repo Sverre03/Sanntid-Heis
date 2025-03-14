@@ -3,6 +3,8 @@ package node
 import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
+	"elev/elevator"
+	"elev/singleelevator"
 	"fmt"
 	"time"
 )
@@ -77,20 +79,23 @@ ForLoop:
 				}
 			}
 
-		case elevMsg := <-node.FromElevator:
-			switch elevMsg.Type {
-			case messages.MsgDoorStuck:
+		case elevMsg := <-node.ElevatorEventRx:
+			switch elevMsg.EventType {
+
+			case singleelevator.DoorStuckEvent:
 				if elevMsg.IsDoorStuck {
 					nextNodeState = Inactive
 					break ForLoop
 				}
-			// Else do nothing
-			case messages.MsgHallButtonEvent:
-				// do smth
-			case messages.MsgHallAssignmentComplete:
-				// do smth
-			case messages.MsgElevatorState:
-				// do smth
+
+			case singleelevator.HallButtonEvent:
+				// ignore hall button presses
+
+			case singleelevator.LocalHallAssignmentCompleteEvent:
+				// update the global hall requests, it is safe as we are now disconnected
+				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
+					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = false
+				}
 			}
 
 		case <-node.GlobalHallRequestRx:

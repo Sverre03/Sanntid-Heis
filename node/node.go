@@ -7,6 +7,7 @@ import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
 	"elev/Network/network/bcast"
+	"elev/elevator"
 	"elev/singleelevator"
 	"elev/util/config"
 	"time"
@@ -60,8 +61,9 @@ type NodeData struct {
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	// Elevator-Node communication
-	ToElevator   chan messages.NodeToElevatorMsg
-	FromElevator chan messages.ElevatorToNodeMsg
+	ElevAssignmentLightUpdateTx chan singleelevator.LightAndHallAssignmentUpdate // channel for informing elevator of changes to hall button lights, and new elevator states
+	ElevatorEventRx             chan singleelevator.ElevatorEvent
+	MyElevStatesRx              chan elevator.ElevatorState
 
 	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete // Send a hall assignment complete to the hall assignment complete transmitter
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
@@ -152,11 +154,11 @@ func MakeNode(id int) *NodeData {
 	// node.IsDoorStuckCh = make(chan bool)
 	// node.RequestDoorStateCh = make(chan bool)
 
-	node.ToElevator = make(chan messages.NodeToElevatorMsg)
-	node.FromElevator = make(chan messages.ElevatorToNodeMsg)
-
+	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndHallAssignmentUpdate)
+	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
+	node.MyElevStatesRx = make(chan elevator.ElevatorState)
 	// the physical elevator program
-	go singleelevator.ElevatorProgram(node.ToElevator, node.FromElevator)
+	go singleelevator.ElevatorProgram(node.ElevatorEventRx, node.ElevAssignmentLightUpdateTx, node.MyElevStatesRx)
 
 	// go elevator.ElevatorProgram(node.ElevatorHallButtonEventRx,
 	// 	node.MyElevatorStatesRx,

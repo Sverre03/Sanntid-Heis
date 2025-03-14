@@ -9,20 +9,20 @@ TODO:
     setup all transmitters and channels
 
 - Slave
+    Master timeout detection
 
 - Master
     Make logic for control of lights
     Make logic for detecting a node connect/disconnect
+
 - NodeElevStateServer
     Notify if a node has fallen out 
 
-- Inactive
-
-
 - Disconnected 
-    Make logic for receiving your own TOLC from server, wait for this before sending out conn req
-    make logic for receiving your states from master
+    Make logic for receiving your states from master
 
 - Everywhere
     Filter out messages from myself
-    
+
+Unsafe operations are happening in elevator
+For instance, transferElevStates does not work and should not be written this way even if it did work

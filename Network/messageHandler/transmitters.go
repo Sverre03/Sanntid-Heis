@@ -11,7 +11,6 @@ import (
 func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments,
 	OutgoingNewHallAssignments <-chan messages.NewHallAssignments,
 	HallAssignmentsAck <-chan messages.Ack) {
-
 	activeAssignments := map[int]messages.NewHallAssignments{}
 
 	timeoutChannel := make(chan uint64, 2)
@@ -77,65 +76,6 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
 			if enable {
 				GlobalHallRequestTx <- GHallRequests
-			}
-		}
-	}
-}
-
-// Transmits HallButton Lightstates from outgoingLightUpdates channel to their designated elevators and handles ack
-func LightUpdateTransmitter(hallLightUpdateTx chan<- messages.HallLightUpdate,
-	outgoingLightUpdates chan messages.HallLightUpdate,
-	hallLightUpdateAck <-chan messages.Ack) {
-
-	activeAssignments := map[int]messages.HallLightUpdate{}
-	timeoutCh := make(chan uint64)
-
-	for {
-		select {
-		case newLightUpdate := <-outgoingLightUpdates:
-
-			new_msg_id, err := GenerateMessageID(HALL_LIGHT_UPDATE)
-			if err != nil {
-				fmt.Println("Fatal error, invalid message type used to generate message id in hall light update")
-			}
-
-			newLightUpdate.MessageID = new_msg_id
-
-			// make the actual message shorter by removing redundant information
-
-			for _, id := range newLightUpdate.ActiveElevatorIDs {
-				activeAssignments[id] = newLightUpdate
-			}
-
-			newLightUpdate.ActiveElevatorIDs = []int{}
-
-			hallLightUpdateTx <- newLightUpdate
-
-			time.AfterFunc(500*time.Millisecond, func() {
-				timeoutCh <- newLightUpdate.MessageID
-			})
-
-		case timedOutMsgID := <-timeoutCh:
-
-			for _, msg := range activeAssignments {
-				if msg.MessageID == timedOutMsgID {
-
-					// send the message again
-					hallLightUpdateTx <- msg
-					time.AfterFunc(500*time.Millisecond, func() {
-						timeoutCh <- msg.MessageID
-					})
-					break
-				}
-			}
-
-		case receivedAck := <-hallLightUpdateAck:
-
-			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
-				if msg.MessageID == receivedAck.MessageID {
-
-					delete(activeAssignments, receivedAck.NodeID)
-				}
 			}
 		}
 	}

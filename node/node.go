@@ -147,13 +147,6 @@ func MakeNode(id int) *NodeData {
 		node.HallAssignmentCompleteTx,
 		node.HallAssignmentCompleteAckRx)
 
-	// node.ElevatorHallAssignmentTx = make(chan [config.NUM_FLOORS][2]bool)
-	// node.ElevatorHallButtonEventRx = make(chan elevator.ButtonEvent)
-	// node.MyElevatorStatesRx = make(chan elevator.ElevatorState)
-	// node.ElevatorHallAssignmentCompleteRx = make(chan elevator.ButtonEvent)
-	// node.IsDoorStuckCh = make(chan bool)
-	// node.RequestDoorStateCh = make(chan bool)
-
 	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndHallAssignmentUpdate)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
 	node.MyElevStatesRx = make(chan elevator.ElevatorState)

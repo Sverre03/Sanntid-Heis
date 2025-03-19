@@ -107,9 +107,10 @@ func RequestsClearAtCurrentFloor(e Elevator) (Elevator, []ButtonEvent) {
 	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
 		return e, nil
 	}
-	e.Requests[e.Floor][ButtonCab] = false
 
 	clearedRequests := make([]ButtonEvent, 0)
+
+	e.Requests[e.Floor][ButtonCab] = false
 
 	switch e.Dir {
 	case DirectionUp:
@@ -117,7 +118,7 @@ func RequestsClearAtCurrentFloor(e Elevator) (Elevator, []ButtonEvent) {
 			e.Requests[e.Floor][ButtonHallUp] = false
 			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallUp})
 		}
-		if !RequestsAbove(e) && !e.Requests[e.Floor][ButtonHallUp] {
+		if !RequestsAbove(e) && !e.Requests[e.Floor][ButtonHallUp] && e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
 			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallDown})
 		}
@@ -126,7 +127,7 @@ func RequestsClearAtCurrentFloor(e Elevator) (Elevator, []ButtonEvent) {
 			e.Requests[e.Floor][ButtonHallDown] = false
 			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallDown})
 		}
-		if !RequestsBelow(e) && !e.Requests[e.Floor][ButtonHallDown] {
+		if !RequestsBelow(e) && !e.Requests[e.Floor][ButtonHallDown] && e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
 			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallUp})
 		}

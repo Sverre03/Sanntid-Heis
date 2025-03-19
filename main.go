@@ -4,10 +4,10 @@ import "elev/node"
 
 func main() {
 
-	mainNode := node.MakeNode(1, "localhost:15657", 20011)
-	secondNode := node.MakeNode(2, "localhost:15658", 20012)
-	mainNode.State = node.Master
-	secondNode.State = node.Slave
+	mainNode := node.MakeNode(1, "localhost:16456", 20011, 20012)
+	secondNode := node.MakeNode(2, "localhost:16457", 20012, 20011)
+	mainNode.State = node.Disconnected
+	secondNode.State = node.Disconnected
 	go func() {
 		for {
 			switch mainNode.State {

@@ -78,7 +78,7 @@ ForLoop:
 
 			// lets check if I have already received this message, if not its update time!
 			if lastHallAssignmentMessageID != newHA.MessageID {
-				node.ElevAssignmentLightUpdateTx <- makeAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
+				node.ElevAssignmentLightUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
 				lastHallAssignmentMessageID = newHA.MessageID
 			}
 
@@ -121,18 +121,18 @@ func canAcceptHallAssignments(newHallAssignments, globalHallReq [config.NUM_FLOO
 	return true
 }
 
-func makeAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]bool, globalHallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndHallAssignmentUpdate {
-	var newMessage singleelevator.LightAndHallAssignmentUpdate
-	newMessage.HallAssignmentAreNew = true
+func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]bool, globalHallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
+	var newMessage singleelevator.LightAndAssignmentUpdate
 	newMessage.HallAssignments = hallAssignments
 	newMessage.LightStates = globalHallReq
+	newMessage.OrderType = singleelevator.HallOrder
 	return newMessage
 }
 
-func makeLightMessage(globalHallReq messages.GlobalHallRequest) singleelevator.LightAndHallAssignmentUpdate {
-	var newMessage singleelevator.LightAndHallAssignmentUpdate
-	newMessage.HallAssignmentAreNew = false
+func makeLightMessage(globalHallReq messages.GlobalHallRequest) singleelevator.LightAndAssignmentUpdate {
+	var newMessage singleelevator.LightAndAssignmentUpdate
 	newMessage.LightStates = globalHallReq.HallRequests
+	newMessage.OrderType = singleelevator.LightUpdate
 	return newMessage
 }
 

@@ -50,6 +50,11 @@ func ElevatorProgram(
 	elevatorStatesTx chan<- elevator.ElevatorState) {
 
 	// Initialize the elevator
+	// localIP, err := localip.LocalIP()
+	// if err != nil {
+	// 	fmt.Println("Error getting local IP")
+	// }
+
 	elevator.Init(portNum, config.NUM_FLOORS) // "localhost:15657"
 	elevator_fsm.InitFSM()
 

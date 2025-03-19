@@ -61,7 +61,7 @@ type NodeData struct {
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	// Elevator-Node communication
-	ElevAssignmentLightUpdateTx chan singleelevator.LightAndHallAssignmentUpdate // channel for informing elevator of changes to hall button lights, and new elevator states
+	ElevAssignmentLightUpdateTx chan singleelevator.LightAndAssignmentUpdate // channel for informing elevator of changes to hall button lights, and new elevator states
 	ElevatorEventRx             chan singleelevator.ElevatorEvent
 	MyElevStatesRx              chan elevator.ElevatorState
 
@@ -76,7 +76,7 @@ type NodeData struct {
 }
 
 // initialize a network node and return a nodedata obj, needed for communication with the processes it starts
-func MakeNode(id int, portNum string, bcastPort int) *NodeData {
+func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPort int) *NodeData {
 
 	node := &NodeData{
 		ID:    id,
@@ -126,7 +126,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 	node.ConnectionReqAckRx = make(chan messages.Ack)
 	node.HallAssignmentCompleteAckRx = make(chan messages.Ack)
 
-	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndHallAssignmentUpdate)
+	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
 	node.MyElevStatesRx = make(chan elevator.ElevatorState)
 
@@ -138,9 +138,8 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)
 
-
 	// start process that broadcast all messages on these channels to udp
-	go bcast.Broadcaster(bcastPort,
+	go bcast.Broadcaster(bcastBroadcasterPort,
 		node.AckTx,
 		node.ElevStatesTx,
 		HACompleteTransToBcast,
@@ -152,7 +151,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 		node.NewHallReqTx)
 
 	// start receiver process that listens for messages on the port
-	go bcast.Receiver(bcastPort,
+	go bcast.Receiver(bcastReceiverPort,
 		ackRx,
 		elevStatesRx,
 		node.HallAssignmentsRx,

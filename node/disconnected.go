@@ -58,6 +58,7 @@ ForLoop:
 			}
 
 		case connReqAck := <-node.ConnectionReqAckRx:
+			fmt.Printf("Node %d received connection request ack from node %d\n", node.ID, connReqAck.NodeID)
 			if node.ID != connReqAck.NodeID && connReqAck.NodeID == currentFriendID {
 				// All these decisions should be moved into a pure function, and the result returned
 				// check who has the most recent data
@@ -70,7 +71,9 @@ ForLoop:
 
 						if ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, node.TOLC, connReq.TOLC) {
 							nextNodeState = Master
+							fmt.Printf("Node %d is now a Master\n", node.ID)
 						} else {
+							fmt.Printf("Node %d is now a Slave\n", node.ID)
 							nextNodeState = Slave
 						}
 						break ForLoop
@@ -98,18 +101,10 @@ ForLoop:
 				}
 			}
 
-		// case <-node.GlobalHallRequestRx:
-		// 	// here, we must check if the master knows anything about us, before we become a slave
-		// 	if node.TOLC.IsZero() {
-				
-		// 	}
-		// 	nextNodeState = Slave
-		// 	break ForLoop
-
 		case info := <-node.CabRequestInfoRx: // Check if the master has any info about us
 			if node.ID == info.ReceiverNodeID && node.TOLC.IsZero() {
 				// we have received info about us from the master, so we can become a slave
-				
+
 			}
 			nextNodeState = Slave
 			break ForLoop

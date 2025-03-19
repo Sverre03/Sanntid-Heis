@@ -107,12 +107,12 @@ ForLoop:
 		// 	break ForLoop
 
 		case info := <-node.CabRequestInfoRx: // Check if the master has any info about us
-			if node.ID == info.ReceiverNodeID && info.CabRequestInfoExists && node.TOLC.IsZero() {
+			if node.ID == info.ReceiverNodeID && node.TOLC.IsZero() {
 				// we have received info about us from the master, so we can become a slave
 				
-				nextNodeState = Slave
-				break ForLoop
 			}
+			nextNodeState = Slave
+			break ForLoop
 		// check if you receive some useful info here
 		// Prevent blocking of unused channels
 		case <-node.HallAssignmentsRx:

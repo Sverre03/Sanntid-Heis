@@ -17,6 +17,14 @@ const (
 	DoorStuckEvent                                            // Receives the elevator's door state (if it is stuck or not)
 )
 
+type ElevatorOrderType int
+
+const (
+	HallOrder ElevatorOrderType = iota
+	CabOrder
+	LightUpdate
+)
+
 // ElevatorEventMsg encapsulates all messages sent from elevator to node
 type ElevatorEvent struct {
 	EventType   ElevatorEventType
@@ -25,10 +33,11 @@ type ElevatorEvent struct {
 }
 
 // NodeToElevatorMsg encapsulates all messages sent from node to elevator
-type LightAndHallAssignmentUpdate struct {
-	HallAssignments      [config.NUM_FLOORS][2]bool // For assigning hall calls to the elevator
-	HallAssignmentAreNew bool                       // are the hall assignments new
-	LightStates          [config.NUM_FLOORS][2]bool // The new state of the lights
+type LightAndAssignmentUpdate struct {
+	OrderType       ElevatorOrderType
+	HallAssignments [config.NUM_FLOORS][2]bool // For assigning hall calls to the elevator
+	CabAssignments  [config.NUM_FLOORS]bool    // For assigning cab calls to the elevator
+	LightStates     [config.NUM_FLOORS][2]bool // The new state of the lights
 }
 
 // ElevatorProgram operates a single elevator
@@ -37,7 +46,7 @@ type LightAndHallAssignmentUpdate struct {
 func ElevatorProgram(
 	portNum string,
 	elevatorEventTx chan<- ElevatorEvent,
-	elevPanelUpdateRx <-chan LightAndHallAssignmentUpdate,
+	elevPanelUpdateRx <-chan LightAndAssignmentUpdate,
 	elevatorStatesTx chan<- elevator.ElevatorState) {
 
 	// Initialize the elevator
@@ -90,7 +99,8 @@ func ElevatorProgram(
 			}
 
 		case msg := <-elevPanelUpdateRx:
-			if msg.HallAssignmentAreNew {
+			switch msg.OrderType {
+			case HallOrder:
 				for floor := 0; floor < config.NUM_FLOORS; floor++ {
 					for hallButton := 0; hallButton < 2; hallButton++ {
 						if msg.HallAssignments[floor][hallButton] {
@@ -98,9 +108,15 @@ func ElevatorProgram(
 						}
 					}
 				}
+			case CabOrder:
+				for floor := 0; floor < config.NUM_FLOORS; floor++ {
+					if msg.CabAssignments[floor] {
+						elevator_fsm.FsmOnRequestButtonPress(floor, elevator.ButtonCab, &doorOpenTimer)
+					}
+				}
+			case LightUpdate:
+				elevator_fsm.SetHallLights(msg.LightStates)
 			}
-			// Update the lights
-			elevator_fsm.SetHallLights(msg.LightStates)
 
 		case floor := <-floorEventRx:
 			clearedButtonEvents := elevator_fsm.FsmOnFloorArrival(floor, &doorOpenTimer)

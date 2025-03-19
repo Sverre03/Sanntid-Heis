@@ -17,7 +17,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 	timeoutChannel := make(chan uint64, 2)
 
 	enable := false
-	
+
 	// channels defult to nil to block when enable = false
 	var newAssignmentsCh <-chan messages.NewHallAssignments
 	var ackCh <-chan messages.Ack
@@ -119,14 +119,10 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 
 		select {
 		case enable = <-HallAssignmentCompleteEnableCh:
-			if enable {
-				completeRx = hallAssignmentCompleteRx
-				ackRx = hallAssignmentCompleteAckRx
-				timeoutCh = timeoutChannel
-			} else if !enable {
-				completeRx = nil
-				ackRx = nil
-				timeoutCh = nil
+			if !enable {
+				for k := range completedActiveAssignments {
+					delete(completedActiveAssignments, k)
+				}
 			}
 		case newComplete := <-completeRx:
 			new_msg_id, err := GenerateMessageID(HALL_ASSIGNMENT_COMPLETE)

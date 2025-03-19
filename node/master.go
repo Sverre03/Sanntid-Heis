@@ -5,6 +5,7 @@ import (
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/singleelevator"
+	"elev/util/config"
 	"fmt"
 	"time"
 )
@@ -159,7 +160,15 @@ ForLoop:
 					var cabRequestInfo messages.CabRequestInfo
 					if states, ok := allElevStates[id]; ok {
 						cabRequestInfo = messages.CabRequestInfo{CabRequest: states.ElevState.CabRequests, ReceiverNodeID: id}
+					}else{
+						// we have no data so we send an map filled with false
+						emptyMap := [config.NUM_FLOORS]bool{}
+						for i := 0; i < config.NUM_FLOORS; i++ {
+							emptyMap[i] = false
+						}
+						cabRequestInfo = messages.CabRequestInfo{CabRequest: emptyMap, ReceiverNodeID: id}
 					}
+
 					// this message may not arrive. If the disconnected node waits for its arrival, that means it will never become a slave
 					node.CabRequestInfoTx <- cabRequestInfo
 					delete(activeConnReq, id)
@@ -200,30 +209,23 @@ ForLoop:
 		case <-node.GlobalHallRequestRx:
 		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
-		case <-node.AllElevStatesFromServerRx:
-		// check if node has disconnected
+		
 		case <- time.After(500 * time.Millisecond):
 			node.commandToServerTx <- "getActiveNodeIDs"
 		
 		case currentActiveElevatorIds := <-node.ActiveNodeIDsFromServerRx:
 			if len(currentActiveElevatorIds) != len(lastKnownActiveElevatorIds) {
-				for _, id := range currentActiveElevatorIds {
-					for _, lastID := range lastKnownActiveElevatorIds {
-						if id == lastID {
-							break
-						}else{
-							fmt.Println("Node %d has disconnected", lastID)
-							// reassign hall assignments
-							activeNewHallReq = true
-							node.commandToServerTx <- "getActiveElevStates"
-						}
-					}
+				
+				// reassign hall assignments
+				activeNewHallReq = true
+				node.commandToServerTx <- "getActiveElevStates"
+					
 			}
 		}
 		// when you get a message on any of these channels, do nothing
 
 		}
-	}
+
 	// stop transmitters 
 	node.GlobalHallReqTransmitEnableTx <- false 
 	node.HallRequestAssignerTransmitEnableTx <- false

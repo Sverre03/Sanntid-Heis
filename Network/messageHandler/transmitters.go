@@ -10,14 +10,31 @@ import (
 // Transmits Hall assignments from outgoingHallAssignments channel to their designated elevators and handles ack - i.e resends if the message didnt arrive
 func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignments,
 	OutgoingNewHallAssignments <-chan messages.NewHallAssignments,
-	HallAssignmentsAck <-chan messages.Ack) {
+	HallAssignmentsAck <-chan messages.Ack,
+	HallAssignerEnableCH <-chan bool) {
 	activeAssignments := map[int]messages.NewHallAssignments{}
 
 	timeoutChannel := make(chan uint64, 2)
 
+	enable := false
+	// channels defult to nil to block when enable = false
+	var newAssignmentsCh <-chan messages.NewHallAssignments
+	var ackCh <-chan messages.Ack
+	var timeoutCh <-chan uint64
+
 	for {
 		select {
-		case newAssignment := <-OutgoingNewHallAssignments:
+		case enable = <-HallAssignerEnableCH:
+			if enable {
+				newAssignmentsCh = OutgoingNewHallAssignments
+				ackCh = HallAssignmentsAck
+				timeoutCh = timeoutChannel
+			} else if !enable {
+				newAssignmentsCh = nil
+				ackCh = nil
+				timeoutCh = nil
+			}
+		case newAssignment := <-newAssignmentsCh:
 			//fmt.Printf("got new hall assignment with id %d\n", newAssignment.NodeID)
 			new_msg_id, err := GenerateMessageID(NEW_HALL_ASSIGNMENT)
 			if err != nil {
@@ -36,7 +53,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 				timeoutChannel <- newAssignment.MessageID
 			})
 
-		case timedOutMsgID := <-timeoutChannel:
+		case timedOutMsgID := <-timeoutCh:
 
 			// fmt.Printf("Checking messageID for resend: %d \n", timedOutMsgID)
 			for _, msg := range activeAssignments {
@@ -51,7 +68,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 				}
 			}
 
-		case receivedAck := <-HallAssignmentsAck:
+		case receivedAck := <-ackCh:
 			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
 				if msg.MessageID == receivedAck.MessageID {
 					// fmt.Printf("Deleting assignment with node id %d and message id %d \n", receivedAck.NodeID, receivedAck.MessageID)
@@ -71,8 +88,8 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 	for {
 		select {
 
-		case GHallRequests = <-requestsForBroadcastCh:
 		case enable = <-transmitEnableCh:
+		case GHallRequests = <-requestsForBroadcastCh:
 		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
 			if enable {
 				GlobalHallRequestTx <- GHallRequests
@@ -84,14 +101,33 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 // transmits hall assignments complete
 func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.HallAssignmentComplete,
 	hallAssignmentCompleteRx <-chan messages.HallAssignmentComplete,
-	hallAssignmentCompleteAckRx <-chan messages.Ack) {
+	hallAssignmentCompleteAckRx <-chan messages.Ack,
+	HallAssignmentCompleteEnableCh <-chan bool) {
+	
+	var completeRx <-chan messages.HallAssignmentComplete
+	var ackRx <-chan messages.Ack
+	var timeoutCh <-chan uint64
 
+	enable := false
+	
 	timeoutChannel := make(chan uint64, 2)
 	completedActiveAssignments := make(map[uint64]messages.HallAssignmentComplete) //mapping message id to hall assignment complete message
 
 	for {
+		// make channels nil for blocking when enable = false
+
 		select {
-		case newComplete := <-hallAssignmentCompleteRx:
+		case enable = <-HallAssignmentCompleteEnableCh:
+			if enable {
+				completeRx = hallAssignmentCompleteRx
+				ackRx = hallAssignmentCompleteAckRx
+				timeoutCh = timeoutChannel
+			} else if !enable {
+				completeRx = nil
+				ackRx = nil
+				timeoutCh = nil
+			}
+		case newComplete := <-completeRx:
 			new_msg_id, err := GenerateMessageID(HALL_ASSIGNMENT_COMPLETE)
 			if err != nil {
 				fmt.Println("Fatal error, invalid message type used to generate message id in hall assignment complete")
@@ -104,13 +140,13 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 			time.AfterFunc(500*time.Millisecond, func() {
 				timeoutChannel <- newComplete.MessageID
 			})
-		case receivedAck := <-hallAssignmentCompleteAckRx:
+		case receivedAck := <-ackRx:
 			if msg, ok := completedActiveAssignments[receivedAck.MessageID]; ok {
 				if msg.MessageID == receivedAck.MessageID {
 					delete(completedActiveAssignments, receivedAck.MessageID)
 				}
 			}
-		case timedOutMsgID := <-timeoutChannel:
+		case timedOutMsgID := <-timeoutCh:
 
 			for _, msg := range completedActiveAssignments {
 				if msg.MessageID == timedOutMsgID {

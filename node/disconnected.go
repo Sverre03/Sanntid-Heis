@@ -98,21 +98,22 @@ ForLoop:
 				}
 			}
 
-		case <-node.GlobalHallRequestRx:
-			// here, we must check if the master knows anything about us, before we become a slave
-			if node.TOLC.IsZero() {
-				// do smth
-			}
-			nextNodeState = Slave
-			break ForLoop
+		// case <-node.GlobalHallRequestRx:
+		// 	// here, we must check if the master knows anything about us, before we become a slave
+		// 	if node.TOLC.IsZero() {
+				
+		// 	}
+		// 	nextNodeState = Slave
+		// 	break ForLoop
 
-		case info := <-node.CabRequestInfoRx:
-			if node.ID == info.ReceiverNodeID {
-				// do smth with it
+		case info := <-node.CabRequestInfoRx: // Check if the master has any info about us
+			if node.ID == info.ReceiverNodeID && info.CabRequestInfoExists && node.TOLC.IsZero() {
+				// we have received info about us from the master, so we can become a slave
+				
 				nextNodeState = Slave
 				break ForLoop
 			}
-			// check if you receive some useful info here
+		// check if you receive some useful info here
 		// Prevent blocking of unused channels
 		case <-node.HallAssignmentsRx:
 		case <-node.HallLightUpdateRx:
@@ -123,6 +124,7 @@ ForLoop:
 		case <-node.HallAssignmentCompleteAckRx:
 		case <-node.ActiveElevStatesFromServerRx:
 		case <-node.ConnectionLossEventRx:
+		case <-node.GlobalHallRequestRx:
 		}
 	}
 	return nextNodeState

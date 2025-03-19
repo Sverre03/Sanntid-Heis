@@ -2,6 +2,7 @@ package messagehandler
 
 import (
 	"elev/Network/messages"
+	"elev/elevator"
 	"elev/util/config"
 	"errors"
 	"math/rand"
@@ -16,6 +17,18 @@ const (
 	CONNECTION_REQ           MessageIDType = 2
 	HALL_ASSIGNMENT_COMPLETE MessageIDType = 3
 )
+
+type NetworkEvent int
+
+const (
+	NodeConnectDisconnect NetworkEvent = iota
+	NodeHasLostConnection
+)
+
+type ElevStateUpdate struct {
+	NodeElevStates  map[int]elevator.ElevatorState
+	onlyActiveNodes bool
+}
 
 // generates a message ID that corresponsds to the message type
 func GenerateMessageID(partition MessageIDType) (uint64, error) {
@@ -57,14 +70,13 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 
 // server that tracks the states of all elevators by listening to the elevStatesRx channel
 // you can requests to know the states by sending a string on  commandCh
-// commands are "getActiveElevStates", "getActiveNodeIDs", "getAllKnownNodes", "startConnectionTimeoutDetection"
+// commands are "getActiveElevStates", "getAllKnownNodes", "startConnectionTimeoutDetection"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
-func NodeElevStateServer(myID int, commandRx <-chan string,
-	activeElevStatesTx chan<- map[int]messages.NodeElevState,
-	activeNodeIDsTx chan<- []int,
+func NodeElevStateServer(myID int,
+	commandRx <-chan string,
+	elevStateUpdateTx chan<- ElevStateUpdate,
 	elevStatesRx <-chan messages.NodeElevState,
-	allElevStatesTx chan<- map[int]messages.NodeElevState,
-	connectionTimeoutEventTx chan<- bool,
+	networkEventTx chan<- NetworkEvent,
 ) {
 	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
@@ -73,14 +85,14 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 	timeoutTimer.Stop()
 
 	lastSeen := make(map[int]time.Time)
-	knownNodes := make(map[int]messages.NodeElevState)
+	knownNodes := make(map[int]elevator.ElevatorState)
 
 	for {
 		select {
 
 		case <-timeoutTimer.C:
 			enableTOLCUpdate = false
-			connectionTimeoutEventTx <- true
+			networkEventTx <- NodeHasLostConnection
 
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
@@ -90,35 +102,24 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 					timeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				}
 
-				knownNodes[id] = elevState
+				knownNodes[id] = elevState.ElevState
 				lastSeen[id] = time.Now()
 			}
 
 		case command := <-commandRx:
-			
+
 			switch command {
 			case "getActiveElevStates":
-				activeNodes := make(map[int]messages.NodeElevState)
+				activeNodes := make(map[int]elevator.ElevatorState)
 				for id, t := range lastSeen {
 					if time.Since(t) < config.CONNECTION_TIMEOUT {
 						activeNodes[id] = knownNodes[id]
 					}
 				}
-				activeElevStatesTx <- activeNodes
-
-			case "getActiveNodeIDs":
-
-				activeIDs := make([]int, 0)
-				for id, t := range lastSeen {
-					if time.Since(t) < config.CONNECTION_TIMEOUT {
-						activeIDs = append(activeIDs, id)
-					}
-				}
-
-				activeNodeIDsTx <- activeIDs
+				elevStateUpdateTx <- makeActiveElevStatesUpdateMessage(activeNodes)
 
 			case "getAllElevStates":
-				allElevStatesTx <- knownNodes
+				elevStateUpdateTx <- makeAllElevStatesUpdateMessage(knownNodes)
 
 			case "startConnectionTimeoutDetection":
 				timeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
@@ -127,4 +128,11 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 			}
 		}
 	}
+}
+
+func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
+	return ElevStateUpdate{NodeElevStates: elevStates, onlyActiveNodes: true}
+}
+func makeAllElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
+	return ElevStateUpdate{NodeElevStates: elevStates, onlyActiveNodes: false}
 }

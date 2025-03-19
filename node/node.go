@@ -69,10 +69,9 @@ type NodeData struct {
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
 	HallAssignmentCompleteAckRx chan messages.Ack                    // acknowledges for the message type hall assignment complete arrive on this channel
 
-
 	// Channels for turning on and off the transmitter functions
-	GlobalHallReqTransmitEnableTx chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
-	HallRequestAssignerTransmitEnableTx chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
+	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
+	HallRequestAssignerTransmitEnableTx    chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
 	HallAssignmentCompleteTransmitEnableTx chan bool // channel that connects to HallAssignmentCompleteTransmitter, should be enabled when node is master
 }
 
@@ -114,7 +113,6 @@ func MakeNode(id int) *NodeData {
 	node.HallRequestAssignerTransmitEnableTx = make(chan bool)
 	node.HallAssignmentCompleteTransmitEnableTx = make(chan bool)
 
-
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
 	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
@@ -151,10 +149,10 @@ func MakeNode(id int) *NodeData {
 		node.HallAssignmentCompleteAckRx)
 
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
-	
+
 	// process responsible for sending and making sure hall assignments are acknowledged
-	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx, 
-		node.HallAssignmentTx, 
+	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,
+		node.HallAssignmentTx,
 		hallAssignmentsAckRx,
 		node.HallRequestAssignerTransmitEnableTx)
 	go messagehandler.HallAssignmentCompleteTransmitter(HACompleteTransToBcast,

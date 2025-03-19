@@ -95,7 +95,7 @@ func NodeElevStateServer(myID int, commandRx <-chan string,
 			}
 
 		case command := <-commandRx:
-
+			
 			switch command {
 			case "getActiveElevStates":
 				activeNodes := make(map[int]messages.NodeElevState)

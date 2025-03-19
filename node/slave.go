@@ -25,7 +25,7 @@ ForLoop:
 
 			switch elevMsg.EventType {
 			case singleelevator.DoorStuckEvent:
-				if elevMsg.IsDoorStuck {
+				if elevMsg.DoorIsStuck {
 					nextNodeState = Inactive
 					break ForLoop
 				}

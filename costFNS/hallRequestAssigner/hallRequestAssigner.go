@@ -2,7 +2,6 @@ package hallRequestAssigner
 
 import (
 	"elev/Network/messages"
-	"elev/elevator"
 	"elev/util/config"
 	"encoding/json"
 	"fmt"
@@ -31,7 +30,7 @@ func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [co
 	allElevStatesInputFormat := make(map[string]HRAElevState)
 	for id, nodeState := range allElevStates {
 		allElevStatesInputFormat[fmt.Sprintf("%d", id)] = HRAElevState{
-			Behavior:    elevator.ElevatorBehaviorToString[nodeState.ElevState.Behavior],
+			Behavior:    nodeState.ElevState.Behavior.String(),
 			Floor:       nodeState.ElevState.Floor,
 			Direction:   strings.ToLower(nodeState.ElevState.Direction.String()),
 			CabRequests: nodeState.ElevState.CabRequests,

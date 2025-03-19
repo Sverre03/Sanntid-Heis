@@ -11,7 +11,7 @@ import (
 
 const pollInterval = 20 * time.Millisecond
 
-var isDriverInitialized bool = false
+var driverIsInitialized bool = false
 var driverMutex sync.Mutex
 var serverConnection net.Conn
 
@@ -37,7 +37,7 @@ type ButtonEvent struct {
 }
 
 func Init(addr string, numFloors int) {
-	if isDriverInitialized {
+	if driverIsInitialized {
 		fmt.Println("Driver already initialized!")
 		return
 	}
@@ -47,7 +47,7 @@ func Init(addr string, numFloors int) {
 	if err != nil {
 		panic(err.Error())
 	}
-	isDriverInitialized = true
+	driverIsInitialized = true
 }
 
 func SetMotorDirection(dir MotorDirection) {
@@ -86,7 +86,7 @@ func PollButtons(receiver chan<- ButtonEvent) {
 		time.Sleep(pollInterval)
 		for floor := 0; floor < config.NUM_FLOORS; floor++ {
 			for button := ButtonType(0); button < 3; button++ {
-				v := IsButtonPressed(button, floor)
+				v := ButtonIsPressed(button, floor)
 				if v != prev[floor][button] && v {
 					receiver <- ButtonEvent{floor, ButtonType(button)}
 				}
@@ -112,7 +112,7 @@ func PollStopButton(receiver chan<- bool) {
 	prev := false
 	for {
 		time.Sleep(pollInterval)
-		v := IsStopPressed()
+		v := StopIsPressed()
 		if v != prev {
 			receiver <- v
 		}
@@ -124,7 +124,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	prev := false
 	for {
 		time.Sleep(pollInterval)
-		v := IsObstruction()
+		v := Obstructed()
 		if v != prev {
 			receiver <- v
 		}
@@ -169,7 +169,7 @@ func PollDoorStuck(inTimer timer.Timer, receiver chan<- bool) {
 //     }
 // }
 
-func IsButtonPressed(button ButtonType, floor int) bool {
+func ButtonIsPressed(button ButtonType, floor int) bool {
 	a := read([4]byte{6, byte(button), byte(floor), 0})
 	return toBool(a[1])
 }
@@ -183,12 +183,12 @@ func GetFloor() int {
 	}
 }
 
-func IsStopPressed() bool {
+func StopIsPressed() bool {
 	a := read([4]byte{8, 0, 0, 0})
 	return toBool(a[1])
 }
 
-func IsObstruction() bool {
+func Obstructed() bool {
 	a := read([4]byte{9, 0, 0, 0})
 	return toBool(a[1])
 }

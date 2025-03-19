@@ -9,17 +9,17 @@ package tests
 // 	ElevatorHallButtonAssignmentRx := make(chan [config.NUM_FLOORS][2]bool)
 // 	ElevatorHRAStatesRx := make(chan elevator.ElevatorState)
 // 	ElevatorHallButtonEventTx := make(chan elevator.ButtonEvent)
-// 	IsDoorStuckCh := make(chan bool)
+// 	DoorIsStuckCh := make(chan bool)
 // 	DoorStateRequestCh := make(chan bool)
 
-// 	go ElevatorProgram(ElevatorHallButtonAssignmentRx, ElevatorHRAStatesRx, ElevatorHallButtonEventTx, IsDoorStuckCh, DoorStateRequestCh)
+// 	go ElevatorProgram(ElevatorHallButtonAssignmentRx, ElevatorHRAStatesRx, ElevatorHallButtonEventTx, DoorIsStuckCh, DoorStateRequestCh)
 // 	for {
 // 		select {
 // 		case <-ElevatorHallButtonEventRx:
 // 			// Do something
 // 		case <-ElevatorHRAStatesTx:
 // 			// Do something
-// 		case <-IsDoorStuckCh:
+// 		case <-DoorIsStuckCh:
 // 			// Do something
 // 		case <-DoorStateRequestCh:
 // 			// Do something

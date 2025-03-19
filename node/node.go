@@ -32,8 +32,9 @@ type NodeData struct {
 	GlobalHallRequests [config.NUM_FLOORS][2]bool
 	TOLC               time.Time
 
-	AckTx        chan messages.Ack           // Send acks to udp broadcaster
-	ElevStatesTx chan messages.NodeElevState // send your elev states to udp broadcaster
+	AckTx            chan messages.Ack                   // Send acks to udp broadcaster
+	NodeElevStatesTx chan messages.NodeElevState         // send your elev states to udp broadcaster
+	NodeElevStatesRx chan messagehandler.ElevStateUpdate // send your elev states to udp broadcaster
 
 	HallAssignmentTx  chan messages.NewHallAssignments // Sends hall assignments to hall assignment transmitter
 	HallAssignmentsRx chan messages.NewHallAssignments // Receives hall assignments from udp receiver. Messages should be acked
@@ -51,11 +52,8 @@ type NodeData struct {
 	ConnectionReqRx    chan messages.ConnectionReq // receive connection request messages from udp receiver
 	ConnectionReqAckRx chan messages.Ack           // acknowledgement for request to connect to another node gets sent to this channel from ack distributor
 
-	commandToServerTx            chan string                         // Sends commands to the NodeElevStateServer (defined in Network/comm/receivers.go)
-	ActiveElevStatesFromServerRx chan map[int]messages.NodeElevState // Receives the state of the other active node's elevators
-	AllElevStatesFromServerRx    chan map[int]messages.NodeElevState // receives the state of all nodes ever been made contact with
-	ActiveNodeIDsFromServerRx    chan []int                          // Receives the IDs of the active nodes on the network
-	ConnectionLossEventRx        chan bool                           // if no contact have been made within a timeout, "true" is sent on this channel
+	commandToServerTx chan string                      // Sends commands to the NodeElevStateServer (defined in Network/comm/receivers.go)
+	NetworkEventRx    chan messagehandler.NetworkEvent // if no contact have been made within a timeout, "true" is sent on this channel
 
 	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
@@ -87,8 +85,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.AckTx = make(chan messages.Ack)
 	ackRx := make(chan messages.Ack)
 
-	node.ElevStatesTx = make(chan messages.NodeElevState)
-	elevStatesRx := make(chan messages.NodeElevState)
+	node.NodeElevStatesTx = make(chan messages.NodeElevState)
+	node.NodeElevStatesRx = make(chan messagehandler.ElevStateUpdate)
 
 	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
@@ -131,17 +129,14 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.MyElevStatesRx = make(chan elevator.ElevatorState)
 
 	node.commandToServerTx = make(chan string)
-	node.ActiveElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
-	node.AllElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
-	node.ActiveNodeIDsFromServerRx = make(chan []int)
-	node.ConnectionLossEventRx = make(chan bool)
+	node.NetworkEventRx = make(chan messagehandler.NetworkEvent)
 
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)
 
 	// start process that broadcast all messages on these channels to udp
 	go bcast.Broadcaster(bcastBroadcasterPort,
 		node.AckTx,
-		node.ElevStatesTx,
+		node.NodeElevStatesTx,
 		HACompleteTransToBcast,
 		HATransToBcastTx,
 		node.CabRequestInfoTx,
@@ -153,7 +148,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	// start receiver process that listens for messages on the port
 	go bcast.Receiver(bcastReceiverPort,
 		ackRx,
-		elevStatesRx,
+		node.NodeElevStatesRx,
 		node.HallAssignmentsRx,
 		node.CabRequestInfoRx,
 		node.GlobalHallRequestRx,
@@ -186,11 +181,9 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	// process that listens to active nodes on network
 	go messagehandler.NodeElevStateServer(node.ID,
 		node.commandToServerTx,
-		node.ActiveElevStatesFromServerRx,
-		node.ActiveNodeIDsFromServerRx,
-		elevStatesRx,
-		node.AllElevStatesFromServerRx,
-		node.ConnectionLossEventRx)
+		node.NodeElevStatesRx,
+		node.NodeElevStatesTx,
+		node.NetworkEventRx)
 
 	// start the transmitter function
 	go messagehandler.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx,

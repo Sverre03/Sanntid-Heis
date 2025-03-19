@@ -112,13 +112,11 @@ ForLoop:
 		// Prevent blocking of unused channels
 		case <-node.HallAssignmentsRx:
 		case <-node.HallLightUpdateRx:
-		case <-node.AllElevStatesFromServerRx:
-		case <-node.ActiveNodeIDsFromServerRx:
+		case <-node.NodeElevStatesRx:
 		case <-node.NewHallReqRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
-		case <-node.ActiveElevStatesFromServerRx:
-		case <-node.ConnectionLossEventRx:
+		case <-node.NetworkEventRx:
 		case <-node.GlobalHallRequestRx:
 		}
 	}

@@ -26,8 +26,8 @@ const (
 )
 
 type ElevStateUpdate struct {
-	NodeElevStates  map[int]elevator.ElevatorState
-	onlyActiveNodes bool
+	NodeElevStatesMap  map[int]elevator.ElevatorState // map of nodeID to ElevatorState
+	OnlyActiveNodes bool
 }
 
 // generates a message ID that corresponsds to the message type
@@ -131,8 +131,8 @@ func NodeElevStateServer(myID int,
 }
 
 func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
-	return ElevStateUpdate{NodeElevStates: elevStates, onlyActiveNodes: true}
+	return ElevStateUpdate{NodeElevStatesMap: elevStates, OnlyActiveNodes: true}
 }
 func makeAllElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
-	return ElevStateUpdate{NodeElevStates: elevStates, onlyActiveNodes: false}
+	return ElevStateUpdate{NodeElevStatesMap: elevStates, OnlyActiveNodes: false}
 }

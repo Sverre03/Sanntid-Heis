@@ -1,6 +1,7 @@
 package node
 
 import (
+	"elev/Network/messagehandler"
 	"elev/Network/messages"
 	"elev/elevator"
 	"elev/singleelevator"
@@ -56,13 +57,13 @@ ForLoop:
 
 		case myElevStates := <-node.MyElevStatesRx:
 			// Transmit elevator states to network
-			node.ElevStatesTx <- messages.NodeElevState{
+			node.NodeElevStatesTx <- messages.NodeElevState{
 				NodeID:    node.ID,
 				ElevState: myElevStates,
 			}
 
-		case timeout := <-node.ConnectionLossEventRx:
-			if timeout {
+		case networkEvent := <-node.NetworkEventRx:
+			if networkEvent == messagehandler.NodeHasLostConnection {
 				nextNodeState = Disconnected
 				break ForLoop
 			}
@@ -90,13 +91,11 @@ ForLoop:
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
 			}
 
-		case <-node.ActiveElevStatesFromServerRx:
-		case <-node.AllElevStatesFromServerRx:
+		case <-node.NodeElevStatesRx:
 		case <-node.NewHallReqRx:
 		case <-node.ConnectionReqRx:
 		case <-node.ConnectionReqAckRx:
 		case <-node.CabRequestInfoRx:
-		case <-node.ActiveNodeIDsFromServerRx:
 		case <-node.HallAssignmentCompleteAckRx:
 		}
 

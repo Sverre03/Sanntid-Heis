@@ -28,13 +28,11 @@ ForLoop:
 		case <-node.GlobalHallRequestRx:
 		case <-node.ConnectionReqRx:
 		case <-node.ConnectionReqAckRx:
-		case <-node.ActiveElevStatesFromServerRx:
-		case <-node.AllElevStatesFromServerRx:
-		case <-node.ActiveNodeIDsFromServerRx:
+		case <-node.NodeElevStatesRx:
 		case <-node.NewHallReqRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:
-		case <-node.ConnectionLossEventRx:
+		case <-node.NetworkEventRx:
 		}
 	}
 	return nextNodeState

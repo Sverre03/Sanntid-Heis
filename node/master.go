@@ -1,6 +1,7 @@
 package node
 
 import (
+	"elev/Network/messagehandler"
 	"elev/Network/messages"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
@@ -48,13 +49,11 @@ func MasterProgram(node *NodeData) nodestate {
 	var recentHACompleteBuffer MessageIDBuffer
 	var nextNodeState nodestate
 
-	var lastKnownActiveElevatorIds []int
-
 	// inform the global hall request transmitter of the new global hall requests
 	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 
 	// start the transmitters
-	node.GlobalHallReqTransmitEnableTx <- true 
+	node.GlobalHallReqTransmitEnableTx <- true
 	node.HallRequestAssignerTransmitEnableTx <- true
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
 
@@ -113,15 +112,19 @@ ForLoop:
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 			node.commandToServerTx <- "getActiveElevStates"
 
-		case activeElevStates := <-node.ActiveElevStatesFromServerRx:
-			if activeNewHallReq {
+		case activeElevStates := <-node.NodeElevStatesRx:
+			if activeNewHallReq && activeElevStates.OnlyActiveNodes { // We have received state from all active nodes
 
 				// add my elevator to the list of active elevators
-				activeElevStates[node.ID] = myElevState
+				activeElevStates.NodeElevStatesMap[node.ID] = myElevState
+				nodeElevStatesMap := make(map[int]messages.NodeElevState)
+				for id, state := range activeElevStates.NodeElevStatesMap {
+					nodeElevStatesMap[id] = messages.NodeElevState{NodeID: id, ElevState: state}
+				}
 
 				fmt.Printf("Node %d received active elev states: %v\n", node.ID, activeElevStates)
 
-				HRAoutput := hallRequestAssigner.HRAalgorithm(activeElevStates, node.GlobalHallRequests)
+				HRAoutput := hallRequestAssigner.HRAalgorithm(nodeElevStatesMap, node.GlobalHallRequests)
 
 				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
 
@@ -153,14 +156,14 @@ ForLoop:
 				node.commandToServerTx <- "getAllElevStates"
 			}
 
-		case allElevStates := <-node.AllElevStatesFromServerRx:
-			if len(activeConnReq) != 0 {
+		case allElevStates := <-node.NodeElevStatesRx:
+			if len(activeConnReq) != 0 && !allElevStates.OnlyActiveNodes { // We have received state from all known nodes
 
 				for id := range activeConnReq {
 					var cabRequestInfo messages.CabRequestInfo
-					if states, ok := allElevStates[id]; ok {
-						cabRequestInfo = messages.CabRequestInfo{CabRequest: states.ElevState.CabRequests, ReceiverNodeID: id}
-					}else{
+					if states, ok := allElevStates.NodeElevStatesMap[id]; ok {
+						cabRequestInfo = messages.CabRequestInfo{CabRequest: states.CabRequests, ReceiverNodeID: id}
+					} else {
 						// we have no data so we send an map filled with false
 						emptyMap := [config.NUM_FLOORS]bool{}
 						for i := 0; i < config.NUM_FLOORS; i++ {
@@ -195,12 +198,15 @@ ForLoop:
 			// ack the message no matter the state of the message
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
-		case timeout := <-node.ConnectionLossEventRx:
-			if timeout {
+		case networkEvent := <-node.NetworkEventRx:
+			if networkEvent == messagehandler.NodeHasLostConnection {
 				fmt.Println("Connection timed out, exiting master")
 
 				nextNodeState = Disconnected
 				break ForLoop
+			} else if networkEvent == messagehandler.NodeConnectDisconnect {
+				activeNewHallReq = true
+				node.commandToServerTx <- "getActiveElevStates"
 			}
 
 		case <-node.HallAssignmentsRx:
@@ -209,28 +215,16 @@ ForLoop:
 		case <-node.GlobalHallRequestRx:
 		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
-		
-		case <- time.After(500 * time.Millisecond):
-			node.commandToServerTx <- "getActiveNodeIDs"
-		
-		case currentActiveElevatorIds := <-node.ActiveNodeIDsFromServerRx:
-			if len(currentActiveElevatorIds) != len(lastKnownActiveElevatorIds) {
-				
-				// reassign hall assignments
-				activeNewHallReq = true
-				node.commandToServerTx <- "getActiveElevStates"
-					
-			}
-		}
-		// when you get a message on any of these channels, do nothing
+
+			// when you get a message on any of these channels, do nothing
 
 		}
+	}
 
-	// stop transmitters 
-	node.GlobalHallReqTransmitEnableTx <- false 
+	// stop transmitters
+	node.GlobalHallReqTransmitEnableTx <- false
 	node.HallRequestAssignerTransmitEnableTx <- false
 	node.TOLC = time.Now()
 
 	return nextNodeState
 }
-

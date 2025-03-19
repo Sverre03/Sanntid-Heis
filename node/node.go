@@ -72,11 +72,13 @@ type NodeData struct {
 	// Channels for turning on and off the transmitter functions
 	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
 	HallRequestAssignerTransmitEnableTx    chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
+	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
+	HallRequestAssignerTransmitEnableTx    chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
 	HallAssignmentCompleteTransmitEnableTx chan bool // channel that connects to HallAssignmentCompleteTransmitter, should be enabled when node is master
 }
 
 // initialize a network node and return a nodedata obj, needed for communication with the processes it starts
-func MakeNode(id int) *NodeData {
+func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 
 	node := &NodeData{
 		ID:    id,
@@ -84,20 +86,63 @@ func MakeNode(id int) *NodeData {
 		TOLC:  time.Time{},
 	}
 
-	// broadcast channels
 	node.AckTx = make(chan messages.Ack)
+	ackRx := make(chan messages.Ack)
+
 	node.ElevStatesTx = make(chan messages.NodeElevState)
+	elevStatesRx := make(chan messages.NodeElevState)
+
 	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
+	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
+
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
+	node.ConnectionReqRx = make(chan messages.ConnectionReq)
+
 	node.NewHallReqTx = make(chan messages.NewHallRequest)
+	node.NewHallReqRx = make(chan messages.NewHallRequest)
+
 	node.HallAssignmentCompleteTx = make(chan messages.HallAssignmentComplete)
+	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
+
 	HATransToBcastTx := make(chan messages.NewHallAssignments)         // channel for communication from Hall Assignment Transmitter process to Broadcaster
 	lightUpdateTransToBroadcast := make(chan messages.HallLightUpdate) //channel for communication from light update transmitter process to broadcaster
 	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
 	HACompleteTransToBcast := make(chan messages.HallAssignmentComplete)
 
+	// channels for enabling and disabling the transmitter functions
+	node.GlobalHallReqTransmitEnableTx = make(chan bool)
+	node.HallRequestAssignerTransmitEnableTx = make(chan bool)
+	node.HallAssignmentCompleteTransmitEnableTx = make(chan bool)
+
+	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
+	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
+
+	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
+	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
+
+	node.HallLightUpdateTx = make(chan messages.HallLightUpdate)
+	node.HallLightUpdateRx = make(chan messages.HallLightUpdate)
+
+	lightUpdateAckRx := make(chan messages.Ack)
+	hallAssignmentsAckRx := make(chan messages.Ack)
+	node.ConnectionReqAckRx = make(chan messages.Ack)
+	node.HallAssignmentCompleteAckRx = make(chan messages.Ack)
+
+	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndHallAssignmentUpdate)
+	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
+	node.MyElevStatesRx = make(chan elevator.ElevatorState)
+
+	node.commandToServerTx = make(chan string)
+	node.ActiveElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
+	node.AllElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
+	node.ActiveNodeIDsFromServerRx = make(chan []int)
+	node.ConnectionLossEventRx = make(chan bool)
+
+	node.GlobalHallReqTransmitEnableTx = make(chan bool)
+
+
 	// start process that broadcast all messages on these channels to udp
-	go bcast.Broadcaster(config.PORT_NUM,
+	go bcast.Broadcaster(bcastPort,
 		node.AckTx,
 		node.ElevStatesTx,
 		HACompleteTransToBcast,
@@ -108,24 +153,8 @@ func MakeNode(id int) *NodeData {
 		node.ConnectionReqTx,
 		node.NewHallReqTx)
 
-	// channels for enabling and disabling the transmitter functions
-	node.GlobalHallReqTransmitEnableTx = make(chan bool)
-	node.HallRequestAssignerTransmitEnableTx = make(chan bool)
-	node.HallAssignmentCompleteTransmitEnableTx = make(chan bool)
-
-	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
-	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
-	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
-	node.HallLightUpdateRx = make(chan messages.HallLightUpdate)
-	node.ConnectionReqRx = make(chan messages.ConnectionReq)
-	node.NewHallReqRx = make(chan messages.NewHallRequest)
-	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
-
-	ackRx := make(chan messages.Ack)
-	elevStatesRx := make(chan messages.NodeElevState)
-
 	// start receiver process that listens for messages on the port
-	go bcast.Receiver(config.PORT_NUM,
+	go bcast.Receiver(bcastPort,
 		ackRx,
 		elevStatesRx,
 		node.HallAssignmentsRx,
@@ -136,11 +165,6 @@ func MakeNode(id int) *NodeData {
 		node.NewHallReqRx,
 		node.HallAssignmentCompleteRx)
 
-	lightUpdateAckRx := make(chan messages.Ack)
-	hallAssignmentsAckRx := make(chan messages.Ack)
-	node.ConnectionReqAckRx = make(chan messages.Ack)
-	node.HallAssignmentCompleteAckRx = make(chan messages.Ack)
-
 	// process for distributing incoming acks in ackRx to different processes
 	go messagehandler.IncomingAckDistributor(ackRx,
 		hallAssignmentsAckRx,
@@ -148,30 +172,19 @@ func MakeNode(id int) *NodeData {
 		node.ConnectionReqAckRx,
 		node.HallAssignmentCompleteAckRx)
 
-	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
-
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,
 		node.HallAssignmentTx,
 		hallAssignmentsAckRx,
 		node.HallRequestAssignerTransmitEnableTx)
+
 	go messagehandler.HallAssignmentCompleteTransmitter(HACompleteTransToBcast,
 		node.HallAssignmentCompleteTx,
 		node.HallAssignmentCompleteAckRx,
 		node.HallAssignmentCompleteTransmitEnableTx)
 
-	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndHallAssignmentUpdate)
-	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
-	node.MyElevStatesRx = make(chan elevator.ElevatorState)
-
 	// the physical elevator program
-	go singleelevator.ElevatorProgram(node.ElevatorEventRx, node.ElevAssignmentLightUpdateTx, node.MyElevStatesRx)
-
-	node.commandToServerTx = make(chan string)
-	node.ActiveElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
-	node.AllElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)
-	node.ActiveNodeIDsFromServerRx = make(chan []int)
-	node.ConnectionLossEventRx = make(chan bool)
+	go singleelevator.ElevatorProgram(portNum, node.ElevatorEventRx, node.ElevAssignmentLightUpdateTx, node.MyElevStatesRx)
 
 	// process that listens to active nodes on network
 	go messagehandler.NodeElevStateServer(node.ID,
@@ -182,15 +195,10 @@ func MakeNode(id int) *NodeData {
 		node.AllElevStatesFromServerRx,
 		node.ConnectionLossEventRx)
 
-	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
-	node.GlobalHallReqTransmitEnableTx = make(chan bool)
-
 	// start the transmitter function
 	go messagehandler.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx,
 		globalHallReqTransToBroadcast,
 		node.GlobalHallRequestTx)
-
-	node.HallLightUpdateTx = make(chan messages.HallLightUpdate)
 
 	return node
 }

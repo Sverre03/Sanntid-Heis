@@ -15,6 +15,9 @@ func SlaveProgram(node *NodeData) nodestate {
 
 	var nextNodeState nodestate
 
+	// start the transmitters
+	node.HallAssignmentCompleteTransmitEnableTx <- true
+
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
 
 ForLoop:
@@ -98,6 +101,10 @@ ForLoop:
 		}
 
 	}
+
+	// stop transmitters
+	node.HallAssignmentCompleteTransmitEnableTx <- false
+
 	return nextNodeState
 }
 

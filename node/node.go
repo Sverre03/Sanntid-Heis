@@ -69,7 +69,11 @@ type NodeData struct {
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
 	HallAssignmentCompleteAckRx chan messages.Ack                    // acknowledges for the message type hall assignment complete arrive on this channel
 
+
+	// Channels for turning on and off the transmitter functions
 	GlobalHallReqTransmitEnableTx chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
+	HallRequestAssignerTransmitEnableTx chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
+	HallAssignmentCompleteTransmitEnableTx chan bool // channel that connects to HallAssignmentCompleteTransmitter, should be enabled when node is master
 }
 
 // initialize a network node and return a nodedata obj, needed for communication with the processes it starts
@@ -104,6 +108,12 @@ func MakeNode(id int) *NodeData {
 		lightUpdateTransToBroadcast,
 		node.ConnectionReqTx,
 		node.NewHallReqTx)
+
+	// channels for enabling and disabling the transmitter functions
+	node.GlobalHallReqTransmitEnableTx = make(chan bool)
+	node.HallRequestAssignerTransmitEnableTx = make(chan bool)
+	node.HallAssignmentCompleteTransmitEnableTx = make(chan bool)
+
 
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
@@ -143,10 +153,14 @@ func MakeNode(id int) *NodeData {
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
 	
 	// process responsible for sending and making sure hall assignments are acknowledged
-	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx, node.HallAssignmentTx, hallAssignmentsAckRx)
+	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx, 
+		node.HallAssignmentTx, 
+		hallAssignmentsAckRx,
+		node.HallRequestAssignerTransmitEnableTx)
 	go messagehandler.HallAssignmentCompleteTransmitter(HACompleteTransToBcast,
 		node.HallAssignmentCompleteTx,
-		node.HallAssignmentCompleteAckRx)
+		node.HallAssignmentCompleteAckRx,
+		node.HallAssignmentCompleteTransmitEnableTx)
 
 	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndHallAssignmentUpdate)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
@@ -179,9 +193,6 @@ func MakeNode(id int) *NodeData {
 		node.GlobalHallRequestTx)
 
 	node.HallLightUpdateTx = make(chan messages.HallLightUpdate)
-
-	// start the light update transmitter function
-	go messagehandler.LightUpdateTransmitter(lightUpdateTransToBroadcast, node.HallLightUpdateTx, lightUpdateAckRx)
 
 	return node
 }

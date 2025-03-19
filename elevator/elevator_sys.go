@@ -14,11 +14,19 @@ const (
 )
 
 type Elevator struct {
-	Floor        int
-	Dir          MotorDirection
-	Behavior     ElevatorBehavior
-	Requests     [config.NUM_FLOORS][config.NUM_BUTTONS]bool
-	IsObstructed bool
+	Floor           int
+	Dir             MotorDirection
+	Behavior        ElevatorBehavior
+	Requests        [config.NUM_FLOORS][config.NUM_BUTTONS]bool
+	HallLightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
+	IsObstructed    bool
+}
+
+type ElevatorState struct {
+	Floor       int
+	Direction         MotorDirection
+	Behavior    ElevatorBehavior
+	CabRequests [config.NUM_FLOORS]bool
 }
 
 // String returns a string representation of the ElevatorBehavior
@@ -32,6 +40,19 @@ func (eb ElevatorBehavior) String() string {
 		return "moving"
 	default:
 		return fmt.Sprintf("unknown(%d)", int(eb))
+	}
+}
+
+func (button ButtonType) String() string {
+	switch button {
+	case ButtonHallUp:
+		return "HallUp"
+	case ButtonHallDown:
+		return "HallDown"
+	case ButtonCab:
+		return "Cab"
+	default:
+		return "Unknown"
 	}
 }
 
@@ -49,7 +70,7 @@ func (md MotorDirection) String() string {
 	}
 }
 
-func GetCabRequestsAsHRAElevState(elev Elevator) [config.NUM_FLOORS]bool {
+func GetCabRequestsAsElevState(elev Elevator) [config.NUM_FLOORS]bool {
 	var cabRequests [config.NUM_FLOORS]bool
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
 		cabRequests[floor] = elev.Requests[floor][ButtonCab]

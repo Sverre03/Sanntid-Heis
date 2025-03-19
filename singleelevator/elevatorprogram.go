@@ -35,12 +35,13 @@ type LightAndHallAssignmentUpdate struct {
 // It manages the elevator state machine, hardware events,
 // and communicates with the node.
 func ElevatorProgram(
+	portNum string,
 	elevatorEventTx chan<- ElevatorEvent,
 	elevPanelUpdateRx <-chan LightAndHallAssignmentUpdate,
 	elevatorStatesTx chan<- elevator.ElevatorState) {
 
 	// Initialize the elevator
-	elevator.Init("localhost:15657", config.NUM_FLOORS)
+	elevator.Init(portNum, config.NUM_FLOORS) // "localhost:15657"
 	elevator_fsm.InitFSM()
 
 	// Channels for events
@@ -98,6 +99,8 @@ func ElevatorProgram(
 					}
 				}
 			}
+			// Update the lights
+			elevator_fsm.SetHallLights(msg.LightStates)
 
 		case floor := <-floorEventRx:
 			clearedButtonEvents := elevator_fsm.FsmOnFloorArrival(floor, &doorOpenTimer)

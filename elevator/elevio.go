@@ -65,7 +65,6 @@ func SetAllLights(elev *Elevator) {
 			SetButtonLamp(ButtonType(i), floor, elev.HallLightStates[floor][ButtonType(i)])
 		}
 	}
-
 }
 
 func SetFloorIndicator(floor int) {
@@ -237,28 +236,28 @@ func toBool(a byte) bool {
 	return b
 }
 
-func (button ButtonType) String() string {
-	switch button {
-	case ButtonHallUp:
-		return "HallUp"
-	case ButtonHallDown:
-		return "HallDown"
-	case ButtonCab:
-		return "Cab"
-	default:
-		return "Unknown"
-	}
-}
+// func (button ButtonType) String() string {
+// 	switch button {
+// 	case ButtonHallUp:
+// 		return "HallUp"
+// 	case ButtonHallDown:
+// 		return "HallDown"
+// 	case ButtonCab:
+// 		return "Cab"
+// 	default:
+// 		return "Unknown"
+// 	}
+// }
 
-func (dir MotorDirection) String() string {
-	switch dir {
-	case DirectionUp:
-		return "Up"
-	case DirectionDown:
-		return "Down"
-	case DirectionStop:
-		return "Stop"
-	default:
-		return "Unknown"
-	}
-}
+// func (dir MotorDirection) String() string {
+// 	switch dir {
+// 	case DirectionUp:
+// 		return "Up"
+// 	case DirectionDown:
+// 		return "Down"
+// 	case DirectionStop:
+// 		return "Stop"
+// 	default:
+// 		return "Unknown"
+// 	}
+// }

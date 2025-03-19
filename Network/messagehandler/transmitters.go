@@ -17,6 +17,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 	timeoutChannel := make(chan uint64, 2)
 
 	enable := false
+	
 	// channels defult to nil to block when enable = false
 	var newAssignmentsCh <-chan messages.NewHallAssignments
 	var ackCh <-chan messages.Ack

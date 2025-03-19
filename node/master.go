@@ -49,7 +49,10 @@ func MasterProgram(node *NodeData) nodestate {
 
 	// inform the global hall request transmitter of the new global hall requests
 	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
-	node.GlobalHallReqTransmitEnableTx <- true // start transmitting global hall requests (this means you are a master)
+
+	// start the transmitters
+	node.GlobalHallReqTransmitEnableTx <- true 
+	node.HallRequestAssignerTransmitEnableTx <- true
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
 
 ForLoop:
@@ -200,7 +203,10 @@ ForLoop:
 			// when you get a message on any of these channels, do nothing
 		}
 	}
-	node.GlobalHallReqTransmitEnableTx <- false // stop transmitting global hall requests
+	// stop transmitters 
+	node.GlobalHallReqTransmitEnableTx <- false 
+	node.HallRequestAssignerTransmitEnableTx <- false
+
 	node.TOLC = time.Now()
 	return nextNodeState
 }

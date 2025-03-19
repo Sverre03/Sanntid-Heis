@@ -151,6 +151,7 @@ func MakeNode(id int) *NodeData {
 		node.HallAssignmentCompleteAckRx)
 
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
+	
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx, 
 		node.HallAssignmentTx, 
@@ -164,15 +165,9 @@ func MakeNode(id int) *NodeData {
 	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndHallAssignmentUpdate)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
 	node.MyElevStatesRx = make(chan elevator.ElevatorState)
+
 	// the physical elevator program
 	go singleelevator.ElevatorProgram(node.ElevatorEventRx, node.ElevAssignmentLightUpdateTx, node.MyElevStatesRx)
-
-	// go elevator.ElevatorProgram(node.ElevatorHallButtonEventRx,
-	// 	node.MyElevatorStatesRx,
-	// 	node.ElevatorHallAssignmentTx,
-	// 	node.ElevatorHallAssignmentCompleteRx,
-	// 	node.IsDoorStuckCh,
-	// 	node.RequestDoorStateCh)
 
 	node.commandToServerTx = make(chan string)
 	node.ActiveElevStatesFromServerRx = make(chan map[int]messages.NodeElevState)

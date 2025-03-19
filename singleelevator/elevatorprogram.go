@@ -21,7 +21,7 @@ const (
 type ElevatorEvent struct {
 	EventType   ElevatorEventType
 	ButtonEvent elevator.ButtonEvent // For hall button events and completed hall assignments
-	IsDoorStuck bool                 // For door stuck status
+	DoorIsStuck bool                 // For door stuck status
 }
 
 // NodeToElevatorMsg encapsulates all messages sent from node to elevator
@@ -37,8 +37,7 @@ type LightAndHallAssignmentUpdate struct {
 func ElevatorProgram(
 	elevatorEventTx chan<- ElevatorEvent,
 	elevPanelUpdateRx <-chan LightAndHallAssignmentUpdate,
-	elevatorStatesTx chan<- elevator.ElevatorState,
-) {
+	elevatorStatesTx chan<- elevator.ElevatorState) {
 
 	// Initialize the elevator
 	elevator.Init("localhost:15657", config.NUM_FLOORS)
@@ -63,17 +62,13 @@ func ElevatorProgram(
 
 	// start timer
 	go func() {
-		for range time.Tick(config.TIMEOUT_TIMER_POLL_INTERVALL) {
+		for range time.Tick(config.TIMEOUT_TIMER_POLL_INTERVAL) {
+			// If the door has stayed open for 3 seconds (timed out)
 			if doorOpenTimer.Active && timer.TimerTimedOut(doorOpenTimer) {
 				fmt.Println("Door timer timed out")
 				doorTimeoutEventRx <- true
 			}
-		}
-	}()
-
-	// Monitor door stuck timeout (30 seconds)
-	go func() {
-		for range time.Tick(config.TIMEOUT_TIMER_POLL_INTERVALL) {
+			// If the door has been stuck for 30 seconds ()
 			if doorStuckTimer.Active && timer.TimerTimedOut(doorStuckTimer) {
 				fmt.Println("Door stuck timer timed out!")
 				doorStuckEventRx <- true
@@ -90,7 +85,7 @@ func ElevatorProgram(
 			if button.Button == elevator.ButtonCab { // Handle cab calls internally
 				elevator_fsm.FsmOnRequestButtonPress(button.Floor, button.Button, &doorOpenTimer)
 			} else {
-				elevatorEventTx <- makeHallBtnEventMessage(button)
+				elevatorEventTx <- makeHallButtonEventMessage(button)
 			}
 
 		case msg := <-elevPanelUpdateRx:
@@ -110,7 +105,7 @@ func ElevatorProgram(
 			// loop through and send the button events!
 			for _, buttonEvent := range clearedButtonEvents {
 				if buttonEvent.Button != elevator.ButtonCab {
-					elevatorEventTx <- makeHallBtnEventMessage(buttonEvent)
+					elevatorEventTx <- makeHallButtonEventMessage(buttonEvent)
 				}
 			}
 
@@ -118,7 +113,7 @@ func ElevatorProgram(
 			elevator_fsm.FsmSetObstruction(isObstructed)
 
 		case <-doorTimeoutEventRx:
-			// start the door stuck timer. It is stopped by FsmOnDoorTimeout if the doors are able to close
+			// Start the door stuck timer, which is stopped by FsmOnDoorTimeout if the doors are able to close
 			if !timer.Active(doorStuckTimer) {
 				timer.TimerStart(&doorStuckTimer, config.DOOR_STUCK_DURATION)
 			}
@@ -145,13 +140,13 @@ func transmitElevatorState(elevatorToNode chan<- elevator.ElevatorState) {
 	}
 }
 
-func makeHallBtnEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
+func makeHallButtonEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 	return ElevatorEvent{EventType: HallButtonEvent,
-		ButtonEvent: buttonEvent, IsDoorStuck: false}
+		ButtonEvent: buttonEvent, DoorIsStuck: false}
 }
 
 func makeDoorStuckMessage(isDoorStuck bool) ElevatorEvent {
 	return ElevatorEvent{EventType: DoorStuckEvent,
-		IsDoorStuck: isDoorStuck,
+		DoorIsStuck: isDoorStuck,
 	}
 }

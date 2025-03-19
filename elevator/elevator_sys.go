@@ -14,34 +14,42 @@ const (
 )
 
 type Elevator struct {
-	Floor           int
-	Dir             MotorDirection
-	Behavior        ElevatorBehavior
-	Requests        [config.NUM_FLOORS][config.NUM_BUTTONS]bool
-	IsObstructed    bool
-	HallLightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // state of the hall lights
+	Floor        int
+	Dir          MotorDirection
+	Behavior     ElevatorBehavior
+	Requests     [config.NUM_FLOORS][config.NUM_BUTTONS]bool
+	IsObstructed bool
 }
 
-type ElevatorState struct {
-	Behavior    ElevatorBehavior
-	Floor       int
-	Direction   MotorDirection
-	CabRequests [config.NUM_FLOORS]bool
+// String returns a string representation of the ElevatorBehavior
+func (eb ElevatorBehavior) String() string {
+	switch eb {
+	case Idle:
+		return "idle"
+	case DoorOpen:
+		return "doorOpen"
+	case Moving:
+		return "moving"
+	default:
+		return fmt.Sprintf("unknown(%d)", int(eb))
+	}
 }
 
-var ElevatorBehaviorToString = map[ElevatorBehavior]string{
-	Idle:     "idle",
-	DoorOpen: "doorOpen",
-	Moving:   "moving",
+// String returns a string representation of the MotorDirection
+func (md MotorDirection) String() string {
+	switch md {
+	case DirectionUp:
+		return "up"
+	case DirectionDown:
+		return "down"
+	case DirectionStop:
+		return "stop"
+	default:
+		return fmt.Sprintf("unknown(%d)", int(md))
+	}
 }
 
-var ElevatorDirectionToString = map[MotorDirection]string{
-	DirectionUp:   "up",
-	DirectionDown: "down",
-	DirectionStop: "stop",
-}
-
-func GetCabRequestsAsElevState(elev Elevator) [config.NUM_FLOORS]bool {
+func GetCabRequestsAsHRAElevState(elev Elevator) [config.NUM_FLOORS]bool {
 	var cabRequests [config.NUM_FLOORS]bool
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
 		cabRequests[floor] = elev.Requests[floor][ButtonCab]
@@ -59,7 +67,7 @@ func NewElevator() Elevator {
 }
 
 func PrintElevator(e Elevator) {
-	behavior := ElevatorBehaviorToString[e.Behavior]
+	behavior := e.Behavior.String()
 	dir := "Stop"
 	if e.Dir == DirectionUp {
 		dir = "Up"

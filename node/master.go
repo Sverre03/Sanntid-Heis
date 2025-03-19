@@ -47,6 +47,8 @@ func MasterProgram(node *NodeData) nodestate {
 	var recentHACompleteBuffer MessageIDBuffer
 	var nextNodeState nodestate
 
+	var lastKnownActiveElevatorIds []int
+
 	// inform the global hall request transmitter of the new global hall requests
 	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 
@@ -199,14 +201,34 @@ ForLoop:
 		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
 		case <-node.AllElevStatesFromServerRx:
-		case <-node.ActiveNodeIDsFromServerRx:
-			// when you get a message on any of these channels, do nothing
+		// check if node has disconnected
+		case <- time.After(500 * time.Millisecond):
+			node.commandToServerTx <- "getActiveNodeIDs"
+		
+		case currentActiveElevatorIds := <-node.ActiveNodeIDsFromServerRx:
+			if len(currentActiveElevatorIds) != len(lastKnownActiveElevatorIds) {
+				for _, id := range currentActiveElevatorIds {
+					for _, lastID := range lastKnownActiveElevatorIds {
+						if id == lastID {
+							break
+						}else{
+							fmt.Println("Node %d has disconnected", lastID)
+							// reassign hall assignments
+							activeNewHallReq = true
+							node.commandToServerTx <- "getActiveElevStates"
+						}
+					}
+			}
+		}
+		// when you get a message on any of these channels, do nothing
+
 		}
 	}
 	// stop transmitters 
 	node.GlobalHallReqTransmitEnableTx <- false 
 	node.HallRequestAssignerTransmitEnableTx <- false
-
 	node.TOLC = time.Now()
+
 	return nextNodeState
 }
+

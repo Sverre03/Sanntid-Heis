@@ -72,6 +72,8 @@ type NodeData struct {
 	// Channels for turning on and off the transmitter functions
 	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
 	HallRequestAssignerTransmitEnableTx    chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
+	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
+	HallRequestAssignerTransmitEnableTx    chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
 	HallAssignmentCompleteTransmitEnableTx chan bool // channel that connects to HallAssignmentCompleteTransmitter, should be enabled when node is master
 }
 
@@ -151,23 +153,6 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 		node.ConnectionReqTx,
 		node.NewHallReqTx)
 
-	// channels for enabling and disabling the transmitter functions
-	node.GlobalHallReqTransmitEnableTx = make(chan bool)
-	node.HallRequestAssignerTransmitEnableTx = make(chan bool)
-	node.HallAssignmentCompleteTransmitEnableTx = make(chan bool)
-
-
-	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
-	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
-	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
-	node.HallLightUpdateRx = make(chan messages.HallLightUpdate)
-	node.ConnectionReqRx = make(chan messages.ConnectionReq)
-	node.NewHallReqRx = make(chan messages.NewHallRequest)
-	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
-
-	ackRx := make(chan messages.Ack)
-	elevStatesRx := make(chan messages.NodeElevState)
-
 	// start receiver process that listens for messages on the port
 	go bcast.Receiver(bcastPort,
 		ackRx,
@@ -187,8 +172,6 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 		node.ConnectionReqAckRx,
 		node.HallAssignmentCompleteAckRx)
 
-	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
-	
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,
 		node.HallAssignmentTx,

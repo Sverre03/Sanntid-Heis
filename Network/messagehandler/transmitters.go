@@ -54,7 +54,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 			for _, msg := range activeAssignments {
 				if msg.MessageID == timedOutMsgID {
 
-					// fmt.Printf("resending message id %d \n", timedOutMsgID)
+					fmt.Printf("resending message id %d \n", timedOutMsgID)
 					HallAssignmentsTx <- msg
 					time.AfterFunc(500*time.Millisecond, func() {
 						timeoutChannel <- msg.MessageID

@@ -115,10 +115,8 @@ func NodeElevStateServer(myID int,
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
 			if id != myID { // Check if we received our own message
-				fmt.Print("Received message from node ", id, "\n")
 				if nodeIsConnected {
 					connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
-					fmt.Printf("Node %d Timer is reset\n", myID)
 				}
 
 				knownNodes[id] = elevState.ElevState

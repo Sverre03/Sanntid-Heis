@@ -116,15 +116,13 @@ ForLoop:
 
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
 			if shouldDistributeHallRequests && elevStatesUpdate.OnlyActiveNodes { // We have received state from all active nodes
-
+				fmt.Printf("global hall requests at this time: %v\n", node.GlobalHallRequests)
 				// add my elevator to the list of active elevators
 				elevStatesUpdate.NodeElevStatesMap[node.ID] = myElevState.ElevState
 
-				fmt.Printf("Node %d received active elev states: %v\n", node.ID, elevStatesUpdate)
-
 				HRAoutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests)
 
-				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
+				//fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
 
 				for id, hallRequests := range HRAoutput {
 

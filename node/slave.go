@@ -41,7 +41,7 @@ ForLoop:
 				}
 
 			case singleelevator.LocalHallAssignmentCompleteEvent:
-
+				fmt.Println("LocalHallAssignmentCompleteEvent")
 				// Forward completed hall assignments
 				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
 

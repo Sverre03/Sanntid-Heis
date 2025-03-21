@@ -1,7 +1,7 @@
 package hallRequestAssigner
 
 import (
-	"elev/Network/messages"
+	"elev/elevator"
 	"elev/util/config"
 	"encoding/json"
 	"fmt"
@@ -26,14 +26,15 @@ type HRAInput struct {
 	States       map[string]HRAElevState    `json:"states"`
 }
 
-func HRAalgorithm(allElevStates map[int]messages.NodeElevState, hallRequests [config.NUM_FLOORS][2]bool) map[int][config.NUM_FLOORS][2]bool {
+func HRAalgorithm(allElevStates map[int]elevator.ElevatorState, hallRequests [config.NUM_FLOORS][2]bool) map[int][config.NUM_FLOORS][2]bool {
 	allElevStatesInputFormat := make(map[string]HRAElevState)
+
 	for id, nodeState := range allElevStates {
 		allElevStatesInputFormat[fmt.Sprintf("%d", id)] = HRAElevState{
-			Behavior:    nodeState.ElevState.Behavior.String(),
-			Floor:       nodeState.ElevState.Floor,
-			Direction:   strings.ToLower(nodeState.ElevState.Direction.String()),
-			CabRequests: nodeState.ElevState.CabRequests,
+			Behavior:    nodeState.Behavior.String(),
+			Floor:       nodeState.Floor,
+			Direction:   strings.ToLower(nodeState.Direction.String()),
+			CabRequests: nodeState.CabRequests,
 		}
 	}
 	input := HRAInput{

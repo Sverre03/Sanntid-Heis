@@ -43,7 +43,7 @@ func MasterProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
 
 	var myElevState messages.NodeElevState
-	activeNewHallReq := false
+	shouldDistributeHallRequests := false
 	activeConnReq := make(map[int]messages.ConnectionReq)
 
 	var recentHACompleteBuffer MessageIDBuffer
@@ -74,9 +74,10 @@ ForLoop:
 				break Select
 
 			case singleelevator.HallButtonEvent:
+				// new hallbuttonpress from my elevator!
 				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
 					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = true
-					activeNewHallReq = true
+					shouldDistributeHallRequests = true
 				}
 
 			case singleelevator.LocalHallAssignmentCompleteEvent:
@@ -86,15 +87,16 @@ ForLoop:
 				}
 			}
 
-			if activeNewHallReq {
+			if shouldDistributeHallRequests {
 				fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 				node.commandToServerTx <- "getActiveElevStates"
 			}
-
+			// update the hall request transmitter with the newest requests
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 
 		case myStates := <-node.MyElevStatesRx:
 			myElevState = messages.NodeElevState{NodeID: node.ID, ElevState: myStates}
+			node.NodeElevStatesTx <- myElevState
 
 		case newHallReq := <-node.NewHallReqRx:
 
@@ -106,32 +108,28 @@ ForLoop:
 
 			node.GlobalHallRequests[newHallReq.Floor][newHallReq.HallButton] = true
 			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
-			activeNewHallReq = true
+			shouldDistributeHallRequests = true
 
 			// send the global hall requests to the server for broadcast to update other nodes
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 			node.commandToServerTx <- "getActiveElevStates"
 
-		case activeElevStates := <-node.NodeElevStatesRx:
-			if activeNewHallReq && activeElevStates.OnlyActiveNodes { // We have received state from all active nodes
+		case elevStatesUpdate := <-node.NodeElevStatesRx:
+			if shouldDistributeHallRequests && elevStatesUpdate.OnlyActiveNodes { // We have received state from all active nodes
 
 				// add my elevator to the list of active elevators
-				activeElevStates.NodeElevStatesMap[node.ID] = myElevState
-				nodeElevStatesMap := make(map[int]messages.NodeElevState)
-				for id, state := range activeElevStates.NodeElevStatesMap {
-					nodeElevStatesMap[id] = messages.NodeElevState{NodeID: id, ElevState: state}
-				}
+				elevStatesUpdate.NodeElevStatesMap[node.ID] = myElevState.ElevState
 
-				fmt.Printf("Node %d received active elev states: %v\n", node.ID, activeElevStates)
+				fmt.Printf("Node %d received active elev states: %v\n", node.ID, elevStatesUpdate)
 
-				HRAoutput := hallRequestAssigner.HRAalgorithm(nodeElevStatesMap, node.GlobalHallRequests)
+				HRAoutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests)
 
 				fmt.Printf("Node %d HRA output: %v\n", node.ID, HRAoutput)
 
 				for id, hallRequests := range HRAoutput {
 
 					if id == node.ID {
-						// here, we must update the lights of our own elevator
+						// the message belongs to our elevator
 						node.ElevAssignmentLightUpdateTx <- makeHallAssignmentAndLightMessage(hallRequests, node.GlobalHallRequests)
 						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallRequests)
 
@@ -146,36 +144,32 @@ ForLoop:
 				}
 				// update the transmitter with the latest global hall requests
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
-				activeNewHallReq = false
+				shouldDistributeHallRequests = false
 			}
 
-		case connReq := <-node.ConnectionReqRx:
-			// here, there may need to be some extra logic
-			if connReq.TOLC.IsZero() {
-				activeConnReq[connReq.NodeID] = connReq
-				node.commandToServerTx <- "getAllElevStates"
-			}
-
-		case allElevStates := <-node.NodeElevStatesRx:
-			if len(activeConnReq) != 0 && !allElevStates.OnlyActiveNodes { // We have received state from all known nodes
+			if !elevStatesUpdate.OnlyActiveNodes {
 
 				for id := range activeConnReq {
 					var cabRequestInfo messages.CabRequestInfo
-					if states, ok := allElevStates.NodeElevStatesMap[id]; ok {
+					if states, ok := elevStatesUpdate.NodeElevStatesMap[id]; ok {
 						cabRequestInfo = messages.CabRequestInfo{CabRequest: states.CabRequests, ReceiverNodeID: id}
 					} else {
-						// we have no data so we send an map filled with false
-						emptyMap := [config.NUM_FLOORS]bool{}
-						for i := 0; i < config.NUM_FLOORS; i++ {
-							emptyMap[i] = false
-						}
-						cabRequestInfo = messages.CabRequestInfo{CabRequest: emptyMap, ReceiverNodeID: id}
+
+						// we still send a message, but just with false
+						emptySlice := [config.NUM_FLOORS]bool{}
+
+						cabRequestInfo = messages.CabRequestInfo{CabRequest: emptySlice, ReceiverNodeID: id}
 					}
 
-					// this message may not arrive. If the disconnected node waits for its arrival, that means it will never become a slave
 					node.CabRequestInfoTx <- cabRequestInfo
 					delete(activeConnReq, id)
 				}
+			}
+
+		case connReq := <-node.ConnectionReqRx:
+			if connReq.TOLC.IsZero() {
+				activeConnReq[connReq.NodeID] = connReq
+				node.commandToServerTx <- "getAllElevStates"
 			}
 
 		case HA := <-node.HallAssignmentCompleteRx:
@@ -195,7 +189,7 @@ ForLoop:
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 
 			}
-			// ack the message no matter the state of the message
+			// ack the message, as if we have received it before our previous ack did not arrive
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
 		case networkEvent := <-node.NetworkEventRx:
@@ -205,7 +199,7 @@ ForLoop:
 				nextNodeState = Disconnected
 				break ForLoop
 			} else if networkEvent == messagehandler.NodeConnectDisconnect {
-				activeNewHallReq = true
+				shouldDistributeHallRequests = true
 				node.commandToServerTx <- "getActiveElevStates"
 			}
 

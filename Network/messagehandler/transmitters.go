@@ -12,30 +12,24 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 	OutgoingNewHallAssignments <-chan messages.NewHallAssignments,
 	HallAssignmentsAck <-chan messages.Ack,
 	HallAssignerEnableCH <-chan bool) {
+
 	activeAssignments := map[int]messages.NewHallAssignments{}
-
 	timeoutChannel := make(chan uint64, 2)
-
 	enable := false
 
-	// channels defult to nil to block when enable = false
-	var newAssignmentsCh <-chan messages.NewHallAssignments
-	var ackCh <-chan messages.Ack
-	var timeoutCh <-chan uint64
-
 	for {
+	Select:
 		select {
 		case enable = <-HallAssignerEnableCH:
-			if enable {
-				newAssignmentsCh = OutgoingNewHallAssignments
-				ackCh = HallAssignmentsAck
-				timeoutCh = timeoutChannel
-			} else if !enable {
-				newAssignmentsCh = nil
-				ackCh = nil
-				timeoutCh = nil
+			if !enable {
+				for k := range activeAssignments {
+					delete(activeAssignments, k)
+				}
 			}
-		case newAssignment := <-newAssignmentsCh:
+		case newAssignment := <-OutgoingNewHallAssignments:
+			if !enable {
+				break Select
+			}
 			//fmt.Printf("got new hall assignment with id %d\n", newAssignment.NodeID)
 			new_msg_id, err := GenerateMessageID(NEW_HALL_ASSIGNMENT)
 			if err != nil {
@@ -54,7 +48,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 				timeoutChannel <- newAssignment.MessageID
 			})
 
-		case timedOutMsgID := <-timeoutCh:
+		case timedOutMsgID := <-timeoutChannel:
 
 			// fmt.Printf("Checking messageID for resend: %d \n", timedOutMsgID)
 			for _, msg := range activeAssignments {
@@ -69,7 +63,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 				}
 			}
 
-		case receivedAck := <-ackCh:
+		case receivedAck := <-HallAssignmentsAck:
 			if msg, ok := activeAssignments[receivedAck.NodeID]; ok {
 				if msg.MessageID == receivedAck.MessageID {
 					// fmt.Printf("Deleting assignment with node id %d and message id %d \n", receivedAck.NodeID, receivedAck.MessageID)
@@ -101,16 +95,12 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 
 // transmits hall assignments complete
 func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.HallAssignmentComplete,
-	hallAssignmentCompleteRx <-chan messages.HallAssignmentComplete,
+	outgoingHallAssignmentComplete <-chan messages.HallAssignmentComplete,
 	hallAssignmentCompleteAckRx <-chan messages.Ack,
 	HallAssignmentCompleteEnableCh <-chan bool) {
-	
-	var completeRx <-chan messages.HallAssignmentComplete
-	var ackRx <-chan messages.Ack
-	var timeoutCh <-chan uint64
 
 	enable := false
-	
+
 	timeoutChannel := make(chan uint64, 2)
 	completedActiveAssignments := make(map[uint64]messages.HallAssignmentComplete) //mapping message id to hall assignment complete message
 
@@ -124,7 +114,7 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 					delete(completedActiveAssignments, k)
 				}
 			}
-		case newComplete := <-completeRx:
+		case newComplete := <-outgoingHallAssignmentComplete:
 			new_msg_id, err := GenerateMessageID(HALL_ASSIGNMENT_COMPLETE)
 			if err != nil {
 				fmt.Println("Fatal error, invalid message type used to generate message id in hall assignment complete")
@@ -137,13 +127,13 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 			time.AfterFunc(500*time.Millisecond, func() {
 				timeoutChannel <- newComplete.MessageID
 			})
-		case receivedAck := <-ackRx:
+		case receivedAck := <-hallAssignmentCompleteAckRx:
 			if msg, ok := completedActiveAssignments[receivedAck.MessageID]; ok {
 				if msg.MessageID == receivedAck.MessageID {
 					delete(completedActiveAssignments, receivedAck.MessageID)
 				}
 			}
-		case timedOutMsgID := <-timeoutCh:
+		case timedOutMsgID := <-timeoutChannel:
 
 			for _, msg := range completedActiveAssignments {
 				if msg.MessageID == timedOutMsgID {

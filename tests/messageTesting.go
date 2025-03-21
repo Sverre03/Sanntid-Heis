@@ -19,55 +19,8 @@ func testMessageIDGenerator() error {
 	return nil
 }
 
-// this test is not finished
-func testLightUpdateTransmitter() error {
-	hallLightUpdateTx := make(chan messages.HallLightUpdate)
-	outgoingLightUpdates := make(chan messages.HallLightUpdate)
-	hallLightUpdateAck := make(chan messages.Ack)
-	timeoutChannel := make(chan int)
-	activeElevIDs := []int{1, 2, 3, 4, 8}
-
-	hallLightUpdate := messages.HallLightUpdate{LightStates: [config.NUM_FLOORS][2]bool{}, MessageID: 0, ActiveElevatorIDs: activeElevIDs}
-
-	go messagehandler.LightUpdateTransmitter(hallLightUpdateTx, outgoingLightUpdates, hallLightUpdateAck)
-
-	outgoingLightUpdates <- hallLightUpdate
-
-	time.AfterFunc(5*time.Second, func() {
-		timeoutChannel <- 5
-	})
-
-	count := 0
-	for {
-		select {
-		case HLU := <-hallLightUpdateTx:
-			count += 1
-			fmt.Printf("Acking %d\n", count)
-			hallLightUpdateAck <- messages.Ack{MessageID: HLU.MessageID, NodeID: count}
-			hallLightUpdateAck <- messages.Ack{MessageID: HLU.MessageID, NodeID: count + 1}
-			hallLightUpdateAck <- messages.Ack{MessageID: HLU.MessageID, NodeID: count + 2}
-
-		case <-timeoutChannel:
-			if count > 10 {
-				return errors.New("received too many messages")
-			} else if count < 3 {
-				return errors.New("received not enough messages")
-			}
-			return nil
-		}
-	}
-}
-
 func TestTransmitFunctions() {
 	var err error
-
-	err = testLightUpdateTransmitter()
-	if err == nil {
-		fmt.Println("light update transmitter test passed")
-	} else {
-		fmt.Println(err.Error())
-		return
-	}
 
 	err = testGlobalHallReqTransmitter()
 	if err == nil {

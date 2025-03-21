@@ -26,8 +26,8 @@ const (
 )
 
 type ElevStateUpdate struct {
-	NodeElevStatesMap  map[int]elevator.ElevatorState // map of nodeID to ElevatorState
-	OnlyActiveNodes bool
+	NodeElevStatesMap map[int]elevator.ElevatorState // map keyed by node id, holding ElevatorStates
+	OnlyActiveNodes   bool
 }
 
 // generates a message ID that corresponsds to the message type
@@ -80,26 +80,43 @@ func NodeElevStateServer(myID int,
 ) {
 	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
-	enableTOLCUpdate := false
-	timeoutTimer := time.NewTimer(config.NODE_CONNECTION_TIMEOUT)
-	timeoutTimer.Stop()
+	nodeIsConnected := false
+	connectionTimeoutTimer := time.NewTicker(config.NODE_CONNECTION_TIMEOUT)
+	connectionTimeoutTimer.Stop()
+	peerTimeoutTicker := time.NewTimer(config.PEER_POLL_INTERVAL)
 
+	peerTimeoutTicker.Stop()
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]elevator.ElevatorState)
 
+	lastActiveNodes := make(map[int]elevator.ElevatorState)
 	for {
 		select {
+		case <-peerTimeoutTicker.C:
+			activeNodes := findActiveNodes(knownNodes, lastSeen)
 
-		case <-timeoutTimer.C:
-			enableTOLCUpdate = false
+			// if the number of active nodes change, generate an event
+			if len(lastActiveNodes) != len(activeNodes) {
+
+				networkEventTx <- NodeConnectDisconnect
+			}
+			lastActiveNodes = activeNodes
+
+		case <-connectionTimeoutTimer.C:
+			// we have timed out
+			peerTimeoutTicker.Stop()
+			nodeIsConnected = false
+
+			// we have lost connection. Empty the lastActiveNodes map, just in case some strays are still left there
+			lastActiveNodes = make(map[int]elevator.ElevatorState)
 			networkEventTx <- NodeHasLostConnection
 
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
 			if id != myID { // Check if we received our own message
 
-				if enableTOLCUpdate {
-					timeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
+				if nodeIsConnected {
+					connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				}
 
 				knownNodes[id] = elevState.ElevState
@@ -110,21 +127,17 @@ func NodeElevStateServer(myID int,
 
 			switch command {
 			case "getActiveElevStates":
-				activeNodes := make(map[int]elevator.ElevatorState)
-				for id, t := range lastSeen {
-					if time.Since(t) < config.CONNECTION_TIMEOUT {
-						activeNodes[id] = knownNodes[id]
-					}
-				}
+				activeNodes := findActiveNodes(knownNodes, lastSeen)
+
 				elevStateUpdateTx <- makeActiveElevStatesUpdateMessage(activeNodes)
 
 			case "getAllElevStates":
 				elevStateUpdateTx <- makeAllElevStatesUpdateMessage(knownNodes)
 
 			case "startConnectionTimeoutDetection":
-				timeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
-				enableTOLCUpdate = true
-
+				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
+				peerTimeoutTicker.Reset(config.PEER_POLL_INTERVAL)
+				nodeIsConnected = true
 			}
 		}
 	}
@@ -135,4 +148,14 @@ func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState
 }
 func makeAllElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
 	return ElevStateUpdate{NodeElevStatesMap: elevStates, OnlyActiveNodes: false}
+}
+
+func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int]time.Time) map[int]elevator.ElevatorState {
+	activeNodes := make(map[int]elevator.ElevatorState)
+	for id, t := range lastSeen {
+		if time.Since(t) < config.NODE_CONNECTION_TIMEOUT {
+			activeNodes[id] = knownNodes[id]
+		}
+	}
+	return activeNodes
 }

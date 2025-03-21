@@ -114,7 +114,7 @@ ForLoop:
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 			node.commandToServerTx <- "getActiveElevStates"
 
-		case elevStatesUpdate := <-node.NodeElevStatesRx:
+		case elevStatesUpdate := <-node.NodeElevStateUpdate:
 			if shouldDistributeHallRequests && elevStatesUpdate.OnlyActiveNodes { // We have received state from all active nodes
 
 				// add my elevator to the list of active elevators
@@ -207,7 +207,6 @@ ForLoop:
 		case <-node.HallAssignmentCompleteAckRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
-		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
 
 			// when you get a message on any of these channels, do nothing

@@ -111,7 +111,7 @@ ForLoop:
 		// check if you receive some useful info here
 		// Prevent blocking of unused channels
 		case <-node.HallAssignmentsRx:
-		case <-node.NodeElevStatesRx:
+		case <-node.NodeElevStateUpdate:
 		case <-node.NewHallReqRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.HallAssignmentCompleteAckRx:

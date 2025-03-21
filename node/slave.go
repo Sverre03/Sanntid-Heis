@@ -91,7 +91,7 @@ ForLoop:
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
 			}
 
-		case <-node.NodeElevStatesRx:
+		case <-node.NodeElevStateUpdate:
 		case <-node.NewHallReqRx:
 		case <-node.ConnectionReqRx:
 		case <-node.ConnectionReqAckRx:

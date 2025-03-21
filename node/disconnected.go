@@ -5,6 +5,7 @@ import (
 	"elev/Network/messages"
 	"elev/elevator"
 	"elev/singleelevator"
+	"elev/util/config"
 	"fmt"
 	"time"
 )
@@ -22,14 +23,10 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	}
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
 	var nextNodeState nodestate
-	// ID of the node we currently are trying to connect with
-	currentFriendID := 0
-
-	var lastReceivedAck *messages.Ack
 
 	// Set up heartbeat for connection requests
 	connectionRequestTicker := time.NewTicker(500 * time.Millisecond)
-
+	decisionTimer := time.NewTimer(config.DISCONNECTED_DECISION_INTERVAL)
 	defer connectionRequestTicker.Stop()
 
 ForLoop:
@@ -40,45 +37,22 @@ ForLoop:
 
 		case incomingConnReq := <-node.ConnectionReqRx:
 			if node.ID != incomingConnReq.NodeID {
-				fmt.Printf("Node %d received connection request from node %d\n",
-					node.ID, incomingConnReq.NodeID)
+				// fmt.Printf("Node %d received connection request from node %d\n",node.ID, incomingConnReq.NodeID)
 
 				incomingConnRequests[incomingConnReq.NodeID] = incomingConnReq
-
-				// Choose the node with lowest ID as potential connection
-				if currentFriendID == 0 || currentFriendID >= incomingConnReq.NodeID {
-					currentFriendID = incomingConnReq.NodeID
-					// Send acknowledgement
-					node.AckTx <- messages.Ack{
-						MessageID: incomingConnReq.MessageID,
-						NodeID:    node.ID,
-					}
-				}
-
 			}
 
-		case connReqAck := <-node.ConnectionReqAckRx:
-			fmt.Printf("Node %d received connection request ack from node %d\n", node.ID, connReqAck.NodeID)
-			if node.ID != connReqAck.NodeID && connReqAck.NodeID == currentFriendID {
-				// All these decisions should be moved into a pure function, and the result returned
-				// check who has the most recent data
-				// here, we must ask on node.commandTx "getTOLC". Then, on return from node.TOLCRx compare
-				lastReceivedAck = &connReqAck
-
-				if lastReceivedAck != nil && node.ID != lastReceivedAck.NodeID && lastReceivedAck.NodeID == currentFriendID {
-
-					if connReq, exists := incomingConnRequests[lastReceivedAck.NodeID]; exists {
-
-						if ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, node.TOLC, connReq.TOLC) {
-							nextNodeState = Master
-						} else {
-							nextNodeState = Slave
-						}
-						break ForLoop
-					}
-					lastReceivedAck = nil
+		case <-decisionTimer.C:
+			fmt.Printf("Time to make a decision! \n")
+			if len(incomingConnRequests) != 0 {
+				if ShouldBeMaster(node.ID, node.TOLC, incomingConnRequests) {
+					nextNodeState = Master
+				} else {
+					nextNodeState = Slave
 				}
+				break ForLoop
 			}
+			decisionTimer.Reset(config.DISCONNECTED_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
@@ -100,14 +74,13 @@ ForLoop:
 			}
 
 		case info := <-node.CabRequestInfoRx: // Check if the master has any info about us
+			fmt.Println("I found a master, time to be a slave")
 			if node.ID == info.ReceiverNodeID && node.TOLC.IsZero() {
 				// we have received info about us from the master, so we can become a slave
-
+				node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(info.CabRequest)
 			}
 			nextNodeState = Slave
 			break ForLoop
-		// check if you receive some useful info here
-		// Prevent blocking of unused channels
 		case <-node.HallAssignmentsRx:
 		case <-node.NodeElevStateUpdate:
 		case <-node.NewHallReqRx:
@@ -120,17 +93,29 @@ ForLoop:
 	return nextNodeState
 }
 
-func ShouldBeMaster(myID int, otherID int, _currentFriendID int, TOLC time.Time, otherTOLC time.Time) bool {
-	// Compare TOLC values to determine who becomes master
-	if TOLC.Before(otherTOLC) { // We have the more recent data --> We should be master
+func ShouldBeMaster(myID int, tolc time.Time, connectionRequests map[int]messages.ConnectionReq) bool {
+	if tolc.IsZero() {
+		for id, connReq := range connectionRequests {
+			if id > myID || !connReq.TOLC.IsZero() {
+				return false
+			}
+		}
 		return true
-	} else if TOLC.After(otherTOLC) { // We dont have more recent data --> We should be slave
-		return false
-	} else { // TOLC values are equal --> Compare node IDs
-		if myID > otherID {
-			return true
-		} else {
+	}
+
+	for _, connReq := range connectionRequests {
+		if tolc.Before(connReq.TOLC) {
 			return false
 		}
+	}
+	return true
+}
+
+func makeCabOrderMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.LightAndAssignmentUpdate {
+	return singleelevator.LightAndAssignmentUpdate{
+		CabAssignments:  cabRequests,
+		LightStates:     [config.NUM_FLOORS][2]bool{},
+		OrderType:       singleelevator.CabOrder,
+		HallAssignments: [config.NUM_FLOORS][2]bool{},
 	}
 }

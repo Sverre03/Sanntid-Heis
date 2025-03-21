@@ -186,7 +186,7 @@ ForLoop:
 				}
 
 				recentHACompleteBuffer.Add(HA.MessageID)
-				node.ElevAssignmentLightUpdateTx <- makeLightMessage(node.GlobalHallRequests)
+				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 
 				// update the transmitter with the newest global hall requests
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}

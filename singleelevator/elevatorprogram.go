@@ -108,6 +108,8 @@ func ElevatorProgram(
 					}
 				}
 			case LightUpdate:
+				fmt.Println("Updating lights")
+				fmt.Printf("The new Hall lights: %v\n", msg.LightStates)
 				elevator_fsm.SetHallLights(msg.LightStates)
 			}
 

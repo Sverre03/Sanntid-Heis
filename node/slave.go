@@ -79,7 +79,7 @@ ForLoop:
 
 			// lets check if I have already received this message, if not its update time!
 			if lastHallAssignmentMessageID != newHA.MessageID {
-				node.ElevAssignmentLightUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
+				node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
 				lastHallAssignmentMessageID = newHA.MessageID
 			}
 
@@ -87,7 +87,7 @@ ForLoop:
 			node.TOLC = time.Now()
 
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
-				node.ElevAssignmentLightUpdateTx <- makeLightMessage(newGlobalHallReq)
+				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq)
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
 			}
 

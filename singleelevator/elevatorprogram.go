@@ -45,7 +45,7 @@ type LightAndAssignmentUpdate struct {
 func ElevatorProgram(
 	portNum string,
 	elevatorEventTx chan<- ElevatorEvent,
-	elevPanelUpdateRx <-chan LightAndAssignmentUpdate,
+	elevLightAndAssignmentUpdateRx <-chan LightAndAssignmentUpdate,
 	elevatorStatesTx chan<- elevator.ElevatorState) {
 
 	// Initialize the elevator
@@ -91,7 +91,7 @@ func ElevatorProgram(
 				elevatorEventTx <- makeHallButtonEventMessage(button)
 			}
 
-		case msg := <-elevPanelUpdateRx:
+		case msg := <-elevLightAndAssignmentUpdateRx:
 			switch msg.OrderType {
 			case HallOrder:
 				for floor := 0; floor < config.NUM_FLOORS; floor++ {

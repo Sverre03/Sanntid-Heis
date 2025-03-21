@@ -128,7 +128,7 @@ ForLoop:
 
 					if id == node.ID {
 						// the message belongs to our elevator
-						node.ElevAssignmentLightUpdateTx <- makeHallAssignmentAndLightMessage(hallRequests, node.GlobalHallRequests)
+						node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(hallRequests, node.GlobalHallRequests)
 						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallRequests)
 
 					} else {

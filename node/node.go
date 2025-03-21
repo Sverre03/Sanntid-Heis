@@ -56,9 +56,9 @@ type NodeData struct {
 	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
 
 	// Elevator-Node communication
-	ElevAssignmentLightUpdateTx chan singleelevator.LightAndAssignmentUpdate // channel for informing elevator of changes to hall button lights, and new elevator states
-	ElevatorEventRx             chan singleelevator.ElevatorEvent
-	MyElevStatesRx              chan elevator.ElevatorState
+	ElevLightAndAssignmentUpdateTx chan singleelevator.LightAndAssignmentUpdate // channel for informing elevator of changes to hall button lights, hall assignments and cab assignments
+	ElevatorEventRx               chan singleelevator.ElevatorEvent
+	MyElevStatesRx                chan elevator.ElevatorState
 
 	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete // Send a hall assignment complete to the hall assignment complete transmitter
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
@@ -117,7 +117,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.ConnectionReqAckRx = make(chan messages.Ack)
 	node.HallAssignmentCompleteAckRx = make(chan messages.Ack)
 
-	node.ElevAssignmentLightUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate)
+	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
 	node.MyElevStatesRx = make(chan elevator.ElevatorState)
 
@@ -168,7 +168,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.HallAssignmentCompleteTransmitEnableTx)
 
 	// the physical elevator program
-	go singleelevator.ElevatorProgram(portNum, node.ElevatorEventRx, node.ElevAssignmentLightUpdateTx, node.MyElevStatesRx)
+	go singleelevator.ElevatorProgram(portNum, node.ElevatorEventRx, node.ElevLightAndAssignmentUpdateTx, node.MyElevStatesRx)
 
 	// process that listens to active nodes on network
 	go messagehandler.NodeElevStateServer(node.ID,

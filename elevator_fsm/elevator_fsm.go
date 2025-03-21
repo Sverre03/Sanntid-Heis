@@ -33,7 +33,7 @@ func FsmOnInitBetweenFloors() {
 func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {
 	fmt.Printf("new local elevator assignment: %d, %s)\n", btnFloor, btnType.String())
 	// elevator.PrintElevator(elev)
-
+  
 	switch elev.Behavior {
 	case elevator.DoorOpen:
 		// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.

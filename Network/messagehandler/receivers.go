@@ -5,6 +5,7 @@ import (
 	"elev/elevator"
 	"elev/util/config"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -114,9 +115,10 @@ func NodeElevStateServer(myID int,
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
 			if id != myID { // Check if we received our own message
-
+				fmt.Print("Received message from node ", id, "\n")
 				if nodeIsConnected {
 					connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
+					fmt.Printf("Node %d Timer is reset\n", myID)
 				}
 
 				knownNodes[id] = elevState.ElevState
@@ -138,6 +140,7 @@ func NodeElevStateServer(myID int,
 				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				peerTimeoutTicker.Reset(config.PEER_POLL_INTERVAL)
 				nodeIsConnected = true
+				fmt.Printf("Node %d connection detection routine started\n", myID)
 			}
 		}
 	}

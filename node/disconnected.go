@@ -71,9 +71,7 @@ ForLoop:
 
 						if ShouldBeMaster(node.ID, lastReceivedAck.NodeID, currentFriendID, node.TOLC, connReq.TOLC) {
 							nextNodeState = Master
-							fmt.Printf("Node %d is now a Master\n", node.ID)
 						} else {
-							fmt.Printf("Node %d is now a Slave\n", node.ID)
 							nextNodeState = Slave
 						}
 						break ForLoop

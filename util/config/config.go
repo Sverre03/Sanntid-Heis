@@ -14,7 +14,7 @@ const ELEV_STATE_TRANSMIT_INTERVAL = 50 * time.Millisecond
 const NODE_DOOR_POLL_INTERVAL = 1000 * time.Millisecond
 const TIMEOUT_TIMER_POLL_INTERVAL = 50 * time.Millisecond
 
-const NODE_CONNECTION_TIMEOUT = 5 * time.Second
+const NODE_CONNECTION_TIMEOUT = 2 * time.Second
 const PORT_NUM = 20011
 const INPUT_POLL_INTERVAL = 25 * time.Millisecond
 const MASTER_TIMEOUT = 600 * time.Millisecond

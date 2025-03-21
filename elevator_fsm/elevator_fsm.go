@@ -31,7 +31,7 @@ func FsmOnInitBetweenFloors() {
 }
 
 func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {
-	fmt.Printf("\n\n%s(%d, %s)\n", "fsmOnRequestButtonPress", btnFloor, btnType.String())
+	fmt.Printf("new local elevator assignment: %d, %s)\n", btnFloor, btnType.String())
 	// elevator.PrintElevator(elev)
 
 	switch elev.Behavior {
@@ -76,7 +76,7 @@ func FsmOnFloorArrival(newFloor int, doorOpenTimer *time.Timer) []elevator.Butto
 
 	// rememmber and return the events cleared if the elevator stopped
 	var clearedRequests []elevator.ButtonEvent
-	fmt.Printf("\n\n%s(%d)\n", "fsmOnFloorArrival", newFloor)
+	// fmt.Printf("\n\n%s(%d)\n", "fsmOnFloorArrival", newFloor)
 	// elevator.PrintElevator(elev)
 
 	elev.Floor = newFloor

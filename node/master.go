@@ -20,9 +20,13 @@ type MessageIDBuffer struct {
 	index      int
 }
 
+func makeNewMessageIDBuffer(bufferSize int) MessageIDBuffer {
+	return MessageIDBuffer{size: bufferSize, index: 0}
+}
+
 // using Add, you can add a message ID to the buffer. It overwrites in a FIFO manner
 func (buf *MessageIDBuffer) Add(id uint64) {
-	if buf.size == buf.index {
+	if buf.index == buf.size-1 {
 		buf.index = 0
 	}
 	buf.messageIDs[buf.index] = id
@@ -46,7 +50,7 @@ func MasterProgram(node *NodeData) nodestate {
 	shouldDistributeHallRequests := false
 	activeConnReq := make(map[int]messages.ConnectionReq)
 
-	var recentHACompleteBuffer MessageIDBuffer
+	recentHACompleteBuffer := makeNewMessageIDBuffer(bufferSize)
 	var nextNodeState nodestate
 
 	// inform the global hall request transmitter of the new global hall requests
@@ -129,10 +133,10 @@ ForLoop:
 					if id == node.ID {
 						// the message belongs to our elevator
 						node.ElevAssignmentLightUpdateTx <- makeHallAssignmentAndLightMessage(hallRequests, node.GlobalHallRequests)
-						fmt.Printf("Node %d has hall assignment task queue: %v\n", node.ID, hallRequests)
+						fmt.Printf("Node %d: %v\n", node.ID, hallRequests)
 
 					} else {
-						fmt.Printf("Node %d sending hall requests to node %d: %v\n", node.ID, id, hallRequests)
+						fmt.Printf("Node %d: %v\n", id, hallRequests)
 
 						// distribute the orders!
 						node.HallAssignmentTx <- messages.NewHallAssignments{NodeID: id, HallAssignment: hallRequests, MessageID: 0}
@@ -171,9 +175,9 @@ ForLoop:
 			}
 
 		case HA := <-node.HallAssignmentCompleteRx:
-
 			// check that this is not a message you have already received
 			if !recentHACompleteBuffer.Contains(HA.MessageID) {
+				fmt.Println("Received new hall assignment complete message")
 
 				if HA.HallButton != elevator.ButtonCab {
 					node.GlobalHallRequests[HA.Floor][HA.HallButton] = false
@@ -182,12 +186,14 @@ ForLoop:
 				}
 
 				recentHACompleteBuffer.Add(HA.MessageID)
+				node.ElevAssignmentLightUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 
 				// update the transmitter with the newest global hall requests
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 
 			}
 			// ack the message, as if we have received it before our previous ack did not arrive
+			fmt.Printf("Acking complete message with id %d\n", HA.MessageID)
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
 		case networkEvent := <-node.NetworkEventRx:
@@ -216,6 +222,6 @@ ForLoop:
 	node.GlobalHallReqTransmitEnableTx <- false
 	node.HallRequestAssignerTransmitEnableTx <- false
 	node.TOLC = time.Now()
-
+	fmt.Println("Exiting master")
 	return nextNodeState
 }

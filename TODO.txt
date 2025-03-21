@@ -22,7 +22,7 @@ THIS IS A GOOD ARGUMENT TO REDUCE THE NUMBER OF TRANSMITTERS
     Notify if a node has fallen out 
 
 - Disconnected 
-    Make logic for receiving your states from master
+    Fix the logic
 
 - Everywhere
     Filter out messages from myself

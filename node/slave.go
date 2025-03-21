@@ -65,6 +65,7 @@ ForLoop:
 		case networkEvent := <-node.NetworkEventRx:
 			if networkEvent == messagehandler.NodeHasLostConnection {
 				nextNodeState = Disconnected
+
 				break ForLoop
 			}
 
@@ -85,10 +86,10 @@ ForLoop:
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
 			node.TOLC = time.Now()
-
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
-				node.ElevAssignmentLightUpdateTx <- makeLightMessage(newGlobalHallReq)
+				node.ElevAssignmentLightUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
+				fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
 			}
 
 		case <-node.NodeElevStateUpdate:
@@ -103,6 +104,11 @@ ForLoop:
 
 	// stop transmitters
 	node.HallAssignmentCompleteTransmitEnableTx <- false
+	if nextNodeState == Disconnected {
+		fmt.Println("Exiting slave to disconnected")
+	} else {
+		fmt.Println("Exiting slave to inactive")
+	}
 
 	return nextNodeState
 }
@@ -128,9 +134,9 @@ func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]boo
 	return newMessage
 }
 
-func makeLightMessage(globalHallReq messages.GlobalHallRequest) singleelevator.LightAndAssignmentUpdate {
+func makeLightMessage(hallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
 	var newMessage singleelevator.LightAndAssignmentUpdate
-	newMessage.LightStates = globalHallReq.HallRequests
+	newMessage.LightStates = hallReq
 	newMessage.OrderType = singleelevator.LightUpdate
 	return newMessage
 }

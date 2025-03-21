@@ -128,10 +128,10 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 				timeoutChannel <- newComplete.MessageID
 			})
 		case receivedAck := <-hallAssignmentCompleteAckRx:
-			if msg, ok := completedActiveAssignments[receivedAck.MessageID]; ok {
-				if msg.MessageID == receivedAck.MessageID {
-					delete(completedActiveAssignments, receivedAck.MessageID)
-				}
+			if _, ok := completedActiveAssignments[receivedAck.MessageID]; ok {
+				// fmt.Printf("Deleting assignment with message id %d \n", receivedAck.MessageID)
+				delete(completedActiveAssignments, receivedAck.MessageID)
+
 			}
 		case timedOutMsgID := <-timeoutChannel:
 

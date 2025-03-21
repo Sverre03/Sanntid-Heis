@@ -116,8 +116,9 @@ func ElevatorProgram(
 
 			// loop through and send the button events!
 			for _, buttonEvent := range clearedButtonEvents {
+				fmt.Printf("Button event: %v\n", buttonEvent)
 				if buttonEvent.Button != elevator.ButtonCab {
-					elevatorEventTx <- makeHallButtonEventMessage(buttonEvent)
+					elevatorEventTx <- makeHallAssignmentCompleteEventMessage(buttonEvent)
 				}
 			}
 
@@ -156,6 +157,11 @@ func transmitElevatorState(elevatorToNode chan<- elevator.ElevatorState) {
 
 func makeHallButtonEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 	return ElevatorEvent{EventType: HallButtonEvent,
+		ButtonEvent: buttonEvent, DoorIsStuck: false}
+}
+
+func makeHallAssignmentCompleteEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
+	return ElevatorEvent{EventType: LocalHallAssignmentCompleteEvent,
 		ButtonEvent: buttonEvent, DoorIsStuck: false}
 }
 

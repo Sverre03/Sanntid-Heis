@@ -23,20 +23,13 @@ type Ack struct {
 
 // Message that contains the cab requests of a single elevator, sent from master to a disconnected node on reconnect as a backup of your internal states
 type CabRequestInfo struct {
-	CabRequest           [config.NUM_FLOORS]bool
-	ReceiverNodeID       int
+	CabRequest     [config.NUM_FLOORS]bool
+	ReceiverNodeID int
 }
 
 // Message with the hall requests of the system. Meant to be broadcast by master and only master at a fixed interval. If you receive this message, it means a master exists
 type GlobalHallRequest struct {
 	HallRequests [config.NUM_FLOORS][2]bool
-}
-
-// Message to update the state of the lights
-type HallLightUpdate struct {
-	LightStates       [config.NUM_FLOORS][2]bool
-	MessageID         uint64
-	ActiveElevatorIDs []int
 }
 
 // Message containing the states of your elevator, as well as your node id. This is broadcast as an alive message

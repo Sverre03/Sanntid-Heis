@@ -207,7 +207,6 @@ ForLoop:
 		case <-node.HallAssignmentCompleteAckRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
-		case <-node.HallLightUpdateRx:
 		case <-node.ConnectionReqAckRx:
 
 			// when you get a message on any of these channels, do nothing

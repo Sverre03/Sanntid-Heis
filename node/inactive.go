@@ -23,7 +23,6 @@ ForLoop:
 
 		case <-time.After(config.NODE_DOOR_POLL_INTERVAL):
 		case <-node.HallAssignmentsRx:
-		case <-node.HallLightUpdateRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.ConnectionReqRx:

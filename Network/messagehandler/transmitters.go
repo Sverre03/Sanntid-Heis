@@ -54,7 +54,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 			for _, msg := range activeAssignments {
 				if msg.MessageID == timedOutMsgID {
 
-					fmt.Printf("resending message id %d \n", timedOutMsgID)
+					// fmt.Printf("resending message id %d \n", timedOutMsgID)
 					HallAssignmentsTx <- msg
 					time.AfterFunc(500*time.Millisecond, func() {
 						timeoutChannel <- msg.MessageID
@@ -105,11 +105,11 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 	completedActiveAssignments := make(map[uint64]messages.HallAssignmentComplete) //mapping message id to hall assignment complete message
 
 	for {
-		// make channels nil for blocking when enable = false
 
 		select {
 		case enable = <-HallAssignmentCompleteEnableCh:
 			if !enable {
+				// fmt.Println("deleting all pending messages")
 				for k := range completedActiveAssignments {
 					delete(completedActiveAssignments, k)
 				}
@@ -121,16 +121,15 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 			}
 			newComplete.MessageID = new_msg_id
 			completedActiveAssignments[new_msg_id] = newComplete
-			fmt.Printf("Hall Assignment %v is completed\n", newComplete)
 			HallAssignmentCompleteTx <- newComplete
 
 			time.AfterFunc(500*time.Millisecond, func() {
 				timeoutChannel <- newComplete.MessageID
 			})
 		case receivedAck := <-hallAssignmentCompleteAckRx:
-			fmt.Printf("Hall assignment complete transmitter received ack for message id %d\n", receivedAck.MessageID)
+			// fmt.Printf("Hall assignment complete transmitter received ack for message id %d\n", receivedAck.MessageID)
 			if _, ok := completedActiveAssignments[receivedAck.MessageID]; ok {
-				fmt.Printf("Deleting assignment with message id %d \n", receivedAck.MessageID)
+				// fmt.Printf("Deleting assignment with message id %d \n", receivedAck.MessageID)
 				delete(completedActiveAssignments, receivedAck.MessageID)
 
 			}

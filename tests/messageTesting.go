@@ -3,6 +3,7 @@ package tests
 import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
+	"elev/elevator"
 	"elev/util/config"
 	"errors"
 	"fmt"
@@ -20,23 +21,31 @@ func testMessageIDGenerator() error {
 }
 
 func TestTransmitFunctions() {
+	fmt.Println("Testing started")
 	var err error
-
-	err = testGlobalHallReqTransmitter()
+	err = testHACompleteTransmitter()
 	if err == nil {
-		fmt.Println("hall assignment transmitter test passed")
+		fmt.Println("Hall assignment complete test passed")
 	} else {
 		fmt.Println(err.Error())
 		return
 	}
 
-	// err = testHAss()
-	// if err == nil {
-	// 	fmt.Println("Hall assignment test passed")
-	// } else {
-	// 	fmt.Println(err.Error())
-	// 	return
-	// }
+	err = testGlobalHallReqTransmitter()
+	if err == nil {
+		fmt.Println("global hall req test passed")
+	} else {
+		fmt.Println(err.Error())
+		return
+	}
+
+	err = testHAss()
+	if err == nil {
+		fmt.Println("Hall assignment test passed")
+	} else {
+		fmt.Println(err.Error())
+		return
+	}
 
 	err = testMessageIDGenerator()
 	if err == nil {
@@ -55,70 +64,154 @@ func TestTransmitFunctions() {
 	}
 }
 
-// func testHAss() error {
-// 	id := 10
-// 	err := errors.New("no messages were received")
-// 	timeoutChannel := make(chan int, 1)
-// 	HallAssignmentsTx := make(chan messages.NewHallAssignments, 1)
-// 	OutgoingNewHallAssignments := make(chan messages.NewHallAssignments, 1)
-// 	HallAssignmentsAck := make(chan messages.Ack, 1)
+func testHAss() error {
+	id := 10
+	err := errors.New("no messages were received")
+	timeoutChannel := make(chan int, 1)
+	HallAssignmentsTx := make(chan messages.NewHallAssignments, 2)
+	OutgoingNewHallAssignments := make(chan messages.NewHallAssignments, 2)
+	HallAssignmentsAck := make(chan messages.Ack, 1)
+	enableCh := make(chan bool)
+	go messagehandler.HallAssignmentsTransmitter(HallAssignmentsTx, OutgoingNewHallAssignments, HallAssignmentsAck, enableCh)
 
-// 	go messagehandler.HallAssignmentsTransmitter(HallAssignmentsTx, OutgoingNewHallAssignments, HallAssignmentsAck)
+	enableCh <- true
+	dummyHallAssignment1 := messages.NewHallAssignments{NodeID: id, HallAssignment: [config.NUM_FLOORS][2]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
+	dummyHallAssignment2 := messages.NewHallAssignments{NodeID: id + 1, HallAssignment: [config.NUM_FLOORS][2]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
 
-// 	dummyHallAssignment1 := messages.NewHallAssignments{NodeID: id, HallAssignment: [config.NUM_FLOORS][2]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
-// 	dummyHallAssignment2 := messages.NewHallAssignments{NodeID: id + 1, HallAssignment: [config.NUM_FLOORS][2]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
+	OutgoingNewHallAssignments <- dummyHallAssignment1
+	OutgoingNewHallAssignments <- dummyHallAssignment2
 
-// 	OutgoingNewHallAssignments <- dummyHallAssignment1
-// 	OutgoingNewHallAssignments <- dummyHallAssignment2
+	numMsgReceived := 0
+	hasReceived := false
 
-// 	numMsgReceived := 0
-// 	hasReceived := false
+	time.AfterFunc(5*time.Second, func() {
+		timeoutChannel <- 1
+	})
 
-// 	time.AfterFunc(5*time.Second, func() {
-// 		timeoutChannel <- 1
-// 	})
+ForLoop:
+	for {
+		select {
+		case HAss := <-HallAssignmentsTx:
+			switch HAss.NodeID {
+			case id + 1:
+				if hasReceived {
+					err = errors.New("received a message twice that should have been acked")
+					break ForLoop
+				}
+				HallAssignmentsAck <- messages.Ack{NodeID: (id + 1), MessageID: HAss.MessageID}
+				hasReceived = true
 
-// ForLoop:
-// 	for {
-// 		select {
-// 		case HAss := <-HallAssignmentsTx:
-// 			switch HAss.NodeID {
-// 			case id + 1:
-// 				if hasReceived {
-// 					err = errors.New("received a message twice that should have been acked")
-// 					break ForLoop
-// 				}
-// 				HallAssignmentsAck <- messages.Ack{NodeID: (id + 1), MessageID: HAss.MessageID}
-// 				hasReceived = true
+			case id:
 
-// 			case id:
+				err = fmt.Errorf("only received %d messages", numMsgReceived)
+				numMsgReceived++
 
-// 				err = fmt.Errorf("only received %d messages", numMsgReceived)
-// 				numMsgReceived++
+				if numMsgReceived > 6 {
+					err = fmt.Errorf("keeps resending after messages was supposed to be acked")
+					break ForLoop
+				}
 
-// 				if numMsgReceived > 6 {
-// 					err = fmt.Errorf("keeps resending after messages was supposed to be acked")
-// 					break ForLoop
-// 				}
-
-// 				if numMsgReceived == 5 {
-// 					HallAssignmentsAck <- messages.Ack{NodeID: id, MessageID: HAss.MessageID}
-// 					err = nil
-// 				}
-// 			}
-// 		case <-timeoutChannel:
-// 			break ForLoop
-// 		}
-// 	}
-// 	return err
-
-// }
-
-func testElevStateServer() {
+				if numMsgReceived == 5 {
+					HallAssignmentsAck <- messages.Ack{NodeID: id, MessageID: HAss.MessageID}
+					err = nil
+				}
+			}
+		case <-timeoutChannel:
+			break ForLoop
+		}
+	}
+	return err
 
 }
 
+func testHACompleteTransmitter() error {
+	id := 10
+	err := errors.New("no messages were received")
+	timeoutChannel := make(chan int, 1)
+	HACompleteTx := make(chan messages.HallAssignmentComplete, 2)
+	OutgoingHAComplete := make(chan messages.HallAssignmentComplete, 2)
+	HACompleteAck := make(chan messages.Ack, 1)
+	enableCh := make(chan bool)
+	go messagehandler.HallAssignmentCompleteTransmitter(HACompleteTx, OutgoingHAComplete, HACompleteAck, enableCh)
+
+	enableCh <- true
+	dummyHAComplete1 := messages.HallAssignmentComplete{Floor: 0, MessageID: 0, HallButton: elevator.ButtonHallUp}
+	dummyHAComplete2 := messages.HallAssignmentComplete{Floor: 1, MessageID: 0, HallButton: elevator.ButtonHallUp}
+
+	OutgoingHAComplete <- dummyHAComplete1
+	OutgoingHAComplete <- dummyHAComplete2
+
+	numMsgReceived := 0
+	hasReceived := false
+
+	time.AfterFunc(5*time.Second, func() {
+		timeoutChannel <- 1
+	})
+
+ForLoop:
+	for {
+		select {
+		case HAss := <-HACompleteTx:
+			switch HAss.Floor {
+			case dummyHAComplete1.Floor:
+				if hasReceived {
+					err = errors.New("received a message twice that should have been acked")
+					break ForLoop
+				}
+				HACompleteAck <- messages.Ack{NodeID: (id + 1), MessageID: HAss.MessageID}
+				hasReceived = true
+
+			case dummyHAComplete2.Floor:
+
+				err = fmt.Errorf("only received %d messages", numMsgReceived)
+				numMsgReceived++
+
+				if numMsgReceived > 6 {
+					err = fmt.Errorf("keeps resending after messages was supposed to be acked")
+					break ForLoop
+				}
+
+				if numMsgReceived == 5 {
+					HACompleteAck <- messages.Ack{NodeID: id, MessageID: HAss.MessageID}
+					err = nil
+				}
+			}
+		case <-timeoutChannel:
+			break ForLoop
+		}
+	}
+
+	if err == nil {
+		messageCount := 0
+
+		OutgoingHAComplete <- dummyHAComplete1
+		OutgoingHAComplete <- dummyHAComplete2
+		enableCh <- false
+		time.AfterFunc(5*time.Second, func() {
+			timeoutChannel <- 1
+		})
+
+	FL:
+		for {
+
+			select {
+			case <-HACompleteTx:
+				messageCount++
+
+			case <-timeoutChannel:
+				if messageCount > 3 {
+					err = errors.New("did not stop after disabled")
+				}
+				break FL
+			}
+		}
+	}
+
+	return err
+}
+
 func testGlobalHallReqTransmitter() error {
+	fmt.Println("------Testing G hall req transmitter -------")
 	var err error
 	transmitEnableCh := make(chan bool, 1)
 	GlobalHallRequestTx := make(chan messages.GlobalHallRequest, 1)

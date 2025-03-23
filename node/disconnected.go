@@ -46,12 +46,11 @@ ForLoop:
 			if len(incomingConnRequests) != 0 {
 				if ShouldBeMaster(node.ID, node.TOLC, incomingConnRequests) {
 					nextNodeState = Master
-				} else {
-					nextNodeState = Slave
+					break ForLoop
 				}
-				break ForLoop
+			} else {
+				fmt.Printf("No contact made so far \n")
 			}
-			fmt.Printf("No contact made so far \n")
 			decisionTimer.Reset(config.DISCONNECTED_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:

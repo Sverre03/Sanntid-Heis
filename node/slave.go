@@ -11,7 +11,7 @@ import (
 )
 
 func SlaveProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %d is now a Slave\n", node.ID)
+	// fmt.Printf("Node %d is now a Slave\n", node.ID)
 	lastHallAssignmentMessageID := uint64(0)
 
 	var nextNodeState nodestate
@@ -50,7 +50,7 @@ ForLoop:
 						HallButton: elevMsg.ButtonEvent.Button,
 						MessageID:  uint64(0),
 					}
-					fmt.Printf("Node %d sent hall assignment complete message\n", node.ID)
+					// fmt.Printf("Node %d sent hall assignment complete message\n", node.ID)
 				}
 
 			}
@@ -90,7 +90,7 @@ ForLoop:
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
-				fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
+				// fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
 			}
 
 		case <-node.NodeElevStateUpdate:

@@ -44,7 +44,7 @@ func (buf *MessageIDBuffer) Contains(id uint64) bool {
 }
 
 func MasterProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %d is now a Master\n", node.ID)
+	// fmt.Printf("Node %d is now a Master\n", node.ID)
 
 	var myElevState messages.NodeElevState
 	shouldDistributeHallRequests := false
@@ -55,6 +55,7 @@ func MasterProgram(node *NodeData) nodestate {
 
 	// inform the global hall request transmitter of the new global hall requests
 	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+	node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 
 	// start the transmitters
 	node.GlobalHallReqTransmitEnableTx <- true
@@ -92,11 +93,12 @@ ForLoop:
 			}
 
 			if shouldDistributeHallRequests {
-				fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
+				// fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 				node.commandToServerTx <- "getActiveElevStates"
 			}
 			// update the hall request transmitter with the newest requests
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+			node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 
 		case myStates := <-node.MyElevStatesRx:
 			// transmit elevator states to network
@@ -105,7 +107,7 @@ ForLoop:
 
 		case newHallReq := <-node.NewHallReqRx:
 
-			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
+			// fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
 
 			updatedState, shouldDistribute := ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
 			shouldDistributeHallRequests = shouldDistribute
@@ -118,15 +120,16 @@ ForLoop:
 
 			// update the global hall requests
 			node.GlobalHallRequests = updatedState
-			fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
+			// fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 
 			// send the global hall requests to the server for broadcast to update other nodes
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+			node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			// run getActiveElevStates to distribute the new hall requests
 			node.commandToServerTx <- "getActiveElevStates"
 
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
-			fmt.Printf("Received new elevator states update: %v\n", elevStatesUpdate)
+			// fmt.Printf("Received new elevator states update: %v\n", elevStatesUpdate)
 			// compute the hall assignments
 			result, newShouldDistribute := ComputeHallAssignments(shouldDistributeHallRequests,
 				elevStatesUpdate,
@@ -140,6 +143,7 @@ ForLoop:
 			}
 			// send the global hall requests to the server for broadcast to update other nodes
 			node.GlobalHallRequestTx <- result.GlobalHallRequest
+			node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			// update shouldDistributeHallRequests flag
 			shouldDistributeHallRequests = newShouldDistribute
 
@@ -166,9 +170,10 @@ ForLoop:
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 				// send the global hall requests to the server for broadcast to update other nodes
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
 			// send ack to the server
-			fmt.Printf("Acking complete message with id %d\n", HA.MessageID)
+			// fmt.Printf("Acking complete message with id %d\n", HA.MessageID)
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
 		case networkEvent := <-node.NetworkEventRx:
@@ -222,7 +227,7 @@ func ComputeHallAssignments(shouldDistribute bool,
 		elevStatesUpdate.NodeElevStatesMap[myElevState.NodeID] = myElevState.ElevState
 		hraOutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
 		result.OtherAssignments = make(map[int]messages.NewHallAssignments)
-		fmt.Printf("Hall request assigner output: %v\n", hraOutput)
+		// fmt.Printf("Hall request assigner output: %v\n", hraOutput)
 		// make the hall assignments for all nodes
 		for id, hallRequests := range hraOutput {
 			// if the assignment is for me, we make the light and assignment message
@@ -282,7 +287,7 @@ func ProcessNewHallRequest(
 	newHallReq messages.NewHallRequest) ([config.NUM_FLOORS][2]bool, bool) {
 	// if button is invalid we return false
 	if newHallReq.HallButton == elevator.ButtonCab {
-		fmt.Printf("Received a new hall request, but the button type was invalid\n")
+		// fmt.Printf("Received a new hall request, but the button type was invalid\n")
 		return globalHallRequests, false
 	}
 	// if the button is valid we update the global hall requests

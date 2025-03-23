@@ -68,10 +68,10 @@ func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpen
 		}
 	}
 
+	fmt.Println("\nNew state:")
+	elevator.PrintElevator(elev)
 	elevator.SetAllLights(&elev)
 	return clearedEvents
-	// fmt.Println("\nNew state:")
-	// elevator.PrintElevator(elev)
 }
 
 func FsmSetObstruction(isObstructed bool) {

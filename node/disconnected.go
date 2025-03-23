@@ -70,6 +70,7 @@ ForLoop:
 				// update the global hall requests, it is safe as we are now disconnected
 				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
 					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = false
+					node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 				}
 			}
 

@@ -21,6 +21,8 @@ func SlaveProgram(node *NodeData) nodestate {
 
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
 
+	// set them lights
+
 ForLoop:
 	for {
 	Select:
@@ -88,9 +90,9 @@ ForLoop:
 			node.TOLC = time.Now()
 			// fmt.Println(newGlobalHallReq)
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
-				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
 				// fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
+				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 			}
 
 		case <-node.NodeElevStateUpdate:

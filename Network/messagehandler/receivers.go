@@ -99,7 +99,7 @@ func NodeElevStateServer(myID int,
 
 			// if the number of active nodes change, generate an event
 			if len(lastActiveNodes) != len(activeNodes) {
-
+				fmt.Println("Active nodes changed, notifying node")
 				networkEventTx <- NodeConnectDisconnect
 			}
 			lastActiveNodes = activeNodes
@@ -139,7 +139,7 @@ func NodeElevStateServer(myID int,
 				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				peerTimeoutTicker.Reset(config.PEER_POLL_INTERVAL)
 				nodeIsConnected = true
-				fmt.Printf("Node %d connection detection routine started\n", myID)
+				//fmt.Printf("Node %d connection detection routine started\n", myID)
 			}
 		}
 	}

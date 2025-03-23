@@ -67,6 +67,7 @@ ForLoop:
 	Select:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
+
 			switch elevMsg.EventType {
 
 			case singleelevator.DoorStuckEvent:
@@ -184,6 +185,7 @@ ForLoop:
 				break ForLoop
 
 			} else if networkEvent == messagehandler.NodeConnectDisconnect {
+				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
 				shouldDistributeHallRequests = true
 				node.commandToServerTx <- "getActiveElevStates"
 			}

@@ -1,14 +1,8 @@
 TODO:
 
-ALL TRANSMITTERS NEED TO BE ENABLED/DISABLED BASED ON WHAT STATE YOU ARE IN (DONE)
-THIS IS A GOOD ARGUMENT TO REDUCE THE NUMBER OF TRANSMITTERS
-
 - Elevator
-    Merge channel for DoorIsStuck with checking if elevator is initialised (not in-between floors at startup)
-    Add channel for sending cab buttons from node to elevator
 
 - Node
-    setup all transmitters and channels
 
 - Slave
     Master timeout detection
@@ -17,12 +11,6 @@ THIS IS A GOOD ARGUMENT TO REDUCE THE NUMBER OF TRANSMITTERS
 
 - In Elevator_sys.go
     Why is there struct elevator and a struct  elevator states that contain the exact same fields except one?
-
-- NodeElevStateServer
-    Notify if a node has fallen out 
-
-- Disconnected 
-    Fix the logic
 
 - Everywhere
     Filter out messages from myself

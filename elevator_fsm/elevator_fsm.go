@@ -107,6 +107,7 @@ func FsmOnFloorArrival(newFloor int, doorOpenTimer *time.Timer) []elevator.Butto
 
 func SetHallLights(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) {
 	elev.HallLightStates = lightStates
+	elevator.SetAllLights(&elev)
 }
 
 func FsmOnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {

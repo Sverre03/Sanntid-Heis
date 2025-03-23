@@ -115,7 +115,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	ConnectionReqAckRx := make(chan messages.Ack)
 	hallAssignmentCompleteAckRx := make(chan messages.Ack)
 
-	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate)
+	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate, 1)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
 	node.MyElevStatesRx = make(chan elevator.ElevatorState)
 

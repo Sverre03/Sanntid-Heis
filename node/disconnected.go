@@ -29,6 +29,11 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	decisionTimer := time.NewTimer(config.DISCONNECTED_DECISION_INTERVAL)
 	defer connectionRequestTicker.Stop()
 
+	// start servicing the global hall requests
+
+	// running the line below will cause unwanted behavior UNTIL the elevator is able to clear hall assignments when it gets a message from the node
+	// node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests)
+
 ForLoop:
 	for {
 		select {

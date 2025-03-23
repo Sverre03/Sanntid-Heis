@@ -54,6 +54,7 @@ func MasterProgram(node *NodeData) nodestate {
 	var nextNodeState nodestate
 
 	// inform the global hall request transmitter of the new global hall requests
+	fmt.Printf("Ghall requests: %v\n", node.GlobalHallRequests)
 	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 	node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 
@@ -97,8 +98,10 @@ ForLoop:
 				// fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 				node.commandToServerTx <- "getActiveElevStates"
 			}
+			fmt.Printf("Ghall requests: %v\n", node.GlobalHallRequests)
 			// update the hall request transmitter with the newest requests
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+
 			node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 
 		case myStates := <-node.MyElevStatesRx:
@@ -107,7 +110,6 @@ ForLoop:
 			node.NodeElevStatesTx <- myElevState
 
 		case newHallReq := <-node.NewHallReqRx:
-
 			// fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
 
 			updatedState, shouldDistribute := ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
@@ -124,6 +126,7 @@ ForLoop:
 			// fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 
 			// send the global hall requests to the server for broadcast to update other nodes
+			fmt.Printf("Ghall requests: %v\n", node.GlobalHallRequests)
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 			node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			// run getActiveElevStates to distribute the new hall requests
@@ -139,13 +142,18 @@ ForLoop:
 				activeConnReq)
 			// send the hall assignments to the hall assignment transmitter
 			node.ElevLightAndAssignmentUpdateTx <- result.MyAssignment
+
 			for _, assignment := range result.OtherAssignments {
 				node.HallAssignmentTx <- assignment
 			}
+
 			// send the global hall requests to the server for broadcast to update other nodes
+
+			fmt.Printf("Ghall requests: %v\n", node.GlobalHallRequests)
 			node.GlobalHallRequestTx <- result.GlobalHallRequest
+
 			node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
-			// update shouldDistributeHallRequests flag
+
 			shouldDistributeHallRequests = newShouldDistribute
 
 			for _, cabReqConnReqAnswer := range result.CabRequests {
@@ -154,12 +162,14 @@ ForLoop:
 			}
 
 		case connReq := <-node.ConnectionReqRx:
+
 			if connReq.TOLC.IsZero() {
 				activeConnReq[connReq.NodeID] = connReq
 				node.commandToServerTx <- "getAllElevStates"
 			}
 
 		case HA := <-node.HallAssignmentCompleteRx:
+
 			// flag for updating the global hall requests and lights
 			var updateNeeded bool
 			node.GlobalHallRequests, recentHACompleteBuffer, updateNeeded =
@@ -167,10 +177,12 @@ ForLoop:
 
 			if updateNeeded {
 				fmt.Println("Received new hall assignment complete message")
-				// send light update to elevator
-				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
+
+				fmt.Printf("Ghall requests: %v\n", node.GlobalHallRequests)
 				// send the global hall requests to the server for broadcast to update other nodes
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+
+				// send light update to elevator
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
 			// send ack to the server
@@ -178,9 +190,10 @@ ForLoop:
 			node.AckTx <- messages.Ack{MessageID: HA.MessageID, NodeID: node.ID}
 
 		case networkEvent := <-node.NetworkEventRx:
+			fmt.Println("Network event received")
 
 			if networkEvent == messagehandler.NodeHasLostConnection {
-				fmt.Println("Connection timed out, exiting master")
+				fmt.Println("Connection timed out")
 				nextNodeState = Disconnected
 				break ForLoop
 

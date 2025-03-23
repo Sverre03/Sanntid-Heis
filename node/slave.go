@@ -86,7 +86,7 @@ ForLoop:
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
 			node.TOLC = time.Now()
-			fmt.Println(newGlobalHallReq)
+			// fmt.Println(newGlobalHallReq)
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests

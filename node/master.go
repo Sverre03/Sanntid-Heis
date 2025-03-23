@@ -108,6 +108,7 @@ ForLoop:
 			fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
 
 			updatedState, shouldDistribute := ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
+			shouldDistributeHallRequests = shouldDistribute
 
 			//if button is invalid we do nothing
 			if !shouldDistribute {
@@ -125,6 +126,7 @@ ForLoop:
 			node.commandToServerTx <- "getActiveElevStates"
 
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
+			fmt.Printf("Received new elevator states update: %v\n", elevStatesUpdate)
 			// compute the hall assignments
 			result, newShouldDistribute := ComputeHallAssignments(shouldDistributeHallRequests,
 				elevStatesUpdate,
@@ -216,10 +218,12 @@ func ComputeHallAssignments(shouldDistribute bool,
 	var result HallAssignmentResult
 	// if we should distribute, we run the hall request assigner algorithm
 	if shouldDistribute && elevStatesUpdate.OnlyActiveNodes {
+
 		// run the hall request assigner algorithm
 		elevStatesUpdate.NodeElevStatesMap[myElevState.NodeID] = myElevState.ElevState
 		hraOutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
 		result.OtherAssignments = make(map[int]messages.NewHallAssignments)
+		fmt.Printf("Hall request assigner output: %v\n", hraOutput)
 		// make the hall assignments for all nodes
 		for id, hallRequests := range hraOutput {
 			// if the assignment is for me, we make the light and assignment message
@@ -237,6 +241,7 @@ func ComputeHallAssignments(shouldDistribute bool,
 	// if we get all nodes we make cab request info for connreq nodes
 	if !elevStatesUpdate.OnlyActiveNodes {
 		// make cab request info for all nodes that have sent a connection request
+		result.CabRequests = make(map[int]messages.CabRequestInfo)
 		for id := range activeConnReq {
 			var cabRequestInfo messages.CabRequestInfo
 			// if  we have info about the node, we send it, otherwise we send an empty slice
@@ -275,9 +280,10 @@ func ProcessHAComplete(
 
 func ProcessNewHallRequest(
 	globalHallRequests [config.NUM_FLOORS][2]bool,
-	newHallReq messages.NewHallRequest,) ([config.NUM_FLOORS][2]bool, bool) {
+	newHallReq messages.NewHallRequest) ([config.NUM_FLOORS][2]bool, bool) {
 	// if button is invalid we return false
 	if newHallReq.HallButton == elevator.ButtonCab {
+		fmt.Printf("Received a new hall request, but the button type was invalid\n")
 		return globalHallRequests, false
 	}
 	// if the button is valid we update the global hall requests

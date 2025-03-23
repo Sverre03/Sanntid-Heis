@@ -62,7 +62,6 @@ type NodeData struct {
 
 	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete // Send a hall assignment complete to the hall assignment complete transmitter
 	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
-	HallAssignmentCompleteAckRx chan messages.Ack                    // acknowledges for the message type hall assignment complete arrive on this channel
 
 	// Channels for turning on and off the transmitter functions
 	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
@@ -115,7 +114,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	lightUpdateAckRx := make(chan messages.Ack)
 	hallAssignmentsAckRx := make(chan messages.Ack)
 	node.ConnectionReqAckRx = make(chan messages.Ack)
-	node.HallAssignmentCompleteAckRx = make(chan messages.Ack)
+	hallAssignmentCompleteAckRx := make(chan messages.Ack)
 
 	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
@@ -154,7 +153,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		hallAssignmentsAckRx,
 		lightUpdateAckRx,
 		node.ConnectionReqAckRx,
-		node.HallAssignmentCompleteAckRx)
+		hallAssignmentCompleteAckRx)
 
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,
@@ -164,7 +163,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 
 	go messagehandler.HallAssignmentCompleteTransmitter(HACompleteTransToBcast,
 		node.HallAssignmentCompleteTx,
-		node.HallAssignmentCompleteAckRx,
+		hallAssignmentCompleteAckRx,
 		node.HallAssignmentCompleteTransmitEnableTx)
 
 	// the physical elevator program

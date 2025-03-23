@@ -30,7 +30,6 @@ ForLoop:
 		case <-node.NodeElevStateUpdate:
 		case <-node.NewHallReqRx:
 		case <-node.HallAssignmentCompleteRx:
-		case <-node.HallAssignmentCompleteAckRx:
 		case <-node.NetworkEventRx:
 		}
 	}

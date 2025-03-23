@@ -184,7 +184,6 @@ ForLoop:
 			}
 
 		case <-node.HallAssignmentsRx:
-		case <-node.HallAssignmentCompleteAckRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.ConnectionReqAckRx:

@@ -43,7 +43,6 @@ ForLoop:
 			}
 
 		case <-decisionTimer.C:
-			fmt.Printf("Time to make a decision! \n")
 			if len(incomingConnRequests) != 0 {
 				if ShouldBeMaster(node.ID, node.TOLC, incomingConnRequests) {
 					nextNodeState = Master
@@ -52,6 +51,7 @@ ForLoop:
 				}
 				break ForLoop
 			}
+			fmt.Printf("No contact made so far \n")
 			decisionTimer.Reset(config.DISCONNECTED_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:

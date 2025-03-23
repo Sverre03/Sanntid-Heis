@@ -45,9 +45,8 @@ type NodeData struct {
 	GlobalHallRequestTx chan messages.GlobalHallRequest // update global hall request transmitter with the newest hall requests
 	GlobalHallRequestRx chan messages.GlobalHallRequest // receive global hall requests from udp receiver
 
-	ConnectionReqTx    chan messages.ConnectionReq // send connection request messages to udp broadcaster
-	ConnectionReqRx    chan messages.ConnectionReq // receive connection request messages from udp receiver
-	ConnectionReqAckRx chan messages.Ack           // acknowledgement for request to connect to another node gets sent to this channel from ack distributor
+	ConnectionReqTx chan messages.ConnectionReq // send connection request messages to udp broadcaster
+	ConnectionReqRx chan messages.ConnectionReq // receive connection request messages from udp receiver
 
 	commandToServerTx chan string                      // Sends commands to the NodeElevStateServer (defined in Network/comm/receivers.go)
 	NetworkEventRx    chan messagehandler.NetworkEvent // if no contact have been made within a timeout, "true" is sent on this channel
@@ -57,11 +56,11 @@ type NodeData struct {
 
 	// Elevator-Node communication
 	ElevLightAndAssignmentUpdateTx chan singleelevator.LightAndAssignmentUpdate // channel for informing elevator of changes to hall button lights, hall assignments and cab assignments
-	ElevatorEventRx               chan singleelevator.ElevatorEvent
-	MyElevStatesRx                chan elevator.ElevatorState
+	ElevatorEventRx                chan singleelevator.ElevatorEvent
+	MyElevStatesRx                 chan elevator.ElevatorState
 
-	HallAssignmentCompleteTx    chan messages.HallAssignmentComplete // Send a hall assignment complete to the hall assignment complete transmitter
-	HallAssignmentCompleteRx    chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
+	HallAssignmentCompleteTx chan messages.HallAssignmentComplete // Send a hall assignment complete to the hall assignment complete transmitter
+	HallAssignmentCompleteRx chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
 
 	// Channels for turning on and off the transmitter functions
 	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
@@ -113,7 +112,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 
 	lightUpdateAckRx := make(chan messages.Ack)
 	hallAssignmentsAckRx := make(chan messages.Ack)
-	node.ConnectionReqAckRx = make(chan messages.Ack)
+	ConnectionReqAckRx := make(chan messages.Ack)
 	hallAssignmentCompleteAckRx := make(chan messages.Ack)
 
 	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate)
@@ -152,7 +151,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	go messagehandler.IncomingAckDistributor(ackRx,
 		hallAssignmentsAckRx,
 		lightUpdateAckRx,
-		node.ConnectionReqAckRx,
+		ConnectionReqAckRx,
 		hallAssignmentCompleteAckRx)
 
 	// process responsible for sending and making sure hall assignments are acknowledged

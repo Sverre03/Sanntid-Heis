@@ -2,9 +2,7 @@ package node
 
 import (
 	"elev/singleelevator"
-	"elev/util/config"
 	"fmt"
-	"time"
 )
 
 func InactiveProgram(node *NodeData) nodestate {
@@ -21,16 +19,16 @@ ForLoop:
 				break ForLoop
 			}
 
-		case <-time.After(config.NODE_DOOR_POLL_INTERVAL):
 		case <-node.HallAssignmentsRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.ConnectionReqRx:
-		case <-node.ConnectionReqAckRx:
 		case <-node.NodeElevStateUpdate:
 		case <-node.NewHallReqRx:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.NetworkEventRx:
+		case <-node.MyElevStatesRx:
+
 		}
 	}
 	return nextNodeState

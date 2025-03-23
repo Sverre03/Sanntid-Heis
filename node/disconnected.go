@@ -87,6 +87,8 @@ ForLoop:
 		case <-node.HallAssignmentCompleteRx:
 		case <-node.NetworkEventRx:
 		case <-node.GlobalHallRequestRx:
+		case <-node.MyElevStatesRx:
+
 		}
 	}
 	return nextNodeState

@@ -96,8 +96,8 @@ ForLoop:
 		case <-node.NodeElevStateUpdate:
 		case <-node.NewHallReqRx:
 		case <-node.ConnectionReqRx:
-		case <-node.ConnectionReqAckRx:
 		case <-node.CabRequestInfoRx:
+		case <-node.HallAssignmentCompleteRx:
 		}
 
 	}

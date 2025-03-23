@@ -30,15 +30,20 @@ func FsmOnInitBetweenFloors() {
 	elev.Behavior = elevator.Moving
 }
 
-func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {
+func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) []elevator.ButtonEvent {
 	fmt.Printf("new local elevator assignment: %d, %s)\n", btnFloor, btnType.String())
-	// elevator.PrintElevator(elev)
-  
+
+	var clearedEvents []elevator.ButtonEvent
+
+	// If the elevator is idle and the button is pressed in the same floor, the door should remain open
 	switch elev.Behavior {
 	case elevator.DoorOpen:
 		// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
 		if elevator.RequestsShouldClearImmediately(elev, btnFloor, btnType) {
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+			if btnType != elevator.ButtonCab {
+				clearedEvents = append(clearedEvents, elevator.ButtonEvent{Button: btnType, Floor: btnFloor})
+			}
 		} else {
 			elev.Requests[btnFloor][btnType] = true
 		}
@@ -49,13 +54,14 @@ func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpen
 		pair := elevator.RequestsChooseDirection(elev)
 		elev.Dir = pair.Dir
 		elev.Behavior = pair.Behavior
+
 		switch pair.Behavior {
 		case elevator.DoorOpen:
 			elevator.SetDoorOpenLamp(true)
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
-			updatedElev, _ := elevator.RequestsClearAtCurrentFloor(elev)
+			updatedElev, events := elevator.RequestsClearAtCurrentFloor(elev)
 			elev = updatedElev
-
+			clearedEvents = events
 		case elevator.Moving:
 			elevator.SetMotorDirection(elev.Dir)
 		case elevator.Idle:
@@ -63,7 +69,7 @@ func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpen
 	}
 
 	elevator.SetAllLights(&elev)
-
+	return clearedEvents
 	// fmt.Println("\nNew state:")
 	// elevator.PrintElevator(elev)
 }

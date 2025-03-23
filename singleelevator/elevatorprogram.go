@@ -96,8 +96,13 @@ func ElevatorProgram(
 			case HallOrder:
 				for floor := 0; floor < config.NUM_FLOORS; floor++ {
 					for hallButton := 0; hallButton < 2; hallButton++ {
-						if msg.HallAssignments[floor][hallButton] {
-							elevator_fsm.FsmOnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
+						if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
+							clearedEvents := elevator_fsm.FsmOnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
+							for _, buttonEvent := range clearedEvents {
+								if buttonEvent.Button != elevator.ButtonCab && buttonEvent.Floor == floor {
+									elevatorEventTx <- makeHallAssignmentCompleteEventMessage(buttonEvent)
+								}
+							}
 						}
 					}
 				}

@@ -50,7 +50,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 	hallAssignmentsAck chan<- messages.Ack,
 	lightUpdateAck chan<- messages.Ack,
 	connectionReqAck chan<- messages.Ack,
-	hallAssignmentCompleteAck chan<- messages.Ack) {
+	HallAssignmentCompleteAck chan<- messages.Ack) {
 
 	for ackMsg := range ackRx {
 
@@ -64,7 +64,8 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 			connectionReqAck <- ackMsg
 
 		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(HALL_ASSIGNMENT_COMPLETE)+1) {
-			hallAssignmentCompleteAck <- ackMsg
+			fmt.Printf("Hall assignment complete ack received\n")
+			HallAssignmentCompleteAck <- ackMsg
 		}
 	}
 }

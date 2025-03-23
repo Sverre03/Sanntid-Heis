@@ -95,8 +95,8 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 
 // transmits hall assignments complete
 func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.HallAssignmentComplete,
-	outgoingHallAssignmentComplete <-chan messages.HallAssignmentComplete,
-	hallAssignmentCompleteAckRx <-chan messages.Ack,
+	OutgoingHallAssignmentComplete <-chan messages.HallAssignmentComplete,
+	HallAssignmentCompleteAckRx <-chan messages.Ack,
 	HallAssignmentCompleteEnableCh <-chan bool) {
 
 	enable := false
@@ -114,7 +114,7 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 					delete(completedActiveAssignments, k)
 				}
 			}
-		case newComplete := <-outgoingHallAssignmentComplete:
+		case newComplete := <-OutgoingHallAssignmentComplete:
 			new_msg_id, err := GenerateMessageID(HALL_ASSIGNMENT_COMPLETE)
 			if err != nil {
 				fmt.Println("Fatal error, invalid message type used to generate message id in hall assignment complete")
@@ -126,17 +126,14 @@ func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.
 			time.AfterFunc(500*time.Millisecond, func() {
 				timeoutChannel <- newComplete.MessageID
 			})
-		case receivedAck := <-hallAssignmentCompleteAckRx:
-			// fmt.Printf("Hall assignment complete transmitter received ack for message id %d\n", receivedAck.MessageID)
-			if _, ok := completedActiveAssignments[receivedAck.MessageID]; ok {
-				// fmt.Printf("Deleting assignment with message id %d \n", receivedAck.MessageID)
-				delete(completedActiveAssignments, receivedAck.MessageID)
-
-			}
+		case receivedAck := <-HallAssignmentCompleteAckRx:
+			fmt.Printf("Hall assignment complete transmitter received ack for message id %d\n", receivedAck.MessageID)
+			fmt.Printf("Deleting assignment with message id %d \n", receivedAck.MessageID)
+			delete(completedActiveAssignments, receivedAck.MessageID)
 		case timedOutMsgID := <-timeoutChannel:
 
-			for _, msg := range completedActiveAssignments {
-				if msg.MessageID == timedOutMsgID {
+			for msgID, msg := range completedActiveAssignments {
+				if msgID == timedOutMsgID {
 
 					// fmt.Printf("resending message id %d \n", timedOutMsgID)
 					HallAssignmentCompleteTx <- msg

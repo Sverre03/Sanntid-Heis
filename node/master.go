@@ -44,7 +44,7 @@ func (buf *MessageIDBuffer) Contains(id uint64) bool {
 }
 
 func MasterProgram(node *NodeData) nodestate {
-	// fmt.Printf("Node %d is now a Master\n", node.ID)
+	fmt.Printf("Node %d is now a Master\n", node.ID)
 
 	var myElevState messages.NodeElevState
 	shouldDistributeHallRequests := false

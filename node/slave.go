@@ -11,7 +11,7 @@ import (
 )
 
 func SlaveProgram(node *NodeData) nodestate {
-	// fmt.Printf("Node %d is now a Slave\n", node.ID)
+	fmt.Printf("Node %d is now a Slave\n", node.ID)
 	lastHallAssignmentMessageID := uint64(0)
 
 	var nextNodeState nodestate

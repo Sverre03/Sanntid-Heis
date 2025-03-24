@@ -67,7 +67,6 @@ ForLoop:
 		case networkEvent := <-node.NetworkEventRx:
 			if networkEvent == messagehandler.NodeHasLostConnection {
 				nextNodeState = Disconnected
-
 				break ForLoop
 			}
 

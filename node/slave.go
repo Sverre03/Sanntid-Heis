@@ -91,9 +91,9 @@ ForLoop:
 			// fmt.Println(newGlobalHallReq)
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
+				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 				// fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
 			}
-			node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 
 		case <-node.NodeElevStateUpdate:
 		case <-node.NewHallReqRx:

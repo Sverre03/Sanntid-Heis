@@ -47,7 +47,21 @@ func MasterProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now a Master\n", node.ID)
 
 	var myElevState messages.NodeElevState
-	shouldDistributeHallRequests := false
+
+	// Check if we should distribute hall requests
+    shouldDistributeHallRequests := false
+    for floor := 0; floor < config.NUM_FLOORS; floor++ {
+        for btn := 0; btn < 2; btn++ {
+            if node.GlobalHallRequests[floor][btn] {
+                shouldDistributeHallRequests = true
+                break
+            }
+        }
+        if shouldDistributeHallRequests {
+            break
+        }
+    }
+
 	activeConnReq := make(map[int]messages.ConnectionReq)
 
 	recentHACompleteBuffer := makeNewMessageIDBuffer(bufferSize)
@@ -62,6 +76,12 @@ func MasterProgram(node *NodeData) nodestate {
 	node.GlobalHallReqTransmitEnableTx <- true
 	node.HallRequestAssignerTransmitEnableTx <- true
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
+
+	// Request active elevator states to distribute hall requests if needed
+    if shouldDistributeHallRequests {
+        fmt.Println("Found pending hall requests, starting distribution")
+        node.commandToServerTx <- "getActiveElevStates"
+    }
 
 ForLoop:
 	for {

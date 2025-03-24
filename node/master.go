@@ -53,7 +53,9 @@ func MasterProgram(node *NodeData) nodestate {
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
 		for btn := 0; btn < 2; btn++ {
 			if node.GlobalHallRequests[floor][btn] {
+				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 				shouldDistributeHallRequests = true
+				node.commandToServerTx <- "getActiveElevStates"
 				break
 			}
 		}
@@ -76,12 +78,6 @@ func MasterProgram(node *NodeData) nodestate {
 	node.GlobalHallReqTransmitEnableTx <- true
 	node.HallRequestAssignerTransmitEnableTx <- true
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
-
-	// Request active elevator states to distribute hall requests if needed
-	if shouldDistributeHallRequests {
-		fmt.Println("Found pending hall requests, starting distribution")
-		node.commandToServerTx <- "getActiveElevStates"
-	}
 
 ForLoop:
 	for {
@@ -253,10 +249,10 @@ func ComputeHallAssignments(shouldDistribute bool,
 	var result HallAssignmentResult
 	// if we should distribute, we run the hall request assigner algorithm
 	if shouldDistribute && elevStatesUpdate.OnlyActiveNodes {
-
 		// run the hall request assigner algorithm
 		elevStatesUpdate.NodeElevStatesMap[myElevState.NodeID] = myElevState.ElevState
 		hraOutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
+		fmt.Printf("Hall request assigner output: %v\n", hraOutput)
 		result.OtherAssignments = make(map[int]messages.NewHallAssignments)
 		// fmt.Printf("Hall request assigner output: %v\n", hraOutput)
 		// make the hall assignments for all nodes

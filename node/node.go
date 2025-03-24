@@ -166,7 +166,10 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.HallAssignmentCompleteTransmitEnableTx)
 
 	// the physical elevator program
-	go singleelevator.ElevatorProgram(portNum, node.ElevatorEventRx, node.ElevLightAndAssignmentUpdateTx, node.MyElevStatesRx)
+	go singleelevator.ElevatorProgram(portNum,
+		node.ElevatorEventRx,
+		node.ElevLightAndAssignmentUpdateTx,
+		node.MyElevStatesRx)
 
 	// process that listens to active nodes on network
 	go messagehandler.NodeElevStateServer(node.ID,

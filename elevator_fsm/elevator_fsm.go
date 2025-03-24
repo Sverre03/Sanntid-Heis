@@ -21,16 +21,16 @@ func InitFSM() {
 			elevator.SetButtonLamp(elevator.ButtonType(btn), floor, false)
 		}
 	}
-	FsmOnInitBetweenFloors()
+	OnInitBetweenFloors()
 }
 
-func FsmOnInitBetweenFloors() {
+func OnInitBetweenFloors() {
 	elevator.SetMotorDirection(elevator.DirectionDown)
 	elev.Dir = elevator.DirectionDown
 	elev.Behavior = elevator.Moving
 }
 
-func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) []elevator.ButtonEvent {
+func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) []elevator.ButtonEvent {
 	fmt.Printf("new local elevator assignment: %d, %s)\n", btnFloor, btnType.String())
 
 	var clearedEvents []elevator.ButtonEvent
@@ -67,22 +67,24 @@ func FsmOnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpen
 		case elevator.Idle:
 		}
 	}
-
-	fmt.Println("\nNew state:")
-	elevator.PrintElevator(elev)
 	elevator.SetAllLights(&elev)
 	return clearedEvents
 }
 
-func FsmSetObstruction(isObstructed bool) {
+func RemoveRequest(floor int, btnType elevator.ButtonType) {
+	elev.Requests[floor][btnType] = false
+	elevator.SetButtonLamp(btnType, floor, false)
+}
+
+func SetObstruction(isObstructed bool) {
 	elev.IsObstructed = isObstructed
 }
 
-func FsmOnFloorArrival(newFloor int, doorOpenTimer *time.Timer) []elevator.ButtonEvent {
+func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer) []elevator.ButtonEvent {
 
 	// rememmber and return the events cleared if the elevator stopped
 	var clearedRequests []elevator.ButtonEvent
-	// fmt.Printf("\n\n%s(%d)\n", "fsmOnFloorArrival", newFloor)
+	// fmt.Printf("\n\n%s(%d)\n", "OnFloorArrival", newFloor)
 	// elevator.PrintElevator(elev)
 
 	elev.Floor = newFloor
@@ -116,8 +118,8 @@ func SetHallLights(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) 
 	elevator.SetAllLights(&elev)
 }
 
-func FsmOnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
-	// fmt.Printf("\n\n%s()\n", "fsmOnDoorTimeout")
+func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
+	// fmt.Printf("\n\n%s()\n", "OnDoorTimeout")
 	// elevator.PrintElevator(elev)
 
 	switch elev.Behavior {

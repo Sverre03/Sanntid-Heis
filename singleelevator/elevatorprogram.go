@@ -86,7 +86,7 @@ func ElevatorProgram(
 		select {
 		case button := <-buttonEventRx:
 			if button.Button == elevator.ButtonCab { // Handle cab calls internally
-				elevator_fsm.FsmOnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
+				elevator_fsm.OnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
 			} else {
 				elevatorEventTx <- makeHallButtonEventMessage(button)
 			}
@@ -97,19 +97,22 @@ func ElevatorProgram(
 				for floor := 0; floor < config.NUM_FLOORS; floor++ {
 					for hallButton := 0; hallButton < 2; hallButton++ {
 						if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
-							clearedEvents := elevator_fsm.FsmOnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
+							clearedEvents := elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
 							for _, buttonEvent := range clearedEvents {
 								if buttonEvent.Button != elevator.ButtonCab && buttonEvent.Floor == floor {
 									elevatorEventTx <- makeHallAssignmentCompleteEventMessage(buttonEvent)
 								}
 							}
+						} else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] {
+							elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
 						}
+
 					}
 				}
 			case CabOrder:
 				for floor := 0; floor < config.NUM_FLOORS; floor++ {
 					if msg.CabAssignments[floor] {
-						elevator_fsm.FsmOnRequestButtonPress(floor, elevator.ButtonCab, doorOpenTimer)
+						elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonCab, doorOpenTimer)
 					}
 				}
 			case LightUpdate:
@@ -117,7 +120,7 @@ func ElevatorProgram(
 			}
 
 		case floor := <-floorEventRx:
-			clearedButtonEvents := elevator_fsm.FsmOnFloorArrival(floor, doorOpenTimer)
+			clearedButtonEvents := elevator_fsm.OnFloorArrival(floor, doorOpenTimer)
 
 			// loop through and send the button events!
 			for _, buttonEvent := range clearedButtonEvents {
@@ -128,16 +131,16 @@ func ElevatorProgram(
 			}
 
 		case isObstructed := <-obstructionEventRx:
-			elevator_fsm.FsmSetObstruction(isObstructed)
+			elevator_fsm.SetObstruction(isObstructed)
 
 		case <-doorOpenTimer.C:
-			// Start the door stuck timer, which is stopped by FsmOnDoorTimeout if the doors are able to close
+			// Start the door stuck timer, which is stopped by OnDoorTimeout if the doors are able to close
 
 			if !doorStuckTimerActive {
 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
 				doorStuckTimerActive = true
 			}
-			elevator_fsm.FsmOnDoorTimeout(doorOpenTimer, doorStuckTimer)
+			elevator_fsm.OnDoorTimeout(doorOpenTimer, doorStuckTimer)
 
 		case <-doorStuckTimer.C:
 			elevatorEventTx <- makeDoorStuckMessage(true)

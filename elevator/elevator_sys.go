@@ -1,7 +1,7 @@
 package elevator
 
 import (
-	"elev/util/config"
+	"elev/config"
 	"fmt"
 )
 
@@ -24,7 +24,7 @@ type Elevator struct {
 
 type ElevatorState struct {
 	Floor       int
-	Direction         MotorDirection
+	Direction   MotorDirection
 	Behavior    ElevatorBehavior
 	CabRequests [config.NUM_FLOORS]bool
 }

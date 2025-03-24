@@ -1,9 +1,9 @@
 package singleelevator
 
 import (
+	"elev/config"
 	"elev/elevator"
 	"elev/elevator_fsm"
-	"elev/util/config"
 	"fmt"
 	"time"
 )

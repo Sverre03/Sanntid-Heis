@@ -1,8 +1,8 @@
 package elevator_fsm
 
 import (
+	"elev/config"
 	"elev/elevator"
-	"elev/util/config"
 	"fmt"
 	"time"
 )

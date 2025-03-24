@@ -1,7 +1,7 @@
 package elevator
 
 import (
-	"elev/util/config"
+	"elev/config"
 )
 
 type DirBehaviorPair struct {

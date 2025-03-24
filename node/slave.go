@@ -3,9 +3,9 @@ package node
 import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
+	"elev/config"
 	"elev/elevator"
 	"elev/singleelevator"
-	"elev/util/config"
 	"fmt"
 	"time"
 )
@@ -15,6 +15,9 @@ func SlaveProgram(node *NodeData) nodestate {
 	lastHallAssignmentMessageID := uint64(0)
 
 	var nextNodeState nodestate
+
+	masterConnectionTimeoutTimer := time.NewTimer(config.MASTER_CONNECTION_TIMEOUT)
+	masterConnectionTimeoutTimer.Stop()
 
 	// start the transmitters
 	node.HallAssignmentCompleteTransmitEnableTx <- true
@@ -93,6 +96,11 @@ ForLoop:
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 				// fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
 			}
+			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
+
+		case <-masterConnectionTimeoutTimer.C:
+			nextNodeState = Disconnected
+			break ForLoop
 
 		case <-node.NodeElevStateUpdate:
 		case <-node.NewHallReqRx:

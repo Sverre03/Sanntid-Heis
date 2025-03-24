@@ -2,7 +2,7 @@ package tests
 
 // import (
 // 	"elev/elevator"
-// 	"elev/util/config"
+// 	"elev/config"
 // )
 
 // func NodeElevatorCommTest() {

@@ -1,8 +1,8 @@
 package hallRequestAssigner
 
 import (
+	"elev/config"
 	"elev/elevator"
-	"elev/util/config"
 	"encoding/json"
 	"fmt"
 	"os/exec"

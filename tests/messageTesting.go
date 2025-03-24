@@ -3,8 +3,8 @@ package tests
 import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
+	"elev/config"
 	"elev/elevator"
-	"elev/util/config"
 	"errors"
 	"fmt"
 	"time"

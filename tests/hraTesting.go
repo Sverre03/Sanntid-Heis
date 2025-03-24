@@ -4,7 +4,7 @@ package tests
 // 	"elev/Network/messages"
 // 	"elev/costFNS/hallRequestAssigner"
 // 	"elev/elevator"
-// 	"elev/util/config"
+// 	"elev/config"
 // 	"fmt"
 // )
 

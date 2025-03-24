@@ -3,10 +3,10 @@ package node
 import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
+	"elev/config"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/singleelevator"
-	"elev/util/config"
 	"fmt"
 	"time"
 )
@@ -49,18 +49,18 @@ func MasterProgram(node *NodeData) nodestate {
 	var myElevState messages.NodeElevState
 
 	// Check if we should distribute hall requests
-    shouldDistributeHallRequests := false
-    for floor := 0; floor < config.NUM_FLOORS; floor++ {
-        for btn := 0; btn < 2; btn++ {
-            if node.GlobalHallRequests[floor][btn] {
-                shouldDistributeHallRequests = true
-                break
-            }
-        }
-        if shouldDistributeHallRequests {
-            break
-        }
-    }
+	shouldDistributeHallRequests := false
+	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+		for btn := 0; btn < 2; btn++ {
+			if node.GlobalHallRequests[floor][btn] {
+				shouldDistributeHallRequests = true
+				break
+			}
+		}
+		if shouldDistributeHallRequests {
+			break
+		}
+	}
 
 	activeConnReq := make(map[int]messages.ConnectionReq)
 
@@ -78,20 +78,20 @@ func MasterProgram(node *NodeData) nodestate {
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
 
 	// Request active elevator states to distribute hall requests if needed
-    if shouldDistributeHallRequests {
-        fmt.Println("Found pending hall requests, starting distribution")
-        node.commandToServerTx <- "getActiveElevStates"
-    }
+	if shouldDistributeHallRequests {
+		fmt.Println("Found pending hall requests, starting distribution")
+		node.commandToServerTx <- "getActiveElevStates"
+	}
 
 ForLoop:
 	for {
 	Select:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
-
 			switch elevMsg.EventType {
 
 			case singleelevator.DoorStuckEvent:
+				fmt.Println("DoorStuckEvent")
 				// if the door is stuck, we go to inactive
 				if elevMsg.DoorIsStuck {
 					nextNodeState = Inactive
@@ -101,6 +101,7 @@ ForLoop:
 				break Select
 
 			case singleelevator.HallButtonEvent:
+				fmt.Printf("HallButtonEvent\n")
 				// new hallbuttonpress from my elevator
 				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
 					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = true
@@ -108,6 +109,7 @@ ForLoop:
 				}
 
 			case singleelevator.LocalHallAssignmentCompleteEvent:
+				fmt.Println("LocalHallAssignmentCompleteEvent")
 				// update the global hall assignments
 				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
 					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = false
@@ -115,6 +117,7 @@ ForLoop:
 			}
 
 			if shouldDistributeHallRequests {
+				fmt.Printf("Global hall requests after Elevator Event: %v, event: %v\n", node.GlobalHallRequests, elevMsg)
 				// fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
 				node.commandToServerTx <- "getActiveElevStates"
 			}
@@ -130,7 +133,6 @@ ForLoop:
 			node.NodeElevStatesTx <- myElevState
 
 		case newHallReq := <-node.NewHallReqRx:
-			// fmt.Printf("Node %d received a new hall request: %v\n", node.ID, newHallReq)
 
 			updatedState, shouldDistribute := ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
 			shouldDistributeHallRequests = shouldDistribute
@@ -181,14 +183,12 @@ ForLoop:
 			}
 
 		case connReq := <-node.ConnectionReqRx:
-
-			if connReq.TOLC.IsZero() {
+			if connReq.NodeID != node.ID {
 				activeConnReq[connReq.NodeID] = connReq
 				node.commandToServerTx <- "getAllElevStates"
 			}
 
 		case HA := <-node.HallAssignmentCompleteRx:
-
 			// flag for updating the global hall requests and lights
 			var updateNeeded bool
 			node.GlobalHallRequests, recentHACompleteBuffer, updateNeeded =
@@ -225,7 +225,6 @@ ForLoop:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
 			// when you get a message on any of these channels, do nothing
-
 		}
 	}
 
@@ -276,6 +275,7 @@ func ComputeHallAssignments(shouldDistribute bool,
 	}
 	// if we get all nodes we make cab request info for connreq nodes
 	if !elevStatesUpdate.OnlyActiveNodes {
+		fmt.Printf("Dealing with connreqs\n")
 		// make cab request info for all nodes that have sent a connection request
 		result.CabRequests = make(map[int]messages.CabRequestInfo)
 		for id := range activeConnReq {

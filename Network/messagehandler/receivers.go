@@ -2,8 +2,8 @@ package messagehandler
 
 import (
 	"elev/Network/messages"
+	"elev/config"
 	"elev/elevator"
-	"elev/util/config"
 	"errors"
 	"fmt"
 	"math/rand"

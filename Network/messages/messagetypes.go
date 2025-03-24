@@ -1,8 +1,8 @@
 package messages
 
 import (
+	"elev/config"
 	"elev/elevator"
-	"elev/util/config"
 	"time"
 )
 

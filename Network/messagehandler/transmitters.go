@@ -2,7 +2,7 @@ package messagehandler
 
 import (
 	"elev/Network/messages"
-	"elev/util/config"
+	"elev/config"
 	"fmt"
 	"time"
 )

@@ -7,9 +7,9 @@ import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
 	"elev/Network/network/bcast"
+	"elev/config"
 	"elev/elevator"
 	"elev/singleelevator"
-	"elev/util/config"
 	"time"
 )
 

@@ -3,9 +3,9 @@ package node
 import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
+	"elev/config"
 	"elev/elevator"
 	"elev/singleelevator"
-	"elev/util/config"
 	"fmt"
 	"time"
 )
@@ -42,7 +42,7 @@ ForLoop:
 
 		case incomingConnReq := <-node.ConnectionReqRx:
 			if node.ID != incomingConnReq.NodeID {
-				fmt.Printf("Node %d received connection request from node %d\n",node.ID, incomingConnReq.NodeID)
+				// fmt.Printf("Node %d received connection request from node %d\n",node.ID, incomingConnReq.NodeID)
 
 				incomingConnRequests[incomingConnReq.NodeID] = incomingConnReq
 			}

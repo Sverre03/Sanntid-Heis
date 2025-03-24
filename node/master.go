@@ -48,6 +48,7 @@ func MasterProgram(node *NodeData) nodestate {
 
 	var myElevState messages.NodeElevState
 
+	var lastStateRequest time.Time
 	// Check if we should distribute hall requests
 	shouldDistributeHallRequests := false
 	for floor := 0; floor < config.NUM_FLOORS; floor++ {
@@ -112,9 +113,9 @@ ForLoop:
 				}
 			}
 
-			if shouldDistributeHallRequests {
+			if shouldDistributeHallRequests && time.Since(lastStateRequest) > config.STATE_REQUEST_INTERVAL {
 				fmt.Printf("Global hall requests after Elevator Event: %v, event: %v\n", node.GlobalHallRequests, elevMsg)
-				// fmt.Printf("New Global hall requests: %v\n", node.GlobalHallRequests)
+				lastStateRequest = time.Now()
 				node.commandToServerTx <- "getActiveElevStates"
 			}
 			fmt.Printf("Global hall requests after Elevator Event: %v, event: %v\n", node.GlobalHallRequests, elevMsg)

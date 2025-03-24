@@ -16,8 +16,6 @@ It never prints, even though it should??
 Slave:
 Seemingly does not update lights on entry, takes one button press to begin
 
-Bug: Master gets stuck if hall buttons are spammed (held in) on its local elevator
-Seems to overload (block) one or more channels if local hall buttons are pressed. Master also gets stuck when spamming hall buttons on slave elevators (but usually takes more time before getting stuck). Spamming the cab buttons never cause any issues, pointing to this being an issue with channels (ofc).
 
 
 

@@ -149,7 +149,10 @@ ForLoop:
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 			node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			// run getActiveElevStates to distribute the new hall requests
-			node.commandToServerTx <- "getActiveElevStates"
+			if time.Since(lastStateRequest) > config.STATE_REQUEST_INTERVAL {
+				lastStateRequest = time.Now()
+				node.commandToServerTx <- "getActiveElevStates"
+			}
 
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
 			fmt.Printf("Received new elevator states update: %v\n", elevStatesUpdate)

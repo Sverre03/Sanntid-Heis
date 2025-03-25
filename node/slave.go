@@ -45,14 +45,6 @@ ForLoop:
 						Button: elevMsg.ButtonEvent.Button,
 					},
 				}
-				debug := messages.NewHallReq{
-					NodeID: node.ID,
-					HallReq: elevator.ButtonEvent{
-						Floor:  elevMsg.ButtonEvent.Floor,
-						Button: elevMsg.ButtonEvent.Button,
-					},
-				}
-				fmt.Printf("Node %d received hall button event: %v\n", node.ID, debug.HallReq)
 
 			}
 

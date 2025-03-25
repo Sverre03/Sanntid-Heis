@@ -152,23 +152,6 @@ func PollDoorStuck(inTimer timer.Timer, receiver chan<- bool) {
 	}
 }
 
-// func PollTimer(inTimer timer.Timer, receiver chan<- bool) {
-//     prev := false
-//     for {
-//         time.Sleep(pollInterval)
-//         // IMPORTANT FIX: Get current timer status instead of keeping a local reference
-//         currentTimerValue := timer.TimerTimedOut(inTimer)
-
-//         // Only send when transitioning from false to true
-//         if currentTimerValue && !prev {
-//             fmt.Printf("Timer timed out! Active=%v, EndTime=%v\n",
-//                 inTimer.Active, inTimer.EndTime.Format("15:04:05.000"))
-//             receiver <- true
-//         }
-//         prev = currentTimerValue
-//     }
-// }
-
 func ButtonIsPressed(button ButtonType, floor int) bool {
 	a := read([4]byte{6, byte(button), byte(floor), 0})
 	return toBool(a[1])

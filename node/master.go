@@ -45,11 +45,10 @@ ForLoop:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
-
 			case singleelevator.DoorStuckEvent:
-				fmt.Println("DoorStuckEvent")
+				fmt.Printf("Master received door stuck event: stuck: %v\n", elevMsg.DoorIsStuck)
 				// if the door is stuck, we go to inactive
-				if elevMsg.DoorIsStuck {
+				if elevMsg.DoorIsStuck && node.ID == elevMsg.SourceNodeID {
 					nextNodeState = Inactive
 					break ForLoop
 				}
@@ -149,6 +148,7 @@ ForLoop:
 
 	// stop transmitters
 	node.GlobalHallReqTransmitEnableTx <- false
+	node.HallRequestAssignerTransmitEnableTx <- false
 	sendCommandToServer("stopConnectionTimeoutDetection", node)
 	node.TOLC = time.Now()
 	fmt.Printf("Exiting master, setting TOLC to %v\n", node.TOLC)

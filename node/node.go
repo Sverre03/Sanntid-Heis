@@ -35,9 +35,8 @@ type NodeData struct {
 	AckTx               chan messages.Ack                   // Send acks to udp broadcaster
 	NodeElevStatesTx    chan messages.NodeElevState         // send your elev states to udp broadcaster
 	NodeElevStateUpdate chan messagehandler.ElevStateUpdate // receive elevStateUpdate
-	NewHallReqRx 	  chan messages.NewHallReq            // receive hall requests from udp receiver
-	NewHallReqTx 	  chan messages.NewHallReq            // send hall requests to udp transmitter
-
+	NewHallReqRx        chan messages.NewHallReq            // receive hall requests from udp receiver
+	NewHallReqTx        chan messages.NewHallReq            // send hall requests to udp transmitter
 
 	HallAssignmentTx  chan messages.NewHallAssignments // Sends hall assignments to hall assignment transmitter
 	HallAssignmentsRx chan messages.NewHallAssignments // Receives hall assignments from udp receiver. Messages should be acked
@@ -59,10 +58,9 @@ type NodeData struct {
 	ElevatorEventRx                chan singleelevator.ElevatorEvent
 	MyElevStatesRx                 chan elevator.ElevatorState
 
-
 	// Channels for turning on and off the transmitter functions
-	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
-	HallRequestAssignerTransmitEnableTx    chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
+	GlobalHallReqTransmitEnableTx       chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
+	HallRequestAssignerTransmitEnableTx chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
 }
 
 // initialize a network node and return a nodedata obj, needed for communication with the processes it starts
@@ -88,7 +86,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 
 	HATransToBcastTx := make(chan messages.NewHallAssignments) // channel for communication from Hall Assignment Transmitter process to Broadcaster
 	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
-
 
 	//Hall update
 	node.NewHallReqRx = make(chan messages.NewHallReq)
@@ -140,6 +137,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	go messagehandler.IncomingAckDistributor(ackRx,
 		hallAssignmentsAckRx,
 		ConnectionReqAckRx)
+
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,
 		node.HallAssignmentTx,
@@ -150,7 +148,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	go singleelevator.ElevatorProgram(portNum,
 		node.ElevatorEventRx,
 		node.ElevLightAndAssignmentUpdateTx,
-		node.MyElevStatesRx,)
+		node.MyElevStatesRx,
+		node.ID)
 
 	// process that listens to active nodes on network
 	go messagehandler.NodeElevStateServer(node.ID,

@@ -4,6 +4,7 @@ import (
 	"elev/config"
 	"elev/elevator"
 	"elev/elevator_fsm"
+	"fmt"
 	"time"
 )
 
@@ -24,9 +25,10 @@ const (
 
 // ElevatorEventMsg encapsulates all messages sent from elevator to node
 type ElevatorEvent struct {
-	EventType   ElevatorEventType
-	ButtonEvent elevator.ButtonEvent // For hall button events and completed hall assignments
-	DoorIsStuck bool                 // For door stuck status
+	EventType    ElevatorEventType
+	ButtonEvent  elevator.ButtonEvent // For hall button events and completed hall assignments
+	DoorIsStuck  bool                 // For door stuck status
+	SourceNodeID int
 }
 
 // NodeToElevatorMsg encapsulates all messages sent from node to elevator
@@ -44,7 +46,8 @@ func ElevatorProgram(
 	portNum string,
 	elevatorEventTx chan<- ElevatorEvent,
 	elevLightAndAssignmentUpdateRx <-chan LightAndAssignmentUpdate,
-	elevatorStatesTx chan<- elevator.ElevatorState) {
+	elevatorStatesTx chan<- elevator.ElevatorState,
+	nodeID int) {
 
 	elevator.Init(portNum, config.NUM_FLOORS) // "localhost:15657"
 	elevator_fsm.InitFSM()
@@ -53,11 +56,9 @@ func ElevatorProgram(
 	buttonEventRx := make(chan elevator.ButtonEvent)
 	floorEventRx := make(chan int)
 	obstructionEventRx := make(chan bool)
-
 	//Local hall requests elevator
 
 	// Timers
-	doorStuckTimerActive := false
 	doorOpenTimer := time.NewTimer(config.DOOR_OPEN_DURATION)   // 3-second timer to detect door timeout
 	doorStuckTimer := time.NewTimer(config.DOOR_STUCK_DURATION) // 30-second timer to detect stuck doors
 	doorOpenTimer.Stop()
@@ -70,7 +71,7 @@ func ElevatorProgram(
 	go elevator.PollObstructionSwitch(obstructionEventRx)
 
 	// Check if door is stuck
-	elevatorEventTx <- makeDoorStuckMessage(false)
+	elevatorEventTx <- makeDoorStuckMessage(false, nodeID)
 
 	for {
 		select {
@@ -78,7 +79,7 @@ func ElevatorProgram(
 			if button.Button == elevator.ButtonCab { // Handle cab calls internally
 				elevator_fsm.OnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
 			} else {
-				elevatorEventTx <- makeHallReqMessage(button)
+				elevatorEventTx <- makeHallReqMessage(button, nodeID)
 			}
 
 		case msg := <-elevLightAndAssignmentUpdateRx:
@@ -113,19 +114,21 @@ func ElevatorProgram(
 			elevator_fsm.OnFloorArrival(floor, doorOpenTimer)
 
 		case isObstructed := <-obstructionEventRx:
+			fmt.Printf("Obstruction detected: %v\n", isObstructed)
 			elevator_fsm.SetObstruction(isObstructed)
+			if !isObstructed {
+				// Stop the door stuck timer if the obstruction is cleared
+				doorStuckTimer.Stop()
+				elevatorEventTx <- makeDoorStuckMessage(false, nodeID)
+			}
 
 		case <-doorOpenTimer.C:
 			// Start the door stuck timer, which is stopped by OnDoorTimeout if the doors are able to close
-
-			if !doorStuckTimerActive {
-				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
-				doorStuckTimerActive = true
-			}
 			elevator_fsm.OnDoorTimeout(doorOpenTimer, doorStuckTimer)
 
 		case <-doorStuckTimer.C:
-			elevatorEventTx <- makeDoorStuckMessage(true)
+			fmt.Println("Door stuck timer timed out")
+			elevatorEventTx <- makeDoorStuckMessage(true, nodeID)
 
 		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
 			elev := elevator_fsm.GetElevator()
@@ -147,14 +150,14 @@ func ElevatorProgram(
 	}
 }
 
-func makeDoorStuckMessage(isDoorStuck bool) ElevatorEvent {
+func makeDoorStuckMessage(isDoorStuck bool, nodeID int) ElevatorEvent {
 	return ElevatorEvent{EventType: DoorStuckEvent,
-		DoorIsStuck: isDoorStuck,
+		DoorIsStuck: isDoorStuck, SourceNodeID: nodeID,
 	}
 }
 
-func makeHallReqMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
+func makeHallReqMessage(buttonEvent elevator.ButtonEvent, nodeID int) ElevatorEvent {
 	return ElevatorEvent{EventType: HallButtonEvent,
-		ButtonEvent: buttonEvent,
+		ButtonEvent: buttonEvent, SourceNodeID: nodeID,
 	}
 }

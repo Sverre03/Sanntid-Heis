@@ -126,11 +126,16 @@ func SetHallLights(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) 
 }
 
 func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
-
 	switch elev.Behavior {
 	case elevator.DoorOpen:
 		if elev.IsObstructed {
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+			if !elev.DoorStuckTimerActive {
+				fmt.Printf("Obstruction detected, starting door stuck timer\n")
+				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
+				elev.DoorStuckTimerActive = true
+				elevator.SetStopLamp(true)
+			}
 		} else {
 			// stop the doorStuckTimer!
 			doorStuckTimer.Stop()
@@ -160,7 +165,4 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 		}
 	default:
 	}
-
-	// fmt.Println("\nNew state:")
-	// elevator.PrintElevator(elev)
 }

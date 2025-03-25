@@ -14,12 +14,13 @@ const (
 )
 
 type Elevator struct {
-	Floor           int
-	Dir             MotorDirection
-	Behavior        ElevatorBehavior
-	Requests        [config.NUM_FLOORS][config.NUM_BUTTONS]bool
-	HallLightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
-	IsObstructed    bool
+	Floor                int
+	Dir                  MotorDirection
+	Behavior             ElevatorBehavior
+	Requests             [config.NUM_FLOORS][config.NUM_BUTTONS]bool
+	HallLightStates      [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
+	IsObstructed         bool
+	DoorStuckTimerActive bool
 }
 
 type ElevatorState struct {
@@ -28,6 +29,7 @@ type ElevatorState struct {
 	Behavior          ElevatorBehavior
 	CabRequests       [config.NUM_FLOORS]bool
 	MyHallAssignments [config.NUM_FLOORS][2]bool
+	NodeID            int
 }
 
 // String returns a string representation of the ElevatorBehavior
@@ -81,10 +83,11 @@ func GetCabRequestsAsElevState(elev Elevator) [config.NUM_FLOORS]bool {
 
 func NewElevator() Elevator {
 	return Elevator{
-		Behavior: Idle,
-		Floor:    -1,
-		Dir:      DirectionStop,
-		Requests: [config.NUM_FLOORS][config.NUM_BUTTONS]bool{},
+		Behavior:             Idle,
+		Floor:                -1,
+		Dir:                  DirectionStop,
+		Requests:             [config.NUM_FLOORS][config.NUM_BUTTONS]bool{},
+		DoorStuckTimerActive: false,
 	}
 }
 

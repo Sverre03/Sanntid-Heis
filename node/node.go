@@ -51,16 +51,11 @@ type NodeData struct {
 	commandToServerTx chan string                      // Sends commands to the NodeElevStateServer (defined in Network/comm/receivers.go)
 	NetworkEventRx    chan messagehandler.NetworkEvent // if no contact have been made within a timeout, "true" is sent on this channel
 
-	NewHallReqTx chan messages.NewHallRequest // Sends new hall requests to other nodes
-	NewHallReqRx chan messages.NewHallRequest // Receives new hall requests from other nodes
-
 	// Elevator-Node communication
 	ElevLightAndAssignmentUpdateTx chan singleelevator.LightAndAssignmentUpdate // channel for informing elevator of changes to hall button lights, hall assignments and cab assignments
 	ElevatorEventRx                chan singleelevator.ElevatorEvent
 	MyElevStatesRx                 chan elevator.ElevatorState
 
-	HallAssignmentCompleteTx chan messages.HallAssignmentComplete // Send a hall assignment complete to the hall assignment complete transmitter
-	HallAssignmentCompleteRx chan messages.HallAssignmentComplete // hall assignment complete messages from udp receiver. Messages should be acked
 
 	// Channels for turning on and off the transmitter functions
 	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
@@ -89,15 +84,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
 	node.ConnectionReqRx = make(chan messages.ConnectionReq)
 
-	node.NewHallReqTx = make(chan messages.NewHallRequest)
-	node.NewHallReqRx = make(chan messages.NewHallRequest)
-
-	node.HallAssignmentCompleteTx = make(chan messages.HallAssignmentComplete)
-	node.HallAssignmentCompleteRx = make(chan messages.HallAssignmentComplete)
-
 	HATransToBcastTx := make(chan messages.NewHallAssignments) // channel for communication from Hall Assignment Transmitter process to Broadcaster
 	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
-	HACompleteTransToBcast := make(chan messages.HallAssignmentComplete)
 
 	// channels for enabling and disabling the transmitter functions
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)
@@ -129,23 +117,19 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	go bcast.Broadcaster(bcastBroadcasterPort,
 		node.AckTx,
 		node.NodeElevStatesTx,
-		HACompleteTransToBcast,
 		HATransToBcastTx,
 		node.CabRequestInfoTx,
 		globalHallReqTransToBroadcast,
-		node.ConnectionReqTx,
-		node.NewHallReqTx)
+		node.ConnectionReqTx)
 
 	// start receiver process that listens for messages on the port
 	go bcast.Receiver(bcastReceiverPort,
 		ackRx,
 		receiverToServerCh,
 		node.HallAssignmentsRx,
-		node.NewHallReqRx,
 		node.CabRequestInfoRx,
 		node.GlobalHallRequestRx,
-		node.ConnectionReqRx,
-		node.HallAssignmentCompleteRx)
+		node.ConnectionReqRx)
 
 	// process for distributing incoming acks in ackRx to different processes
 	go messagehandler.IncomingAckDistributor(ackRx,
@@ -159,11 +143,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.HallAssignmentTx,
 		hallAssignmentsAckRx,
 		node.HallRequestAssignerTransmitEnableTx)
-
-	go messagehandler.HallAssignmentCompleteTransmitter(HACompleteTransToBcast,
-		node.HallAssignmentCompleteTx,
-		hallAssignmentCompleteAckRx,
-		node.HallAssignmentCompleteTransmitEnableTx)
 
 	// the physical elevator program
 	go singleelevator.ElevatorProgram(portNum,

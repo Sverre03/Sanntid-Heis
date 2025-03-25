@@ -88,8 +88,6 @@ ForLoop:
 			break ForLoop
 		case <-node.HallAssignmentsRx:
 		case <-node.NodeElevStateUpdate:
-		case <-node.NewHallReqRx:
-		case <-node.HallAssignmentCompleteRx:
 		case <-node.NetworkEventRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.MyElevStatesRx:

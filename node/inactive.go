@@ -24,8 +24,6 @@ ForLoop:
 		case <-node.GlobalHallRequestRx:
 		case <-node.ConnectionReqRx:
 		case <-node.NodeElevStateUpdate:
-		case <-node.NewHallReqRx:
-		case <-node.HallAssignmentCompleteRx:
 		case <-node.NetworkEventRx:
 		case <-node.MyElevStatesRx:
 

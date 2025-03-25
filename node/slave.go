@@ -39,25 +39,6 @@ ForLoop:
 					break ForLoop
 				}
 
-			case singleelevator.HallButtonEvent:
-				node.NewHallReqTx <- messages.NewHallRequest{
-					Floor:      elevMsg.ButtonEvent.Floor,
-					HallButton: elevMsg.ButtonEvent.Button,
-				}
-
-			case singleelevator.LocalHallAssignmentCompleteEvent:
-				fmt.Println("LocalHallAssignmentCompleteEvent")
-				// Forward completed hall assignments
-				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
-
-					node.HallAssignmentCompleteTx <- messages.HallAssignmentComplete{
-						Floor:      elevMsg.ButtonEvent.Floor,
-						HallButton: elevMsg.ButtonEvent.Button,
-						MessageID:  uint64(0),
-					}
-					// fmt.Printf("Node %d sent hall assignment complete message\n", node.ID)
-				}
-
 			}
 
 		case myElevStates := <-node.MyElevStatesRx:
@@ -103,10 +84,8 @@ ForLoop:
 			break ForLoop
 
 		case <-node.NodeElevStateUpdate:
-		case <-node.NewHallReqRx:
 		case <-node.ConnectionReqRx:
 		case <-node.CabRequestInfoRx:
-		case <-node.HallAssignmentCompleteRx:
 		}
 
 	}

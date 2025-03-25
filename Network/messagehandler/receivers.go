@@ -63,7 +63,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(CONNECTION_REQ)+1) {
 			connectionReqAck <- ackMsg
 
-		} 
+		}
 	}
 }
 
@@ -120,7 +120,6 @@ func NodeElevStateServer(myID int,
 				lastSeen[id] = time.Now()
 			}
 			knownNodes[id] = elevState.ElevState
-
 
 		case command := <-commandRx:
 

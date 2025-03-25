@@ -62,10 +62,6 @@ ForLoop:
 
 				break Select
 			}
-
-		case <- time.Tick(500 * time.Millisecond):
-			node.commandToServerTx <- "getActiveElevStates"
-
 		
 		case connReq := <-node.ConnectionReqRx:
 			if connReq.NodeID != node.ID {
@@ -202,8 +198,8 @@ func processConnectionRequestsFromOtherNodes(elevStatesUpdate messagehandler.Ele
 
 	func checkGlobalHallRequestsChange(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 		newGlobalHallReq [config.NUM_FLOORS][2]bool) (orderAdded bool, orderRemoved bool) {
-		for floor := 0; floor < config.NUM_FLOORS; floor++ {
-			for button := 0; button < 2; button++ {
+		for floor := range config.NUM_FLOORS {
+			for button := range 2 {
 				// Check if change is from (false -> true), assignment added
 				if !oldGlobalHallRequests[floor][button] && newGlobalHallReq[floor][button] {
 					orderAdded = true

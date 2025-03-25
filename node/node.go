@@ -35,6 +35,9 @@ type NodeData struct {
 	AckTx               chan messages.Ack                   // Send acks to udp broadcaster
 	NodeElevStatesTx    chan messages.NodeElevState         // send your elev states to udp broadcaster
 	NodeElevStateUpdate chan messagehandler.ElevStateUpdate // receive elevStateUpdate
+	NewHallReqRx 	  chan messages.NewHallReq            // receive hall requests from udp receiver
+	NewHallReqTx 	  chan messages.NewHallReq            // send hall requests to udp transmitter
+
 
 	HallAssignmentTx  chan messages.NewHallAssignments // Sends hall assignments to hall assignment transmitter
 	HallAssignmentsRx chan messages.NewHallAssignments // Receives hall assignments from udp receiver. Messages should be acked
@@ -60,7 +63,6 @@ type NodeData struct {
 	// Channels for turning on and off the transmitter functions
 	GlobalHallReqTransmitEnableTx          chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
 	HallRequestAssignerTransmitEnableTx    chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
-	HallAssignmentCompleteTransmitEnableTx chan bool // channel that connects to HallAssignmentCompleteTransmitter, should be enabled when node is master
 }
 
 // initialize a network node and return a nodedata obj, needed for communication with the processes it starts
@@ -87,10 +89,13 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	HATransToBcastTx := make(chan messages.NewHallAssignments) // channel for communication from Hall Assignment Transmitter process to Broadcaster
 	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
 
+
+	//Hall update
+	node.NewHallReqRx = make(chan messages.NewHallReq)
+	node.NewHallReqTx = make(chan messages.NewHallReq)
 	// channels for enabling and disabling the transmitter functions
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)
 	node.HallRequestAssignerTransmitEnableTx = make(chan bool)
-	node.HallAssignmentCompleteTransmitEnableTx = make(chan bool)
 
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
@@ -98,10 +103,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.GlobalHallRequestTx = make(chan messages.GlobalHallRequest) //
 	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
 
-	lightUpdateAckRx := make(chan messages.Ack)
 	hallAssignmentsAckRx := make(chan messages.Ack)
 	ConnectionReqAckRx := make(chan messages.Ack)
-	hallAssignmentCompleteAckRx := make(chan messages.Ack)
 
 	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate, 3)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
@@ -120,7 +123,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		HATransToBcastTx,
 		node.CabRequestInfoTx,
 		globalHallReqTransToBroadcast,
-		node.ConnectionReqTx)
+		node.ConnectionReqTx,
+		node.NewHallReqTx)
 
 	// start receiver process that listens for messages on the port
 	go bcast.Receiver(bcastReceiverPort,
@@ -129,15 +133,13 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.HallAssignmentsRx,
 		node.CabRequestInfoRx,
 		node.GlobalHallRequestRx,
-		node.ConnectionReqRx)
+		node.ConnectionReqRx,
+		node.NewHallReqRx)
 
 	// process for distributing incoming acks in ackRx to different processes
 	go messagehandler.IncomingAckDistributor(ackRx,
 		hallAssignmentsAckRx,
-		lightUpdateAckRx,
-		ConnectionReqAckRx,
-		hallAssignmentCompleteAckRx)
-
+		ConnectionReqAckRx)
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,
 		node.HallAssignmentTx,
@@ -148,7 +150,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	go singleelevator.ElevatorProgram(portNum,
 		node.ElevatorEventRx,
 		node.ElevLightAndAssignmentUpdateTx,
-		node.MyElevStatesRx)
+		node.MyElevStatesRx,)
 
 	// process that listens to active nodes on network
 	go messagehandler.NodeElevStateServer(node.ID,

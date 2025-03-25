@@ -51,3 +51,8 @@ type NewHallAssignments struct {
 	HallAssignment [config.NUM_FLOORS][2]bool
 	MessageID      uint64
 }
+
+type NewHallReq struct {
+	NodeID int
+	HallReq elevator.ButtonEvent
+}

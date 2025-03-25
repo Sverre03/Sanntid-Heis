@@ -11,9 +11,8 @@ import (
 type ElevatorEventType int
 
 const (
-	HallButtonEvent                  ElevatorEventType = iota // Receives local hall button presses from node
-	LocalHallAssignmentCompleteEvent                          // Receives completed hall assignments
-	DoorStuckEvent                                            // Receives the elevator's door state (if it is stuck or not)
+	HallButtonEvent ElevatorEventType = iota // Receives local hall button presses from node
+	DoorStuckEvent                           // Receives the elevator's door state (if it is stuck or not)
 )
 
 type ElevatorOrderType int
@@ -57,13 +56,6 @@ func ElevatorProgram(
 	obstructionEventRx := make(chan bool)
 
 	//Local hall requests elevator
-	//Make default value false
-	var localHallRequests [config.NUM_FLOORS][2]bool
-	for i := 0; i < config.NUM_FLOORS; i++ {
-		for j := 0; j < 2; j++ {
-			localHallRequests[i][j] = false
-		}
-	}
 
 	// Timers
 	doorStuckTimerActive := false
@@ -78,7 +70,6 @@ func ElevatorProgram(
 	go elevator.PollFloorSensor(floorEventRx)
 	go elevator.PollObstructionSwitch(obstructionEventRx)
 
-
 	// Check if door is stuck
 	elevatorEventTx <- makeDoorStuckMessage(false)
 
@@ -88,29 +79,28 @@ func ElevatorProgram(
 			if button.Button == elevator.ButtonCab { // Handle cab calls internally
 				elevator_fsm.OnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
 			} else {
-				localHallRequests[button.Floor][button.Button] = true
+				elevatorEventTx <- makeHallReqMessage(button)
 			}
 
 		case msg := <-elevLightAndAssignmentUpdateRx:
 			switch msg.OrderType {
 			case HallOrder:
-				for floor := 0; floor < config.NUM_FLOORS; floor++ {
-					for hallButton := 0; hallButton < 2; hallButton++ {
+				for floor := range config.NUM_FLOORS {
+					for hallButton := range 2 {
 						if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
-							clearedEvents := elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
-							for _, buttonEvent := range clearedEvents {
-								if buttonEvent.Button != elevator.ButtonCab && buttonEvent.Floor == floor {
-									elevatorEventTx <- makeHallAssignmentCompleteEventMessage(buttonEvent)
-								}
-							}
-						} else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] {
-							elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
+							elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
+							// fmt.Printf("Hall assignments: %v\n", elevator_fsm.GetElevator().Requests)
+						} else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] { // If hall assignment is removed and redistributed
+							//elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
+							//fmt.Printf("Hall assignments: %v\n", elevator_fsm.GetElevator().Requests)
+
 						}
 
 					}
 				}
+				elevator_fsm.SetHallLights(msg.LightStates)
 			case CabOrder:
-				for floor := 0; floor < config.NUM_FLOORS; floor++ {
+				for floor := range config.NUM_FLOORS {
 					if msg.CabAssignments[floor] {
 						elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonCab, doorOpenTimer)
 					}
@@ -118,17 +108,10 @@ func ElevatorProgram(
 			case LightUpdate:
 				elevator_fsm.SetHallLights(msg.LightStates)
 			}
+			elevator.PrintElevator(elevator_fsm.GetElevator())
 
 		case floor := <-floorEventRx:
-			clearedButtonEvents := elevator_fsm.OnFloorArrival(floor, doorOpenTimer)
-
-			// loop through and send the button events!
-			for _, buttonEvent := range clearedButtonEvents {
-				fmt.Printf("Button event: %v\n", buttonEvent)
-				if buttonEvent.Button != elevator.ButtonCab {
-					elevatorEventTx <- makeHallAssignmentCompleteEventMessage(buttonEvent)
-				}
-			}
+			elevator_fsm.OnFloorArrival(floor, doorOpenTimer)
 
 		case isObstructed := <-obstructionEventRx:
 			elevator_fsm.SetObstruction(isObstructed)
@@ -144,34 +127,35 @@ func ElevatorProgram(
 
 		case <-doorStuckTimer.C:
 			elevatorEventTx <- makeDoorStuckMessage(true)
-		
-		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
-			
-			elev := elevator_fsm.GetElevator()
 
+		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
+			elev := elevator_fsm.GetElevator()
+			var localHallAssignments [config.NUM_FLOORS][2]bool
+			for floor := range config.NUM_FLOORS {
+				for button := range 2 {
+					localHallAssignments[floor][button] = elev.Requests[floor][button]
+				}
+			}
+			elevator.PrintElevator(elevator_fsm.GetElevator())
 			elevatorStatesTx <- elevator.ElevatorState{
-				Behavior:    elev.Behavior,
-				Floor:       elev.Floor,
-				Direction:   elev.Dir,
-				CabRequests: elevator.GetCabRequestsAsElevState(elev),
-				LocalHallRequests: localHallRequests,
+				Behavior:          elev.Behavior,
+				Floor:             elev.Floor,
+				Direction:         elev.Dir,
+				CabRequests:       elevator.GetCabRequestsAsElevState(elev),
+				MyHallAssignments: localHallAssignments,
 			}
 		}
 	}
 }
 
-// func makeHallButtonEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
-// 	return ElevatorEvent{EventType: HallButtonEvent,
-// 		ButtonEvent: buttonEvent, DoorIsStuck: false}
-// }
-
-func makeHallAssignmentCompleteEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
-	return ElevatorEvent{EventType: LocalHallAssignmentCompleteEvent,
-		ButtonEvent: buttonEvent, DoorIsStuck: false}
-}
-
 func makeDoorStuckMessage(isDoorStuck bool) ElevatorEvent {
 	return ElevatorEvent{EventType: DoorStuckEvent,
 		DoorIsStuck: isDoorStuck,
+	}
+}
+
+func makeHallReqMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
+	return ElevatorEvent{EventType: HallButtonEvent,
+		ButtonEvent: buttonEvent,
 	}
 }

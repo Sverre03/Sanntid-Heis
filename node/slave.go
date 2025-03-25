@@ -12,6 +12,7 @@ import (
 
 func SlaveProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now a Slave\n", node.ID)
+
 	lastHallAssignmentMessageID := uint64(0)
 
 	var nextNodeState nodestate
@@ -20,10 +21,7 @@ func SlaveProgram(node *NodeData) nodestate {
 	masterConnectionTimeoutTimer.Stop()
 
 	// start the transmitters
-	node.HallAssignmentCompleteTransmitEnableTx <- true
-
 	node.commandToServerTx <- "startConnectionTimeoutDetection"
-
 	// set them lights
 
 ForLoop:
@@ -31,13 +29,30 @@ ForLoop:
 	Select:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
-
 			switch elevMsg.EventType {
 			case singleelevator.DoorStuckEvent:
+
 				if elevMsg.DoorIsStuck {
 					nextNodeState = Inactive
 					break ForLoop
 				}
+			case singleelevator.HallButtonEvent:
+
+				node.NewHallReqTx <- messages.NewHallReq{
+					NodeID: node.ID,
+					HallReq: elevator.ButtonEvent{
+						Floor:  elevMsg.ButtonEvent.Floor,
+						Button: elevMsg.ButtonEvent.Button,
+					},
+				}
+				debug := messages.NewHallReq{
+					NodeID: node.ID,
+					HallReq: elevator.ButtonEvent{
+						Floor:  elevMsg.ButtonEvent.Floor,
+						Button: elevMsg.ButtonEvent.Button,
+					},
+				}
+				fmt.Printf("sent hall request from node %v\n", debug)
 
 			}
 
@@ -59,39 +74,41 @@ ForLoop:
 				!canAcceptHallAssignments(newHA.HallAssignment, node.GlobalHallRequests) {
 				break Select
 			}
+			fmt.Printf("New hall assignments: %v \n", newHA.HallAssignment)
 
 			// the hall assignments are for me, so I can ack them
 			node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
 
 			// lets check if I have already received this message, if not its update time!
 			if lastHallAssignmentMessageID != newHA.MessageID {
+				fmt.Println("Sending my update to the elev!")
 				node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
 				lastHallAssignmentMessageID = newHA.MessageID
 			}
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
 			node.TOLC = time.Now()
-			// fmt.Println(newGlobalHallReq)
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
-				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 				// fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
+				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 			}
 			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
 
 		case <-masterConnectionTimeoutTimer.C:
+			fmt.Printf("Node %d timed out\n", node.ID)
 			nextNodeState = Disconnected
 			break ForLoop
 
 		case <-node.NodeElevStateUpdate:
 		case <-node.ConnectionReqRx:
 		case <-node.CabRequestInfoRx:
+		case <-node.NewHallReqRx:
 		}
 
 	}
 
 	// stop transmitters
-	node.HallAssignmentCompleteTransmitEnableTx <- false
 	if nextNodeState == Disconnected {
 		fmt.Println("Exiting slave to disconnected")
 	} else {
@@ -102,7 +119,7 @@ ForLoop:
 }
 
 func canAcceptHallAssignments(newHallAssignments, globalHallReq [config.NUM_FLOORS][2]bool) bool {
-	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+	for floor := range config.NUM_FLOORS {
 		// check if my new assignment contains assignments that I am yet to be informed of from master
 		if newHallAssignments[floor][elevator.ButtonHallDown] && !(globalHallReq[floor][elevator.ButtonHallDown]) {
 			return false
@@ -130,7 +147,7 @@ func makeLightMessage(hallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAn
 }
 
 func hasChanged(newGlobalHallReq, oldGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
-	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+	for floor := range config.NUM_FLOORS {
 		// check if the new is equal to the old or not
 		if oldGlobalHallReq[floor][elevator.ButtonHallDown] != newGlobalHallReq[floor][elevator.ButtonHallDown] {
 			return true

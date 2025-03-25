@@ -103,12 +103,10 @@ func RequestsShouldClearImmediately(e Elevator, btnFloor int, btnType ButtonType
 	return e.Floor == btnFloor && ((e.Dir == DirectionUp && btnType == ButtonHallUp) || (e.Dir == DirectionDown && btnType == ButtonHallDown) || e.Dir == DirectionStop || btnType == ButtonCab)
 }
 
-func RequestsClearAtCurrentFloor(e Elevator) (Elevator, []ButtonEvent) {
+func RequestsClearAtCurrentFloor(e Elevator) Elevator {
 	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
-		return e, nil
+		return e
 	}
-
-	clearedRequests := make([]ButtonEvent, 0)
 
 	e.Requests[e.Floor][ButtonCab] = false
 
@@ -116,33 +114,27 @@ func RequestsClearAtCurrentFloor(e Elevator) (Elevator, []ButtonEvent) {
 	case DirectionUp:
 		if e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
-			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallUp})
 		}
-		if !RequestsAbove(e) && !e.Requests[e.Floor][ButtonHallUp] && e.Requests[e.Floor][ButtonHallDown] {
-			e.Requests[e.Floor][ButtonHallDown] = false
-			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallDown})
-		}
+		// if !RequestsAbove(e) && !e.Requests[e.Floor][ButtonHallUp] && e.Requests[e.Floor][ButtonHallDown] {
+		// 	e.Requests[e.Floor][ButtonHallDown] = false
+		// }
 	case DirectionDown:
 		if e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallDown})
 		}
-		if !RequestsBelow(e) && !e.Requests[e.Floor][ButtonHallDown] && e.Requests[e.Floor][ButtonHallUp] {
-			e.Requests[e.Floor][ButtonHallUp] = false
-			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallUp})
-		}
+		// if !RequestsBelow(e) && !e.Requests[e.Floor][ButtonHallDown] && e.Requests[e.Floor][ButtonHallUp] {
+		// 	e.Requests[e.Floor][ButtonHallUp] = false
+		// }
 	case DirectionStop:
 		fallthrough
 	default:
 		if e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
-			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallUp})
 		}
 
 		if e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			clearedRequests = append(clearedRequests, ButtonEvent{Floor: e.Floor, Button: ButtonHallDown})
 		}
 	}
-	return e, clearedRequests
+	return e
 }

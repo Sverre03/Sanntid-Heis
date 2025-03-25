@@ -23,11 +23,11 @@ type Elevator struct {
 }
 
 type ElevatorState struct {
-	Floor       int
-	Direction   MotorDirection
-	Behavior    ElevatorBehavior
-	CabRequests [config.NUM_FLOORS]bool
-	LocalHallRequests [config.NUM_FLOORS][2]bool
+	Floor             int
+	Direction         MotorDirection
+	Behavior          ElevatorBehavior
+	CabRequests       [config.NUM_FLOORS]bool
+	MyHallAssignments [config.NUM_FLOORS][2]bool
 }
 
 // String returns a string representation of the ElevatorBehavior
@@ -73,7 +73,7 @@ func (md MotorDirection) String() string {
 
 func GetCabRequestsAsElevState(elev Elevator) [config.NUM_FLOORS]bool {
 	var cabRequests [config.NUM_FLOORS]bool
-	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+	for floor := range config.NUM_FLOORS {
 		cabRequests[floor] = elev.Requests[floor][ButtonCab]
 	}
 	return cabRequests
@@ -103,7 +103,7 @@ func PrintElevator(e Elevator) {
 	fmt.Println("Request Matrix:")
 	for floor := len(e.Requests) - 1; floor >= 0; floor-- {
 		fmt.Printf("Floor %d: ", floor)
-		for btn := 0; btn < len(e.Requests[floor]); btn++ {
+		for btn := range len(e.Requests[floor]) {
 			if e.Requests[floor][btn] {
 				fmt.Print("# ")
 			} else {

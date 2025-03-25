@@ -26,9 +26,20 @@ const (
 	NodeHasLostConnection
 )
 
+// hvis du vil ha alle
+// hvis du vil aktive
+// hvis noe blitt fjernet
+type UpdateType int
+
+const (
+	ActiveElevStates UpdateType = iota
+	AllElevStates
+	HallAssignmentRemoved
+)
+
 type ElevStateUpdate struct {
 	NodeElevStatesMap map[int]elevator.ElevatorState // map keyed by node id, holding ElevatorStates
-	OnlyActiveNodes   bool
+	DataType          UpdateType
 }
 
 // generates a message ID that corresponsds to the message type
@@ -48,17 +59,12 @@ func GenerateMessageID(partition MessageIDType) (uint64, error) {
 // Listens to incoming acknowledgment messages from UDP, distributes them to their corresponding channels
 func IncomingAckDistributor(ackRx <-chan messages.Ack,
 	hallAssignmentsAck chan<- messages.Ack,
-	lightUpdateAck chan<- messages.Ack,
-	connectionReqAck chan<- messages.Ack,
-	HallAssignmentCompleteAck chan<- messages.Ack) {
+	connectionReqAck chan<- messages.Ack) {
 
 	for ackMsg := range ackRx {
 
 		if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(NEW_HALL_ASSIGNMENT)+1) {
 			hallAssignmentsAck <- ackMsg
-
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(HALL_LIGHT_UPDATE)+1) {
-			lightUpdateAck <- ackMsg
 
 		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(CONNECTION_REQ)+1) {
 			connectionReqAck <- ackMsg
@@ -79,9 +85,9 @@ func NodeElevStateServer(myID int,
 ) {
 
 	nodeIsConnected := false
-	connectionTimeoutTimer := time.NewTicker(config.NODE_CONNECTION_TIMEOUT)
+	connectionTimeoutTimer := time.NewTimer(config.NODE_CONNECTION_TIMEOUT)
 	connectionTimeoutTimer.Stop()
-	peerTimeoutTicker := time.NewTimer(config.PEER_POLL_INTERVAL)
+	peerTimeoutTicker := time.NewTicker(config.PEER_POLL_INTERVAL)
 	peerTimeoutTicker.Stop()
 
 	lastSeen := make(map[int]time.Time)
@@ -92,8 +98,8 @@ func NodeElevStateServer(myID int,
 		select {
 
 		case <-peerTimeoutTicker.C:
-			activeNodes := findActiveNodes(knownNodes, lastSeen)
 
+			activeNodes := findActiveNodes(knownNodes, lastSeen)
 			// if the number of active nodes change, generate an event
 			if len(lastActiveNodes) != len(activeNodes) {
 				fmt.Println("Active nodes changed, notifying node")
@@ -117,12 +123,11 @@ func NodeElevStateServer(myID int,
 				if nodeIsConnected {
 					connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				}
-
-				lastSeen[id] = time.Now()
 			}
+			lastSeen[id] = time.Now()
 
-			if hallAssignmentRemoved(knownNodes[id].LocalHallRequests, elevState.ElevState.LocalHallRequests) {
-				// notify node
+			if isHallAssignmentRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
+				elevStateUpdateTx <- makeHallAssignmentRemovedMessage(lastActiveNodes)
 			}
 
 			knownNodes[id] = elevState.ElevState
@@ -131,9 +136,8 @@ func NodeElevStateServer(myID int,
 
 			switch command {
 			case "getActiveElevStates":
-				activeNodes := findActiveNodes(knownNodes, lastSeen)
-
-				elevStateUpdateTx <- makeActiveElevStatesUpdateMessage(activeNodes)
+				fmt.Printf("the map of active nodes is %v\n", lastActiveNodes)
+				elevStateUpdateTx <- makeActiveElevStatesUpdateMessage(lastActiveNodes)
 
 			case "getAllElevStates":
 				elevStateUpdateTx <- makeAllElevStatesUpdateMessage(knownNodes)
@@ -148,11 +152,15 @@ func NodeElevStateServer(myID int,
 	}
 }
 
+func makeHallAssignmentRemovedMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
+	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: HallAssignmentRemoved}
+}
+
 func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
-	return ElevStateUpdate{NodeElevStatesMap: elevStates, OnlyActiveNodes: true}
+	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: ActiveElevStates}
 }
 func makeAllElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
-	return ElevStateUpdate{NodeElevStatesMap: elevStates, OnlyActiveNodes: false}
+	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: AllElevStates}
 }
 
 func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int]time.Time) map[int]elevator.ElevatorState {
@@ -165,7 +173,7 @@ func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int
 	return activeNodes
 }
 
-func hallAssignmentRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
+func isHallAssignmentRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 	newGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		for button := range 2 {

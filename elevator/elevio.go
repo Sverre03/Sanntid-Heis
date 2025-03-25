@@ -59,10 +59,10 @@ func SetButtonLamp(button ButtonType, floor int, value bool) {
 }
 
 func SetAllLights(elev *Elevator) {
-	for floor := 0; floor < config.NUM_FLOORS; floor++ {
+	for floor := range config.NUM_FLOORS {
 		SetButtonLamp(ButtonCab, floor, elev.Requests[floor][ButtonCab])
 
-		for i := 0; i < config.NUM_BUTTONS-1; i++ {
+		for i := range config.NUM_BUTTONS-1 {
 			SetButtonLamp(ButtonType(i), floor, elev.HallLightStates[floor][ButtonType(i)])
 		}
 	}
@@ -84,7 +84,7 @@ func PollButtons(receiver chan<- ButtonEvent) {
 	prev := make([][3]bool, config.NUM_FLOORS)
 	for {
 		time.Sleep(pollInterval)
-		for floor := 0; floor < config.NUM_FLOORS; floor++ {
+		for floor := range config.NUM_FLOORS {
 			for button := ButtonType(0); button < 3; button++ {
 				v := ButtonIsPressed(button, floor)
 				if v != prev[floor][button] && v {

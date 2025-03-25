@@ -4,7 +4,6 @@ import (
 	"elev/Network/messagehandler"
 	"elev/Network/messages"
 	"elev/config"
-	"elev/elevator"
 	"elev/singleelevator"
 	"fmt"
 	"time"
@@ -32,7 +31,7 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	// start servicing the global hall requests
 
 	// running the line below will cause unwanted behavior UNTIL the elevator is able to clear hall assignments when it gets a message from the node
-	// node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests)
+	node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests)
 
 ForLoop:
 	for {
@@ -69,13 +68,6 @@ ForLoop:
 
 			case singleelevator.HallButtonEvent:
 				// ignore hall button presses
-
-			case singleelevator.LocalHallAssignmentCompleteEvent:
-				// update the global hall requests, it is safe as we are now disconnected
-				if elevMsg.ButtonEvent.Button != elevator.ButtonCab {
-					node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = false
-					node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
-				}
 			}
 
 		case info := <-node.CabRequestInfoRx: // Check if the master has any info about us
@@ -91,6 +83,8 @@ ForLoop:
 		case <-node.NetworkEventRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.MyElevStatesRx:
+			// fmt.Printf("Recieved state %v\n", state.MyHallAssignments)
+		case <-node.NewHallReqRx:
 
 		}
 	}

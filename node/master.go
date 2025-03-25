@@ -156,16 +156,6 @@ ForLoop:
 
 }
 
-func sendCommandToServer(command string, node *NodeData) {
-	select {
-	case node.commandToServerTx <- command:
-		// Command sent successfully
-	default:
-		// Command not sent, channel is full
-		fmt.Printf("Warning: Command channel is full, command %s not sent\n", command)
-	}
-}
-
 // HallAssignmentResult is a struct that holds the result of the hall assignment computation
 type HallAssignmentResult struct {
 	NodeHallAssignments map[int][config.NUM_FLOORS][2]bool

@@ -2,7 +2,6 @@ package elevator
 
 import (
 	"elev/config"
-	"elev/util/timer"
 	"fmt"
 	"net"
 	"sync"
@@ -62,7 +61,7 @@ func SetAllLights(elev *Elevator) {
 	for floor := range config.NUM_FLOORS {
 		SetButtonLamp(ButtonCab, floor, elev.Requests[floor][ButtonCab])
 
-		for i := range config.NUM_BUTTONS-1 {
+		for i := range config.NUM_BUTTONS - 1 {
 			SetButtonLamp(ButtonType(i), floor, elev.HallLightStates[floor][ButtonType(i)])
 		}
 	}
@@ -129,26 +128,6 @@ func PollObstructionSwitch(receiver chan<- bool) {
 			receiver <- v
 		}
 		prev = v
-	}
-}
-
-// Check if the door has been open for its maximum duration
-func PollDoorTimeout(inTimer timer.Timer, receiver chan<- bool) {
-	for range time.Tick(config.INPUT_POLL_INTERVAL) {
-		if inTimer.Active && timer.TimerTimedOut(inTimer) {
-			fmt.Println("Door timer timed out")
-			receiver <- true
-		}
-	}
-}
-
-// Check if the door is stuck
-func PollDoorStuck(inTimer timer.Timer, receiver chan<- bool) {
-	for range time.Tick(config.INPUT_POLL_INTERVAL) {
-		if inTimer.Active && timer.TimerTimedOut(inTimer) {
-			fmt.Println("Door stuck timer timed out!")
-			receiver <- true
-		}
 	}
 }
 

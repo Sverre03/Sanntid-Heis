@@ -13,10 +13,9 @@ import (
 type MessageIDType uint64
 
 const (
-	NEW_HALL_ASSIGNMENT      MessageIDType = 0
-	HALL_LIGHT_UPDATE        MessageIDType = 1
-	CONNECTION_REQ           MessageIDType = 2
-	HALL_ASSIGNMENT_COMPLETE MessageIDType = 3
+	NEW_HALL_ASSIGNMENT MessageIDType = 0
+	HALL_LIGHT_UPDATE   MessageIDType = 1
+	CONNECTION_REQ      MessageIDType = 2
 )
 
 type NetworkEvent int
@@ -26,9 +25,6 @@ const (
 	NodeHasLostConnection
 )
 
-// hvis du vil ha alle
-// hvis du vil aktive
-// hvis noe blitt fjernet
 type UpdateType int
 
 const (
@@ -46,7 +42,7 @@ type ElevStateUpdate struct {
 func GenerateMessageID(partition MessageIDType) (uint64, error) {
 	offset := uint64(partition)
 
-	if offset > uint64(HALL_ASSIGNMENT_COMPLETE) {
+	if offset > uint64(CONNECTION_REQ) {
 		return 0, errors.New("invalid messageIDType")
 	}
 
@@ -127,12 +123,12 @@ func NodeElevStateServer(myID int,
 			lastSeen[id] = time.Now()
 
 			if isHallAssignmentRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
-                // Update the known nodes with the new state
+				// Update the known nodes with the new state
 				knownNodes[id] = elevState.ElevState
 
 				// Find the active nodes and send the hall assignment removed message
 				lastActiveNodes = findActiveNodes(knownNodes, lastSeen)
-				
+
 				fmt.Printf(("Hall assignment removed by node %d\n"), id)
 
 				elevStateUpdateTx <- makeHallAssignmentRemovedMessage(lastActiveNodes)
@@ -161,12 +157,12 @@ func NodeElevStateServer(myID int,
 }
 
 func makeHallAssignmentRemovedMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
-    // Create a deep copy of the elevator states to ensure we're passing current state
-    elevStatesCopy := make(map[int]elevator.ElevatorState)
-    for id, state := range elevStates {
-        elevStatesCopy[id] = state
-    }
-    return ElevStateUpdate{NodeElevStatesMap: elevStatesCopy, DataType: HallAssignmentRemoved}
+	// Create a deep copy of the elevator states to ensure we're passing current state
+	elevStatesCopy := make(map[int]elevator.ElevatorState)
+	for id, state := range elevStates {
+		elevStatesCopy[id] = state
+	}
+	return ElevStateUpdate{NodeElevStatesMap: elevStatesCopy, DataType: HallAssignmentRemoved}
 }
 
 func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {

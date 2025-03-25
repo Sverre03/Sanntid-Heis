@@ -21,7 +21,7 @@ func SlaveProgram(node *NodeData) nodestate {
 	masterConnectionTimeoutTimer.Stop()
 
 	// start the transmitters
-	node.commandToServerTx <- "startConnectionTimeoutDetection"
+	sendCommandToServer("startConnectionTimeoutDetection", node)
 	// set them lights
 
 ForLoop:
@@ -38,7 +38,6 @@ ForLoop:
 				}
 
 			case singleelevator.HallButtonEvent:
-
 				node.NewHallReqTx <- messages.NewHallReq{
 					NodeID: node.ID,
 					HallReq: elevator.ButtonEvent{
@@ -89,12 +88,13 @@ ForLoop:
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
 			node.TOLC = time.Now()
+			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
+
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
 				// fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 			}
-			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
 
 		case <-masterConnectionTimeoutTimer.C:
 			fmt.Printf("Node %d timed out\n", node.ID)

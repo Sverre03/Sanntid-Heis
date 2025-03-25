@@ -10,6 +10,7 @@ import (
 	"elev/config"
 	"elev/elevator"
 	"elev/singleelevator"
+	"fmt"
 	"time"
 )
 
@@ -164,4 +165,14 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.GlobalHallRequestTx)
 
 	return node
+}
+
+func sendCommandToServer(command string, node *NodeData) {
+	select {
+	case node.commandToServerTx <- command:
+		// Command sent successfully
+	default:
+		// Command not sent, channel is full
+		fmt.Printf("Warning: Command channel is full, command %s not sent\n", command)
+	}
 }

@@ -90,11 +90,9 @@ ForLoop:
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
 			node.TOLC = time.Now()
-			// fmt.Println(newGlobalHallReq)
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
-				// fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
 			}
 			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
 

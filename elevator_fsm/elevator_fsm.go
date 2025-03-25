@@ -52,7 +52,9 @@ func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTim
 	return clearedEvents
 }
 
-// HandleButtonEvent is a pure function that computes state changes
+// HandleButtonEvent is a pure function that computes state changes.
+// It is flawed though, since it has access to the global state elev, making it impure.
+// It should be refactored to take the elevator state as an argument.
 func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) (elevator.Elevator, []elevator.ButtonEvent, bool) {
 
 	newState := elev
@@ -137,43 +139,114 @@ func SetHallLights(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) 
 }
 
 func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
-	// fmt.Printf("\n\n%s()\n", "OnDoorTimeout")
-	// elevator.PrintElevator(elev)
+	// Calculate new state and actions (functional core)
+	newState, resetDoorOpenTimer, stopDoorStuckTimer, resetDoorStuckTimer := HandleDoorTimeout(elev)
 
-	switch elev.Behavior {
-	case elevator.DoorOpen:
-		if elev.IsObstructed {
-			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
-		} else {
-			// stop the doorStuckTimer!
-			doorStuckTimer.Stop()
+	// Apply side effects (imperative shell)
+	if resetDoorOpenTimer {
+		doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+	}
+
+	if stopDoorStuckTimer {
+		doorStuckTimer.Stop()
+		elevator.SetDoorOpenLamp(false)
+	}
+
+	if resetDoorStuckTimer {
+		doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
+	}
+
+	// Handle motor direction changes if state changed
+	if newState.Behavior != elev.Behavior {
+		if newState.Behavior == elevator.Moving {
+			elevator.SetMotorDirection(newState.Dir)
+		} else if elev.Behavior == elevator.DoorOpen && newState.Behavior != elevator.DoorOpen {
 			elevator.SetDoorOpenLamp(false)
+		}
+	}
 
-			pair := elevator.RequestsChooseDirection(elev)
-			elev.Dir = pair.Dir
-			elev.Behavior = pair.Behavior
+	// Update the elevator state
+	elev = newState
 
-			// if pair.Behavior == elevator.Moving {
-			// 	elevator.SetMotorDirection(elev.Dir)
-			// }
+	// Update lights based on the new state
+	elevator.SetAllLights(&elev)
+}
 
-			switch elev.Behavior {
+// HandleDoorTimeout is also flawed, since it has access to the global state elev, making it impure.
+// It should be refactored to take the elevator state as an argument.
+func HandleDoorTimeout(elev elevator.Elevator) (elevator.Elevator, bool, bool, bool) {
+
+	newState := elev
+	resetDoorOpenTimer := false
+	stopDoorStuckTimer := false
+	resetDoorStuckTimer := false
+
+	switch newState.Behavior {
+	case elevator.DoorOpen:
+		if newState.IsObstructed {
+			// Door is obstructed, keep it open
+			resetDoorOpenTimer = true
+		} else {
+			// Door can close, determine next action
+			stopDoorStuckTimer = true
+
+			// Determine next direction and behavior
+			pair := elevator.RequestsChooseDirection(newState)
+			newState.Dir = pair.Dir
+			newState.Behavior = pair.Behavior
+
+			switch newState.Behavior {
 			case elevator.DoorOpen:
-				doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
-				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
+				// Door should stay open (new request at same floor)
+				resetDoorOpenTimer = true
+				resetDoorStuckTimer = true
 
-				updatedElev, _ := elevator.RequestsClearAtCurrentFloor(elev)
-				elev = updatedElev
-
-				elevator.SetAllLights(&elev)
+				// Clear requests at the current floor
+				updatedElev, _ := elevator.RequestsClearAtCurrentFloor(newState)
+				newState = updatedElev
 			case elevator.Moving, elevator.Idle:
-				elevator.SetDoorOpenLamp(false)
-				elevator.SetMotorDirection(elev.Dir)
+				// Door should close, elevator moves or stays idle
 			}
 		}
 	default:
+		// No state change needed
 	}
 
-	// fmt.Println("\nNew state:")
-	// elevator.PrintElevator(elev)
+	return newState, resetDoorOpenTimer, stopDoorStuckTimer, resetDoorStuckTimer
 }
+
+// func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
+// 	switch elev.Behavior {
+// 	case elevator.DoorOpen:
+// 		if elev.IsObstructed {
+// 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+// 		} else {
+// 			// stop the doorStuckTimer!
+// 			doorStuckTimer.Stop()
+// 			elevator.SetDoorOpenLamp(false)
+
+// 			pair := elevator.RequestsChooseDirection(elev)
+// 			elev.Dir = pair.Dir
+// 			elev.Behavior = pair.Behavior
+
+// 			// if pair.Behavior == elevator.Moving {
+// 			// 	elevator.SetMotorDirection(elev.Dir)
+// 			// }
+
+// 			switch elev.Behavior {
+// 			case elevator.DoorOpen:
+// 				doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+// 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
+
+// 				updatedElev, _ := elevator.RequestsClearAtCurrentFloor(elev)
+// 				elev = updatedElev
+
+// 				elevator.SetAllLights(&elev)
+// 			case elevator.Moving, elevator.Idle:
+// 				elevator.SetDoorOpenLamp(false)
+// 				elevator.SetMotorDirection(elev.Dir)
+// 			}
+// 		}
+// 	default:
+// 	}
+// }

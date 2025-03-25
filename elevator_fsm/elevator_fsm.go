@@ -16,8 +16,8 @@ func GetElevator() elevator.Elevator {
 func InitFSM() {
 	elev = elevator.NewElevator()
 
-	for floor := 0; floor < config.NUM_FLOORS; floor++ {
-		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
+	for floor := range config.NUM_FLOORS {
+		for btn := range config.NUM_BUTTONS {
 			elevator.SetButtonLamp(elevator.ButtonType(btn), floor, false)
 		}
 	}
@@ -30,7 +30,7 @@ func OnInitBetweenFloors() {
 	elev.Behavior = elevator.Moving
 }
 
-func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer){
+func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {
 	fmt.Printf("new local elevator assignment: %d, %s)\n", btnFloor, btnType.String())
 
 	// Compute new elevator state
@@ -95,7 +95,7 @@ func SetObstruction(isObstructed bool) {
 	elev.IsObstructed = isObstructed
 }
 
-func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer){
+func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer) {
 
 	// rememmber and return the events cleared if the elevator stopped
 	elev.Floor = newFloor
@@ -126,8 +126,6 @@ func SetHallLights(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) 
 }
 
 func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
-	// fmt.Printf("\n\n%s()\n", "OnDoorTimeout")
-	// elevator.PrintElevator(elev)
 
 	switch elev.Behavior {
 	case elevator.DoorOpen:

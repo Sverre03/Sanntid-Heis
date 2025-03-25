@@ -11,7 +11,7 @@ import (
 )
 
 func SlaveProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %d is now a Slave\n", node.ID)
+	fmt.Printf("Node %d is now Slave\n", node.ID)
 
 	lastHallAssignmentMessageID := uint64(0)
 
@@ -52,7 +52,7 @@ ForLoop:
 						Button: elevMsg.ButtonEvent.Button,
 					},
 				}
-				fmt.Printf("sent hall request from node %v\n", debug)
+				fmt.Printf("Node %d received hall button event: %v\n", node.ID, debug.HallReq)
 
 			}
 

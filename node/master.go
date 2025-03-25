@@ -12,11 +12,15 @@ import (
 )
 
 func MasterProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %d is now a Master\n", node.ID)
+	fmt.Printf("Node %d is now Master\n", node.ID)
+
+	activeConnReq := make(map[int]messages.ConnectionReq)
+	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][2]bool)
+	var nextNodeState nodestate
 
 	// Check if we should distribute hall requests
-	for floor := 0; floor < config.NUM_FLOORS; floor++ {
-		for btn := 0; btn < 2; btn++ {
+	for floor := range config.NUM_FLOORS {
+		for btn := range 2 {
 			if node.GlobalHallRequests[floor][btn] {
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 				node.commandToServerTx <- "getActiveElevStates"
@@ -25,10 +29,6 @@ func MasterProgram(node *NodeData) nodestate {
 		}
 
 	}
-
-	activeConnReq := make(map[int]messages.ConnectionReq)
-	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][2]bool)
-	var nextNodeState nodestate
 
 	// inform the global hall request transmitter of the new global hall requests
 	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
@@ -94,7 +94,7 @@ ForLoop:
 			switch elevStatesUpdate.DataType {
 
 			case messagehandler.ActiveElevStates:
-				fmt.Printf("Computing assignments\n")
+				fmt.Printf("Computing assignments:\n")
 				if len(elevStatesUpdate.NodeElevStatesMap) == 0 {
 					break Select
 				}
@@ -108,7 +108,11 @@ ForLoop:
 					node.HallAssignmentTx <- hallAssignment
 				}
 				currentNodeHallAssignments = computationResult.NodeHallAssignments
-				fmt.Printf("Current node hall assignments: %v\n", currentNodeHallAssignments)
+				// Printing out each node's hall assignments
+				for id, hallAssignments := range currentNodeHallAssignments {
+					fmt.Printf("Node %d hall assignments: %v\n", id, hallAssignments)
+				}
+				fmt.Println("")
 
 			case messagehandler.AllElevStates:
 				infoToNodes := processConnectionRequestsFromOtherNodes(elevStatesUpdate, activeConnReq)
@@ -116,13 +120,16 @@ ForLoop:
 					node.CabRequestInfoTx <- info
 				}
 			case messagehandler.HallAssignmentRemoved:
+				fmt.Println("Hall assignment removed")
+				fmt.Printf("Updated elevator states: %v\n", elevStatesUpdate.NodeElevStatesMap)
 				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap)
+				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
 
 		case networkEvent := <-node.NetworkEventRx:
-			fmt.Println("Network event received")
+			// fmt.Println("Network event received")
 
 			if networkEvent == messagehandler.NodeHasLostConnection {
 				fmt.Println("Connection timed out")
@@ -159,23 +166,30 @@ type connectionRequestHandler struct {
 	CabRequests map[int]messages.CabRequestInfo
 }
 
-func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FLOORS][2]bool, recentNodeElevStates map[int]elevator.ElevatorState) [config.NUM_FLOORS][2]bool {
-	// get the actual hall assignments
-	activeNodeHallAssignments := make(map[int][config.NUM_FLOORS][2]bool)
-	for id, elevState := range recentNodeElevStates {
-		activeNodeHallAssignments[id] = elevState.MyHallAssignments
-	}
+func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FLOORS][2]bool,
+	recentNodeElevStates map[int]elevator.ElevatorState) [config.NUM_FLOORS][2]bool {
+
 	var globalHallRequests [config.NUM_FLOORS][2]bool
+
+	for floor := range config.NUM_FLOORS {
+		for btn := range 2 {
+			globalHallRequests[floor][btn] = false
+		}
+	}
+
+	// If the hall assignment which was assigned to a node is still active for that node, we add it to the global hall requests
 	for id, hallAssignments := range assignedNodeHallAssignments {
-		for floor := 0; floor < config.NUM_FLOORS; floor++ {
-			for btn := 0; btn < 2; btn++ {
-				if hallAssignments[floor][btn] && activeNodeHallAssignments[id][floor][btn] {
-					globalHallRequests[floor][btn] = true
+		if nodeElevState, ok := recentNodeElevStates[id]; ok {
+			for floor := range config.NUM_FLOORS {
+				for btn := range 2 {
+					if hallAssignments[floor][btn] && nodeElevState.MyHallAssignments[floor][btn] {
+						globalHallRequests[floor][btn] = true
+					}
 				}
 			}
 		}
 	}
-	fmt.Println("updated the new hall requests to be: ", globalHallRequests)
+
 	return globalHallRequests
 }
 

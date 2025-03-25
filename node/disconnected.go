@@ -14,6 +14,8 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 
 	connectionReqMsgID, _ := messagehandler.GenerateMessageID(messagehandler.CONNECTION_REQ)
+	globalHallRequestReceived := false
+	fmt.Printf("%t", globalHallRequestReceived)
 
 	myConnReq := messages.ConnectionReq{
 		TOLC:      node.TOLC,
@@ -53,7 +55,7 @@ ForLoop:
 					break ForLoop
 				}
 			} else {
-				fmt.Printf("No contact made so far \n")
+				fmt.Printf("No contact made so far\n")
 			}
 			decisionTimer.Reset(config.DISCONNECTED_DECISION_INTERVAL)
 
@@ -71,7 +73,7 @@ ForLoop:
 			}
 
 		case info := <-node.CabRequestInfoRx: // Check if the master has any info about us
-			fmt.Println("I found a master, time to be a slave")
+			fmt.Println("Master found -> go to Slave")
 			if node.ID == info.ReceiverNodeID && node.TOLC.IsZero() {
 				// we have received info about us from the master, so we can become a slave
 				node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(info.CabRequest)
@@ -81,9 +83,12 @@ ForLoop:
 		case <-node.HallAssignmentsRx:
 		case <-node.NodeElevStateUpdate:
 		case <-node.NetworkEventRx:
-		case <-node.GlobalHallRequestRx:
+		case globalHallRequest := <-node.GlobalHallRequestRx:
+			// Update the global hall requests if received from existing master
+			node.GlobalHallRequests = globalHallRequest.HallRequests
+			globalHallRequestReceived = true
+			// fmt.Printf("Disconnected state: received global hall requests: %v\n", node.GlobalHallRequests)
 		case <-node.MyElevStatesRx:
-			// fmt.Printf("Recieved state %v\n", state.MyHallAssignments)
 		case <-node.NewHallReqRx:
 
 		}

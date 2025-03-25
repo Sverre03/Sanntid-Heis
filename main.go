@@ -16,6 +16,7 @@ func main() {
 
 	mainNode := node.MakeNode(id, elevPort, bcastPort, receiverPort)
 	mainNode.State = node.Inactive
+	
 	for {
 		switch mainNode.State {
 

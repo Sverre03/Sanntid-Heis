@@ -127,6 +127,14 @@ func NodeElevStateServer(myID int,
 			lastSeen[id] = time.Now()
 
 			if isHallAssignmentRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
+                // Update the known nodes with the new state
+				knownNodes[id] = elevState.ElevState
+
+				// Find the active nodes and send the hall assignment removed message
+				lastActiveNodes = findActiveNodes(knownNodes, lastSeen)
+				
+				fmt.Printf(("Hall assignment removed by node %d\n"), id)
+
 				elevStateUpdateTx <- makeHallAssignmentRemovedMessage(lastActiveNodes)
 			}
 
@@ -136,7 +144,7 @@ func NodeElevStateServer(myID int,
 
 			switch command {
 			case "getActiveElevStates":
-				fmt.Printf("the map of active nodes is %v\n", lastActiveNodes)
+				// fmt.Printf("the map of active nodes is %v\n", lastActiveNodes)
 				elevStateUpdateTx <- makeActiveElevStatesUpdateMessage(lastActiveNodes)
 
 			case "getAllElevStates":
@@ -153,7 +161,12 @@ func NodeElevStateServer(myID int,
 }
 
 func makeHallAssignmentRemovedMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
-	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: HallAssignmentRemoved}
+    // Create a deep copy of the elevator states to ensure we're passing current state
+    elevStatesCopy := make(map[int]elevator.ElevatorState)
+    for id, state := range elevStates {
+        elevStatesCopy[id] = state
+    }
+    return ElevStateUpdate{NodeElevStatesMap: elevStatesCopy, DataType: HallAssignmentRemoved}
 }
 
 func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
@@ -179,6 +192,7 @@ func isHallAssignmentRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 		for button := range 2 {
 			// Check if change is from (true -> false), assignment complete
 			if oldGlobalHallRequests[floor][button] && !newGlobalHallReq[floor][button] {
+				fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, button)
 				return true
 			}
 		}

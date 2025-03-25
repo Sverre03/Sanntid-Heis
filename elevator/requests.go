@@ -14,7 +14,7 @@ func RequestsAbove(e Elevator) bool {
 		return false
 	}
 	for floor := e.Floor + 1; floor < config.NUM_FLOORS; floor++ {
-		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
+		for btn := range config.NUM_BUTTONS {
 			if e.Requests[floor][btn] {
 				return true
 			}
@@ -27,8 +27,8 @@ func RequestsBelow(e Elevator) bool {
 	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
 		return false
 	}
-	for floor := 0; floor < e.Floor; floor++ {
-		for btn := 0; btn < config.NUM_BUTTONS; btn++ {
+	for floor := range e.Floor {
+		for btn := range config.NUM_BUTTONS {
 			if e.Requests[floor][btn] {
 				return true
 			}
@@ -41,7 +41,7 @@ func RequestsHere(e Elevator) bool {
 	if e.Floor < 0 || e.Floor >= config.NUM_FLOORS {
 		return false
 	}
-	for btn := 0; btn < config.NUM_BUTTONS; btn++ {
+	for btn := range config.NUM_BUTTONS {
 		if e.Requests[e.Floor][btn] {
 			return true
 		}

@@ -4,7 +4,6 @@ import (
 	"elev/config"
 	"elev/elevator"
 	"elev/elevator_fsm"
-	"fmt"
 	"time"
 )
 
@@ -65,7 +64,7 @@ func ElevatorProgram(
 	doorStuckTimer.Stop()
 
 	// Start hardware monitoring routines
-	fmt.Println("Starting polling routines")
+	// fmt.Println("Starting polling routines")
 	go elevator.PollButtons(buttonEventRx)
 	go elevator.PollFloorSensor(floorEventRx)
 	go elevator.PollObstructionSwitch(obstructionEventRx)
@@ -91,7 +90,7 @@ func ElevatorProgram(
 							elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
 							// fmt.Printf("Hall assignments: %v\n", elevator_fsm.GetElevator().Requests)
 						} else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] { // If hall assignment is removed and redistributed
-							//elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
+							// elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
 							//fmt.Printf("Hall assignments: %v\n", elevator_fsm.GetElevator().Requests)
 
 						}
@@ -108,7 +107,7 @@ func ElevatorProgram(
 			case LightUpdate:
 				elevator_fsm.SetHallLights(msg.LightStates)
 			}
-			elevator.PrintElevator(elevator_fsm.GetElevator())
+			// elevator.PrintElevator(elevator_fsm.GetElevator())
 
 		case floor := <-floorEventRx:
 			elevator_fsm.OnFloorArrival(floor, doorOpenTimer)
@@ -136,7 +135,7 @@ func ElevatorProgram(
 					localHallAssignments[floor][button] = elev.Requests[floor][button]
 				}
 			}
-			elevator.PrintElevator(elevator_fsm.GetElevator())
+			// elevator.PrintElevator(elevator_fsm.GetElevator())
 			elevatorStatesTx <- elevator.ElevatorState{
 				Behavior:          elev.Behavior,
 				Floor:             elev.Floor,

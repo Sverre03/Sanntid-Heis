@@ -23,11 +23,10 @@ func MasterProgram(node *NodeData) nodestate {
 		for btn := range 2 {
 			if node.GlobalHallRequests[floor][btn] {
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
-				node.commandToServerTx <- "getActiveElevStates"
+				sendCommandToServer("getActiveElevStates", node)
 				break
 			}
 		}
-
 	}
 
 	// inform the global hall request transmitter of the new global hall requests
@@ -38,7 +37,7 @@ func MasterProgram(node *NodeData) nodestate {
 	// start the transmitters
 	node.GlobalHallReqTransmitEnableTx <- true
 	node.HallRequestAssignerTransmitEnableTx <- true
-	node.commandToServerTx <- "startConnectionTimeoutDetection"
+	sendCommandToServer("startConnectionTimeoutDetection", node)
 
 ForLoop:
 	for {
@@ -67,15 +66,9 @@ ForLoop:
 				}
 				node.GlobalHallRequests = ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
-				node.commandToServerTx <- "getActiveElevStates"
+				sendCommandToServer("getActiveElevStates", node)
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 			}
-
-		case newHallReq := <-node.NewHallReqRx:
-			node.GlobalHallRequests = ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
-			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
-			node.commandToServerTx <- "getActiveElevStates"
-			fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
 		case myElevStates := <-node.MyElevStatesRx:
 			// Transmit elevator states to network
@@ -84,10 +77,29 @@ ForLoop:
 				ElevState: myElevStates,
 			}
 
+		case networkEvent := <-node.NetworkEventRx:
+			// fmt.Println("Network event received")
+
+			if networkEvent == messagehandler.NodeHasLostConnection {
+				fmt.Println("Connection timed out")
+				nextNodeState = Disconnected
+				break ForLoop
+
+			} else if networkEvent == messagehandler.NodeConnectDisconnect {
+				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
+				sendCommandToServer("getActiveElevStates", node)
+			}
+
+		case newHallReq := <-node.NewHallReqRx:
+			node.GlobalHallRequests = ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
+			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+			sendCommandToServer("getActiveElevStates", node)
+			fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
+
 		case connReq := <-node.ConnectionReqRx:
 
 			activeConnReq[connReq.NodeID] = connReq
-			node.commandToServerTx <- "getAllElevStates"
+			sendCommandToServer("getAllElevStates", node)
 
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
 
@@ -128,18 +140,6 @@ ForLoop:
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
 
-		case networkEvent := <-node.NetworkEventRx:
-			// fmt.Println("Network event received")
-
-			if networkEvent == messagehandler.NodeHasLostConnection {
-				fmt.Println("Connection timed out")
-				nextNodeState = Disconnected
-				break ForLoop
-
-			} else if networkEvent == messagehandler.NodeConnectDisconnect {
-				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
-				node.commandToServerTx <- "getActiveElevStates"
-			}
 		case <-node.HallAssignmentsRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
@@ -149,10 +149,21 @@ ForLoop:
 
 	// stop transmitters
 	node.GlobalHallReqTransmitEnableTx <- false
-	node.commandToServerTx <- "stopConnectionTimeoutDetection"
+	sendCommandToServer("stopConnectionTimeoutDetection", node)
 	node.TOLC = time.Now()
 	fmt.Printf("Exiting master, setting TOLC to %v\n", node.TOLC)
 	return nextNodeState
+
+}
+
+func sendCommandToServer(command string, node *NodeData) {
+	select {
+	case node.commandToServerTx <- command:
+		// Command sent successfully
+	default:
+		// Command not sent, channel is full
+		fmt.Printf("Warning: Command channel is full, command %s not sent\n", command)
+	}
 }
 
 // HallAssignmentResult is a struct that holds the result of the hall assignment computation

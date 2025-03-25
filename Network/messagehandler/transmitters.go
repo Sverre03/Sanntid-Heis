@@ -93,57 +93,57 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 	}
 }
 
-// transmits hall assignments complete
-func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.HallAssignmentComplete,
-	OutgoingHallAssignmentComplete <-chan messages.HallAssignmentComplete,
-	HallAssignmentCompleteAckRx <-chan messages.Ack,
-	HallAssignmentCompleteEnableCh <-chan bool) {
+// // transmits hall assignments complete
+// func HallAssignmentCompleteTransmitter(HallAssignmentCompleteTx chan<- messages.HallAssignmentComplete,
+// 	OutgoingHallAssignmentComplete <-chan messages.HallAssignmentComplete,
+// 	HallAssignmentCompleteAckRx <-chan messages.Ack,
+// 	HallAssignmentCompleteEnableCh <-chan bool) {
 
-	enable := false
+// 	enable := false
 
-	timeoutChannel := make(chan uint64, 2)
-	completedActiveAssignments := make(map[uint64]messages.HallAssignmentComplete) //mapping message id to hall assignment complete message
+// 	timeoutChannel := make(chan uint64, 2)
+// 	completedActiveAssignments := make(map[uint64]messages.HallAssignmentComplete) //mapping message id to hall assignment complete message
 
-	for {
+// 	for {
 
-		select {
-		case enable = <-HallAssignmentCompleteEnableCh:
-			if !enable {
-				// fmt.Println("deleting all pending messages")
-				for k := range completedActiveAssignments {
-					delete(completedActiveAssignments, k)
-				}
-			}
-		case newComplete := <-OutgoingHallAssignmentComplete:
-			new_msg_id, err := GenerateMessageID(HALL_ASSIGNMENT_COMPLETE)
-			if err != nil {
-				fmt.Println("Fatal error, invalid message type used to generate message id in hall assignment complete")
-			}
-			newComplete.MessageID = new_msg_id
-			completedActiveAssignments[new_msg_id] = newComplete
-			HallAssignmentCompleteTx <- newComplete
+// 		select {
+// 		case enable = <-HallAssignmentCompleteEnableCh:
+// 			if !enable {
+// 				// fmt.Println("deleting all pending messages")
+// 				for k := range completedActiveAssignments {
+// 					delete(completedActiveAssignments, k)
+// 				}
+// 			}
+// 		case newComplete := <-OutgoingHallAssignmentComplete:
+// 			new_msg_id, err := GenerateMessageID(HALL_ASSIGNMENT_COMPLETE)
+// 			if err != nil {
+// 				fmt.Println("Fatal error, invalid message type used to generate message id in hall assignment complete")
+// 			}
+// 			newComplete.MessageID = new_msg_id
+// 			completedActiveAssignments[new_msg_id] = newComplete
+// 			HallAssignmentCompleteTx <- newComplete
 
-			time.AfterFunc(500*time.Millisecond, func() {
-				timeoutChannel <- newComplete.MessageID
-			})
-		case receivedAck := <-HallAssignmentCompleteAckRx:
-			fmt.Printf("Hall assignment complete transmitter received ack for message id %d\n", receivedAck.MessageID)
-			fmt.Printf("Deleting assignment with message id %d \n", receivedAck.MessageID)
-			delete(completedActiveAssignments, receivedAck.MessageID)
-		case timedOutMsgID := <-timeoutChannel:
+// 			time.AfterFunc(500*time.Millisecond, func() {
+// 				timeoutChannel <- newComplete.MessageID
+// 			})
+// 		case receivedAck := <-HallAssignmentCompleteAckRx:
+// 			fmt.Printf("Hall assignment complete transmitter received ack for message id %d\n", receivedAck.MessageID)
+// 			fmt.Printf("Deleting assignment with message id %d \n", receivedAck.MessageID)
+// 			delete(completedActiveAssignments, receivedAck.MessageID)
+// 		case timedOutMsgID := <-timeoutChannel:
 
-			for msgID, msg := range completedActiveAssignments {
-				if msgID == timedOutMsgID {
+// 			for msgID, msg := range completedActiveAssignments {
+// 				if msgID == timedOutMsgID {
 
-					// fmt.Printf("resending message id %d \n", timedOutMsgID)
-					HallAssignmentCompleteTx <- msg
-					time.AfterFunc(500*time.Millisecond, func() {
-						timeoutChannel <- msg.MessageID
-					})
-					break
-				}
-			}
+// 					// fmt.Printf("resending message id %d \n", timedOutMsgID)
+// 					HallAssignmentCompleteTx <- msg
+// 					time.AfterFunc(500*time.Millisecond, func() {
+// 						timeoutChannel <- msg.MessageID
+// 					})
+// 					break
+// 				}
+// 			}
 
-		}
-	}
-}
+// 		}
+// 	}
+// }

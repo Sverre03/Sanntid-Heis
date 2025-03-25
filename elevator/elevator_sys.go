@@ -27,6 +27,7 @@ type ElevatorState struct {
 	Direction   MotorDirection
 	Behavior    ElevatorBehavior
 	CabRequests [config.NUM_FLOORS]bool
+	LocalHallRequests [config.NUM_FLOORS][2]bool
 }
 
 // String returns a string representation of the ElevatorBehavior

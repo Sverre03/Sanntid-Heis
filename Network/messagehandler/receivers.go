@@ -63,10 +63,7 @@ func IncomingAckDistributor(ackRx <-chan messages.Ack,
 		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(CONNECTION_REQ)+1) {
 			connectionReqAck <- ackMsg
 
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(HALL_ASSIGNMENT_COMPLETE)+1) {
-			fmt.Printf("Hall assignment complete ack received\n")
-			HallAssignmentCompleteAck <- ackMsg
-		}
+		} 
 	}
 }
 
@@ -120,9 +117,10 @@ func NodeElevStateServer(myID int,
 					connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				}
 
-				knownNodes[id] = elevState.ElevState
 				lastSeen[id] = time.Now()
 			}
+			knownNodes[id] = elevState.ElevState
+
 
 		case command := <-commandRx:
 

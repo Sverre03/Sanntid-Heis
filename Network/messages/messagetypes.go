@@ -51,16 +51,3 @@ type NewHallAssignments struct {
 	HallAssignment [config.NUM_FLOORS][2]bool
 	MessageID      uint64
 }
-
-// When a slave gets a new hall button request, it broadcasts it to master in the form of a new hall request
-type NewHallRequest struct {
-	Floor      int
-	HallButton elevator.ButtonType
-}
-
-// When a slave finishes an assigned hall order, it sends this message
-type HallAssignmentComplete struct {
-	Floor      int
-	HallButton elevator.ButtonType
-	MessageID  uint64
-}

@@ -56,9 +56,17 @@ func ElevatorProgram(
 	floorEventRx := make(chan int)
 	obstructionEventRx := make(chan bool)
 
+	//Local hall requests elevator
+	//Make default value false
+	var localHallRequests [config.NUM_FLOORS][2]bool
+	for i := 0; i < config.NUM_FLOORS; i++ {
+		for j := 0; j < 2; j++ {
+			localHallRequests[i][j] = false
+		}
+	}
+
 	// Timers
 	doorStuckTimerActive := false
-
 	doorOpenTimer := time.NewTimer(config.DOOR_OPEN_DURATION)   // 3-second timer to detect door timeout
 	doorStuckTimer := time.NewTimer(config.DOOR_STUCK_DURATION) // 30-second timer to detect stuck doors
 	doorOpenTimer.Stop()
@@ -70,8 +78,6 @@ func ElevatorProgram(
 	go elevator.PollFloorSensor(floorEventRx)
 	go elevator.PollObstructionSwitch(obstructionEventRx)
 
-	// Transmits the elevator state to the node periodically
-	go transmitElevatorState(elevatorStatesTx)
 
 	// Check if door is stuck
 	elevatorEventTx <- makeDoorStuckMessage(false)
@@ -82,7 +88,7 @@ func ElevatorProgram(
 			if button.Button == elevator.ButtonCab { // Handle cab calls internally
 				elevator_fsm.OnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
 			} else {
-				elevatorEventTx <- makeHallButtonEventMessage(button)
+				localHallRequests[button.Floor][button.Button] = true
 			}
 
 		case msg := <-elevLightAndAssignmentUpdateRx:
@@ -138,29 +144,26 @@ func ElevatorProgram(
 
 		case <-doorStuckTimer.C:
 			elevatorEventTx <- makeDoorStuckMessage(true)
+		
+		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
+			
+			elev := elevator_fsm.GetElevator()
+
+			elevatorStatesTx <- elevator.ElevatorState{
+				Behavior:    elev.Behavior,
+				Floor:       elev.Floor,
+				Direction:   elev.Dir,
+				CabRequests: elevator.GetCabRequestsAsElevState(elev),
+				LocalHallRequests: localHallRequests,
+			}
 		}
 	}
 }
 
-func transmitElevatorState(elevatorToNode chan<- elevator.ElevatorState) {
-
-	for range time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL) {
-		// call getelevator
-		elev := elevator_fsm.GetElevator()
-
-		elevatorToNode <- elevator.ElevatorState{
-			Behavior:    elev.Behavior,
-			Floor:       elev.Floor,
-			Direction:   elev.Dir,
-			CabRequests: elevator.GetCabRequestsAsElevState(elev),
-		}
-	}
-}
-
-func makeHallButtonEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
-	return ElevatorEvent{EventType: HallButtonEvent,
-		ButtonEvent: buttonEvent, DoorIsStuck: false}
-}
+// func makeHallButtonEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
+// 	return ElevatorEvent{EventType: HallButtonEvent,
+// 		ButtonEvent: buttonEvent, DoorIsStuck: false}
+// }
 
 func makeHallAssignmentCompleteEventMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 	return ElevatorEvent{EventType: LocalHallAssignmentCompleteEvent,

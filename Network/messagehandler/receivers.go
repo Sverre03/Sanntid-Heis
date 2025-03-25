@@ -77,20 +77,20 @@ func NodeElevStateServer(myID int,
 	elevStatesRx <-chan messages.NodeElevState,
 	networkEventTx chan<- NetworkEvent,
 ) {
-	// go routine is structured around its data. It is responsible for collecting it and remembering  it
 
 	nodeIsConnected := false
 	connectionTimeoutTimer := time.NewTicker(config.NODE_CONNECTION_TIMEOUT)
 	connectionTimeoutTimer.Stop()
 	peerTimeoutTicker := time.NewTimer(config.PEER_POLL_INTERVAL)
-
 	peerTimeoutTicker.Stop()
+
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]elevator.ElevatorState)
 
 	lastActiveNodes := make(map[int]elevator.ElevatorState)
 	for {
 		select {
+
 		case <-peerTimeoutTicker.C:
 			activeNodes := findActiveNodes(knownNodes, lastSeen)
 
@@ -112,6 +112,7 @@ func NodeElevStateServer(myID int,
 
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
+
 			if id != myID { // Check if we received our own message
 				if nodeIsConnected {
 					connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
@@ -119,6 +120,11 @@ func NodeElevStateServer(myID int,
 
 				lastSeen[id] = time.Now()
 			}
+
+			if hallAssignmentRemoved(knownNodes[id].LocalHallRequests, elevState.ElevState.LocalHallRequests) {
+				// notify node
+			}
+
 			knownNodes[id] = elevState.ElevState
 
 		case command := <-commandRx:
@@ -157,4 +163,17 @@ func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int
 		}
 	}
 	return activeNodes
+}
+
+func hallAssignmentRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
+	newGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
+	for floor := range config.NUM_FLOORS {
+		for button := range 2 {
+			// Check if change is from (true -> false), assignment complete
+			if oldGlobalHallRequests[floor][button] && !newGlobalHallReq[floor][button] {
+				return true
+			}
+		}
+	}
+	return false
 }

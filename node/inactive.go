@@ -13,7 +13,7 @@ ForLoop:
 
 		case elevMsg := <-node.ElevatorEventRx:
 			// check whether the door is not stuck
-			if !isDoorStuck(elevMsg) {
+			if !doorIsStuck(elevMsg) {
 				nextNodeState = Disconnected
 				break ForLoop
 			}

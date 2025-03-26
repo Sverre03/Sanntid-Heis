@@ -39,7 +39,7 @@ ForLoop:
 			}
 
 		case <-decisionTimer.C:
-			if !isMapEmtpy(incomingConnRequests) {
+			if !mapIsEmpty(incomingConnRequests) {
 				if ShouldBeMaster(node.ID, node.TOLC, incomingConnRequests) {
 					nextNodeState = Master
 					break ForLoop
@@ -50,7 +50,7 @@ ForLoop:
 			decisionTimer.Reset(config.DISCONNECTED_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:
-			if isDoorStuck(elevMsg) {
+			if doorIsStuck(elevMsg) {
 				nextNodeState = Inactive
 				break ForLoop
 			}
@@ -102,11 +102,11 @@ func makeCabOrderMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.Lig
 	}
 }
 
-func isMapEmtpy(m map[int]messages.ConnectionReq) bool {
+func mapIsEmpty(m map[int]messages.ConnectionReq) bool {
 	return len(m) == 0
 }	
 
-func isDoorStuck(elevMsg singleelevator.ElevatorEvent) bool {
+func doorIsStuck(elevMsg singleelevator.ElevatorEvent) bool {
 	return elevMsg.DoorIsStuck && elevMsg.EventType == singleelevator.DoorStuckEvent
 }
 

@@ -107,7 +107,7 @@ func isMapEmtpy(m map[int]messages.ConnectionReq) bool {
 }	
 
 func isDoorStuck(elevMsg singleelevator.ElevatorEvent) bool {
-	return elevMsg.DoorIsStuck
+	return elevMsg.DoorIsStuck && elevMsg.EventType == singleelevator.DoorStuckEvent
 }
 
 func cabRequestInfoForMe(cabRequestInfo messages.CabRequestInfo, node *NodeData) bool {

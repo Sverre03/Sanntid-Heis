@@ -75,19 +75,24 @@ func ElevatorProgram(
 			switch msg.OrderType {
 			case HallOrder:
 				elevator_fsm.SetHallLights(msg.LightStates)
-				elevator_fsm.UpdateHallAssignments(msg.HallAssignments, doorOpenTimer)
-				// for floor := range config.NUM_FLOORS {
-				// 	for hallButton := range 2 {
-				// if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
-				// 	elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
-				// } else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] { // If hall assignment is removed and redistributed
-				// 	// elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
-				// 	elevator_fsm.RemoveHallAssignment(floor, elevator.ButtonType(hallButton))
-				// }
 
-				// }
-				// }
-				// elevator_fsm.SetHallLights(msg.LightStates)
+				shouldStop := elevator_fsm.ClearHallAssignments(msg.HallAssignments)
+
+				if shouldStop {
+					// stop the elevator
+				}
+
+				for floor := range config.NUM_FLOORS {
+					for btn := range 2 {
+						btnType := elevator.ButtonType(btn)
+						if msg.HallAssignments[floor][btn] {
+							elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
+							fmt.Printf("Hall assignment added at floor %d, button %d\n", floor, btn)
+							// If the elevator is idle and the button is pressed in the same floor, the door should remain open
+						}
+					}
+				}
+
 				fmt.Printf("Hall assignments received: %v\n", msg.HallAssignments)
 				var localHallAssignments [config.NUM_FLOORS][2]bool
 				for floor := range config.NUM_FLOORS {
@@ -110,6 +115,7 @@ func ElevatorProgram(
 			case LightUpdate:
 				elevator_fsm.SetHallLights(msg.LightStates)
 				fmt.Printf("Light states            : %v\n", msg.LightStates)
+				fmt.Printf("My elevator hall lights: %v\n\n", elevator_fsm.GetElevator().HallLightStates)
 			}
 
 		case floor := <-floorEventRx:

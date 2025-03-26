@@ -150,7 +150,7 @@ ForLoop:
 				}
 			case messagehandler.HallAssignmentRemoved:
 				fmt.Println("Hall assignment removed")
-				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, hallAssignmentCounter)
+				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}

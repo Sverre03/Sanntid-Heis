@@ -23,7 +23,7 @@ const (
 	LightUpdate
 )
 
-// ElevatorEventMsg encapsulates all messages sent from elevator to node
+// ElevatorEvent encapsulates all messages sent from elevator to node
 type ElevatorEvent struct {
 	EventType    ElevatorEventType
 	ButtonEvent  elevator.ButtonEvent // For hall button events and completed hall assignments
@@ -31,7 +31,6 @@ type ElevatorEvent struct {
 	SourceNodeID int
 }
 
-// NodeToElevatorMsg encapsulates all messages sent from node to elevator
 type LightAndAssignmentUpdate struct {
 	OrderType       ElevatorOrderType
 	HallAssignments [config.NUM_FLOORS][2]bool // For assigning hall calls to the elevator
@@ -39,9 +38,6 @@ type LightAndAssignmentUpdate struct {
 	LightStates     [config.NUM_FLOORS][2]bool // The new state of the lights
 }
 
-// ElevatorProgram operates a single elevator
-// It manages the elevator state machine, hardware events,
-// and communicates with the node.
 func ElevatorProgram(
 	portNum string,
 	elevatorEventTx chan<- ElevatorEvent,
@@ -49,16 +45,13 @@ func ElevatorProgram(
 	elevatorStatesTx chan<- elevator.ElevatorState,
 	nodeID int) {
 
-	elevator.Init(portNum, config.NUM_FLOORS) // "localhost:15657"
+	elevator.Init(portNum, config.NUM_FLOORS)
 	elevator_fsm.InitFSM()
 
-	// Channels for events
 	buttonEventRx := make(chan elevator.ButtonEvent)
 	floorEventRx := make(chan int)
 	obstructionEventRx := make(chan bool)
-	//Local hall requests elevator
 
-	// Timers
 	doorOpenTimer := time.NewTimer(config.DOOR_OPEN_DURATION)   // 3-second timer to detect door timeout
 	doorStuckTimer := time.NewTimer(config.DOOR_STUCK_DURATION) // 30-second timer to detect stuck doors
 	doorOpenTimer.Stop()
@@ -69,13 +62,12 @@ func ElevatorProgram(
 	go elevator.PollFloorSensor(floorEventRx)
 	go elevator.PollObstructionSwitch(obstructionEventRx)
 
-	// Check if door is stuck
 	elevatorEventTx <- makeDoorStuckMessage(false, nodeID)
 
 	for {
 		select {
 		case button := <-buttonEventRx:
-			if button.Button == elevator.ButtonCab { // Handle cab calls internally
+			if button.Button == elevator.ButtonCab { // Handle cab calls locally
 				elevator_fsm.OnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
 			} else {
 				elevatorEventTx <- makeHallReqMessage(button, nodeID)
@@ -84,17 +76,31 @@ func ElevatorProgram(
 		case msg := <-elevLightAndAssignmentUpdateRx:
 			switch msg.OrderType {
 			case HallOrder:
+				elevator_fsm.UpdateHallAssignments(msg.HallAssignments)
+				// for floor := range config.NUM_FLOORS {
+				// 	for hallButton := range 2 {
+						// if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
+						// 	elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
+						// } else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] { // If hall assignment is removed and redistributed
+						// 	// elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
+						// 	elevator_fsm.RemoveHallAssignment(floor, elevator.ButtonType(hallButton))
+						// }
+
+					// }
+				// }
+				// elevator_fsm.SetHallLights(msg.LightStates)
+				fmt.Printf("Hall assignments received: %v\n", msg.HallAssignments)
+				var localHallAssignments [config.NUM_FLOORS][2]bool
 				for floor := range config.NUM_FLOORS {
 					for hallButton := range 2 {
-						if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
-							elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
-						} else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] { // If hall assignment is removed and redistributed
-							// elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
+						if elevator_fsm.GetElevator().Requests[floor][hallButton] {
+							localHallAssignments[floor][hallButton] = true
 						}
-
 					}
 				}
-				elevator_fsm.SetHallLights(msg.LightStates)
+				fmt.Printf("My local hall assignments: %v\n", localHallAssignments)
+				fmt.Printf("Light states: %v\n", msg.LightStates)
+				fmt.Printf("My elevator hall lights: %v\n\n", elevator_fsm.GetElevator().HallLightStates)
 			case CabOrder:
 				for floor := range config.NUM_FLOORS {
 					if msg.CabAssignments[floor] {

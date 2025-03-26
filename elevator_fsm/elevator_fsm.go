@@ -3,7 +3,6 @@ package elevator_fsm
 import (
 	"elev/config"
 	"elev/elevator"
-	"fmt"
 	"time"
 )
 
@@ -30,9 +29,21 @@ func OnInitBetweenFloors() {
 	elev.Behavior = elevator.Moving
 }
 
-func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {
-	fmt.Printf("new local elevator assignment: %d, %s)\n", btnFloor, btnType.String())
+func RemoveHallAssignment(floor int, btnType elevator.ButtonType) {
+	elev.Requests[floor][btnType] = false
+	// elev.HallLightStates[floor][btnType] = false
+	// elevator.SetAllLights(&elev)
+}
 
+func UpdateHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool) {
+	for floor := range config.NUM_FLOORS {
+		for btn := range 2 {
+			elev.Requests[floor][btn] = newHallAssignments[floor][btn]
+		}
+	}
+}
+
+func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {
 	// Compute new elevator state
 	newState, resetDoorTimer := HandleButtonEvent(btnFloor, btnType, doorOpenTimer)
 
@@ -85,26 +96,17 @@ func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer 
 	return newState, resetDoorTimer
 }
 
-func RemoveRequest(floor int, btnType elevator.ButtonType) {
-	elev.Requests[floor][btnType] = false
-	// elevator.SetButtonLamp(btnType, floor, false)
-}
-
 func SetObstruction(isObstructed bool) {
 	elev.IsObstructed = isObstructed
 }
 
 func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer) {
-
-	// rememmber and return the events cleared if the elevator stopped
 	elev.Floor = newFloor
 	elevator.SetFloorIndicator(elev.Floor)
 
 	switch elev.Behavior {
 	case elevator.Moving:
 		if elevator.RequestsShouldStop(elev) {
-			fmt.Printf("Elevator stopped at floor %d\n", elev.Floor)
-			fmt.Printf("Motor direction: %s\n", elev.Dir.String())
 			elevator.SetMotorDirection(elevator.DirectionStop)
 			elevator.SetDoorOpenLamp(true)
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
@@ -129,13 +131,11 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 		if elev.IsObstructed {
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 			if !elev.DoorStuckTimerActive {
-				fmt.Printf("Obstruction detected, starting door stuck timer\n")
 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
 				elev.DoorStuckTimerActive = true
 				elevator.SetStopLamp(true)
 			}
 		} else {
-			// stop the doorStuckTimer!
 			doorStuckTimer.Stop()
 			elevator.SetDoorOpenLamp(false)
 
@@ -143,22 +143,17 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 			elev.Dir = pair.Dir
 			elev.Behavior = pair.Behavior
 
-			// if pair.Behavior == elevator.Moving {
-			// 	elevator.SetMotorDirection(elev.Dir)
-			// }
-			fmt.Printf("Motor direction: %s\n", elev.Dir.String())
-			updatedElev := elevator.RequestsClearAtCurrentFloor(elev)
-			elev = updatedElev
+			elev = elevator.RequestsClearAtCurrentFloor(elev)
 
 			switch elev.Behavior {
 			case elevator.DoorOpen:
 				doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
 
-				updatedElev := elevator.RequestsClearAtCurrentFloor(elev)
-				elev = updatedElev
+				elev = elevator.RequestsClearAtCurrentFloor(elev)
 
 				elevator.SetAllLights(&elev)
+
 			case elevator.Moving, elevator.Idle:
 				elevator.SetDoorOpenLamp(false)
 				elevator.SetMotorDirection(elev.Dir)

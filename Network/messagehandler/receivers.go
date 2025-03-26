@@ -5,7 +5,6 @@ import (
 	"elev/config"
 	"elev/elevator"
 	"errors"
-	"fmt"
 	"math/rand"
 	"time"
 )
@@ -96,9 +95,9 @@ func NodeElevStateServer(myID int,
 		case <-peerTimeoutTicker.C:
 
 			activeNodes := findActiveNodes(knownNodes, lastSeen)
+
 			// if the number of active nodes change, generate an event
 			if len(lastActiveNodes) != len(activeNodes) {
-				fmt.Println("Active nodes changed, notifying node")
 				networkEventTx <- NodeConnectDisconnect
 			}
 			lastActiveNodes = activeNodes
@@ -129,7 +128,7 @@ func NodeElevStateServer(myID int,
 				// Find the active nodes and send the hall assignment removed message
 				lastActiveNodes = findActiveNodes(knownNodes, lastSeen)
 
-				fmt.Printf(("Hall assignment removed by node %d\n"), id)
+				// fmt.Printf(("Hall assignment removed by node %d\n"), id)
 
 				elevStateUpdateTx <- makeHallAssignmentRemovedMessage(lastActiveNodes)
 			}
@@ -140,7 +139,6 @@ func NodeElevStateServer(myID int,
 
 			switch command {
 			case "getActiveElevStates":
-				// fmt.Printf("the map of active nodes is %v\n", lastActiveNodes)
 				elevStateUpdateTx <- makeActiveElevStatesUpdateMessage(lastActiveNodes)
 
 			case "getAllElevStates":
@@ -150,7 +148,6 @@ func NodeElevStateServer(myID int,
 				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				peerTimeoutTicker.Reset(config.PEER_POLL_INTERVAL)
 				nodeIsConnected = true
-				//fmt.Printf("Node %d connection detection routine started\n", myID)
 			}
 		}
 	}
@@ -183,7 +180,7 @@ func isHallAssignmentRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 		for button := range 2 {
 			// Check if change is from (true -> false), assignment complete
 			if oldGlobalHallRequests[floor][button] && !newGlobalHallReq[floor][button] {
-				fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, button)
+				// fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, button)
 				return true
 			}
 		}

@@ -66,14 +66,12 @@ ForLoop:
 				!canAcceptHallAssignments(newHA.HallAssignment, node.GlobalHallRequests) {
 				break Select
 			}
-			fmt.Printf("New hall assignments: %v \n", newHA.HallAssignment)
 
 			// the hall assignments are for me, so I can ack them
 			node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
 
 			// lets check if I have already received this message, if not its update time!
 			if lastHallAssignmentMessageID != newHA.MessageID {
-				fmt.Println("Sending my update to the elev!")
 				node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
 				lastHallAssignmentMessageID = newHA.MessageID
 			}

@@ -85,7 +85,7 @@ ForLoop:
 				break ForLoop
 
 			} else if networkEvent == messagehandler.NodeConnectDisconnect {
-				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
+				// fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
 				sendCommandToServer("getActiveElevStates", node)
 			}
 
@@ -120,10 +120,10 @@ ForLoop:
 				}
 				currentNodeHallAssignments = computationResult.NodeHallAssignments
 				// Printing out each node's hall assignments
-				for id, hallAssignments := range currentNodeHallAssignments {
-					fmt.Printf("Node %d hall assignments: %v\n", id, hallAssignments)
-				}
-				fmt.Println("")
+				// for id, hallAssignments := range currentNodeHallAssignments {
+				// 	fmt.Printf("Node %d hall assignments: %v\n", id, hallAssignments)
+				// }
+				// fmt.Println("")
 
 			case messagehandler.AllElevStates:
 				infoToNodes := processConnectionRequestsFromOtherNodes(elevStatesUpdate, activeConnReq)
@@ -131,10 +131,10 @@ ForLoop:
 					node.CabRequestInfoTx <- info
 				}
 			case messagehandler.HallAssignmentRemoved:
-				fmt.Println("Hall assignment removed")
-				fmt.Printf("Updated elevator states: %v\n", elevStatesUpdate.NodeElevStatesMap)
+				// fmt.Println("Hall assignment removed")
+				// fmt.Printf("Updated elevator states: %v\n", elevStatesUpdate.NodeElevStatesMap)
 				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap)
-				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
+				// fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"maps"
 )
 
 type MessageIDType uint64
@@ -198,8 +199,6 @@ func HallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 
 func makeDeepCopy(elevStateMap map[int]elevator.ElevatorState) map[int]elevator.ElevatorState {
 	newMap := make(map[int]elevator.ElevatorState)
-	for id, elevState := range elevStateMap {
-		newMap[id] = elevState
-	}
+	maps.Copy(newMap, elevStateMap)
 	return newMap
 }

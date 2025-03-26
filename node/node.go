@@ -73,7 +73,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	}
 
 	node.AckTx = make(chan messages.Ack)
-	ackRx := make(chan messages.Ack)
 
 	node.NodeElevStatesTx = make(chan messages.NodeElevState)
 	node.NodeElevStateUpdate = make(chan messagehandler.ElevStateUpdate)
@@ -101,7 +100,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
 
 	hallAssignmentsAckRx := make(chan messages.Ack)
-	ConnectionReqAckRx := make(chan messages.Ack)
 
 	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate, 3)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
@@ -125,18 +123,13 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 
 	// start receiver process that listens for messages on the port
 	go bcast.Receiver(bcastReceiverPort,
-		ackRx,
+		hallAssignmentsAckRx,
 		receiverToServerCh,
 		node.HallAssignmentsRx,
 		node.CabRequestInfoRx,
 		node.GlobalHallRequestRx,
 		node.ConnectionReqRx,
 		node.NewHallReqRx)
-
-	// process for distributing incoming acks in ackRx to different processes
-	go messagehandler.IncomingAckDistributor(ackRx,
-		hallAssignmentsAckRx,
-		ConnectionReqAckRx)
 
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,

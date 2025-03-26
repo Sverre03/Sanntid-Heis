@@ -44,10 +44,36 @@ func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool) bool {
 	return shouldStop
 }
 
+func UpdateHallAssignments(mergedHallAssignments [config.NUM_FLOORS][2]bool) bool {
+	shouldStop := false
+
+	for floor := range config.NUM_FLOORS {
+		for btn := range 2 {
+			if elev.Requests[floor][btn] && !mergedHallAssignments[floor][btn] {
+				// An assignment was removed
+				elev.Requests[floor][btn] = false
+				shouldStop = true
+			} else if !elev.Requests[floor][btn] && mergedHallAssignments[floor][btn] {
+				// A new assignment was added
+				elev.Requests[floor][btn] = true
+			}
+		}
+	}
+
+	return shouldStop
+}
+
 func StopElevator() {
 	elevator.SetMotorDirection(elevator.DirectionStop)
 	elev.Dir = elevator.DirectionStop
 	elev.Behavior = elevator.Idle
+}
+
+func ResumeElevator() {
+	pair := elevator.RequestsChooseDirection(elev)
+	elev.Dir = pair.Dir
+	elev.Behavior = pair.Behavior
+	elevator.SetMotorDirection(elev.Dir)
 }
 
 func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {

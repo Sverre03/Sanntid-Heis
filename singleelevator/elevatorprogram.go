@@ -76,24 +76,52 @@ func ElevatorProgram(
 			case HallOrder:
 				elevator_fsm.SetHallLights(msg.LightStates)
 
-				shouldStop := elevator_fsm.ClearHallAssignments(msg.HallAssignments)
+				var mergedHallAssignments [config.NUM_FLOORS][2]bool
+
+				// Start with current assignments from the elevator
+				for floor := range config.NUM_FLOORS {
+					for btn := range 2 {
+						mergedHallAssignments[floor][btn] = elevator_fsm.GetElevator().Requests[floor][btn]
+					}
+				}
+
+				// Add new assignments from the message
+				for floor := range config.NUM_FLOORS {
+					for btn := range 2 {
+						if msg.HallAssignments[floor][btn] {
+							mergedHallAssignments[floor][btn] = true
+							// This is critical - explicitly notify the FSM about each new button press
+							if !elevator_fsm.GetElevator().Requests[floor][btn] {
+								btnType := elevator.ButtonType(btn)
+								elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
+								fmt.Printf("New hall assignment added at floor %d, button %d\n", floor, btn)
+							}
+						}
+					}
+				}
+
+				// Only remove assignments that are explicitly not in the message
+				// and are present in our current assignments
+				for floor := range config.NUM_FLOORS {
+					for btn := range 2 {
+						if elevator_fsm.GetElevator().Requests[floor][btn] &&
+							!msg.HallAssignments[floor][btn] &&
+							!msg.LightStates[floor][btn] {
+							// This is a hall assignment that should be removed
+							mergedHallAssignments[floor][btn] = false
+							fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, btn)
+						}
+					}
+				}
+
+				shouldStop := elevator_fsm.UpdateHallAssignments(mergedHallAssignments)
 
 				if shouldStop {
 					elevator_fsm.StopElevator()
 				}
 
-				for floor := range config.NUM_FLOORS {
-					for btn := range 2 {
-						btnType := elevator.ButtonType(btn)
-						if msg.HallAssignments[floor][btn] {
-							elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
-							fmt.Printf("Hall assignment added at floor %d, button %d\n", floor, btn)
-							// If the elevator is idle and the button is pressed in the same floor, the door should remain open
-						}
-					}
-				}
 				if shouldStop && elevator_fsm.GetElevator().Behavior == elevator.Idle {
-					// her må vi starte heisen igjen, det vil si manuelt gjøre det som skjer i handlebuttonpress
+					elevator_fsm.ResumeElevator()
 				}
 
 				fmt.Printf("Hall assignments received: %v\n", msg.HallAssignments)

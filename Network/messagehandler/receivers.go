@@ -129,9 +129,7 @@ func NodeElevStateServer(myID int,
 			}
 
 			// if I have seen this node before, check if it has cleared any hall assignments!
-			if _, ok := knownNodes[id]; ok {
-				if hallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
-
+			if nodeExistInMap(id, knownNodes) && hallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
 					// update the lastActiveNodes with the new state, and send it to the node
 					newActiveNodes := makeDeepCopy(lastActiveNodes)
 					newActiveNodes[id] = elevState.ElevState
@@ -139,7 +137,6 @@ func NodeElevStateServer(myID int,
 
 					// fmt.Printf(("Hall assignment removed by node %d\n"), id)
 				}
-			}
 			// finally, register the node as seen
 			lastSeen[id] = time.Now()
 			knownNodes[id] = elevState.ElevState
@@ -209,4 +206,9 @@ func nodeIsConnectedToNetwork(myID int, msgID int, nodeIsConnected bool) bool {
 
 func hasActiveNodesChanged(activeNodes map[int]elevator.ElevatorState, lastActiveNodes map[int]elevator.ElevatorState) bool {
 	return len(activeNodes) != len(lastActiveNodes)
+}
+
+func nodeExistInMap(id int, knownNodes map[int]elevator.ElevatorState) bool {
+    _, ok := knownNodes[id]
+    return ok
 }

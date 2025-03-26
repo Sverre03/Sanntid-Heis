@@ -101,7 +101,7 @@ func NodeElevStateServer(myID int,
 			activeNodes := findActiveNodes(knownNodes, lastSeen)
 
 			// if the number of active nodes change, generate an event
-			if len(lastActiveNodes) != len(activeNodes) {
+			if hasActiveNodesChanged(activeNodes, lastActiveNodes) {
 				fmt.Printf("Active nodes changed from %d to %d\n", len(lastActiveNodes), len(activeNodes))
 				select {
 				case networkEventTx <- NodeConnectDisconnect:
@@ -124,7 +124,7 @@ func NodeElevStateServer(myID int,
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
 
-			if id != myID && nodeIsConnected { // if we are connected, we should update reset the connection timer
+			if nodeIsConnectedToNetwork(id, myID, nodeIsConnected) { // if we are connected, we should update reset the connection timer
 				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 			}
 
@@ -201,4 +201,12 @@ func makeDeepCopy(elevStateMap map[int]elevator.ElevatorState) map[int]elevator.
 	newMap := make(map[int]elevator.ElevatorState)
 	maps.Copy(newMap, elevStateMap)
 	return newMap
+}
+
+func nodeIsConnectedToNetwork(myID int, msgID int, nodeIsConnected bool) bool {
+	return nodeIsConnected && myID != msgID 
+}	
+
+func hasActiveNodesChanged(activeNodes map[int]elevator.ElevatorState, lastActiveNodes map[int]elevator.ElevatorState) bool {
+	return len(activeNodes) != len(lastActiveNodes)
 }

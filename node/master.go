@@ -108,7 +108,8 @@ ForLoop:
 
 			case messagehandler.ActiveElevStates:
 				fmt.Printf("Computing assignments:\n")
-				if mapIsEmpty(activeConnReq) {
+				// Guard clause to break out of the loop if there are no active connection requests
+				if mapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
 					break Select
 				}
 				computationResult := computeHallAssignments(node.ID,

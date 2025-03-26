@@ -16,7 +16,7 @@ func MasterProgram(node *NodeData) nodestate {
 	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
 
 	activeConnReq := make(map[int]messages.ConnectionReq)
-	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
+	nodeHallAssignments := make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 	hallAssignmentCounter := 0
 	var nextNodeState nodestate
 
@@ -120,12 +120,14 @@ ForLoop:
 			case messagehandler.ActiveElevStates:
 				fmt.Printf("Computing assignments:\n")
 				// increase the hall assignment counter
-				hallAssignmentCounter++
 
-				// Guard clause to break out of the loop if there are no active connection requests
+				// Guard clause to break out of the loop if there are no active nodes
+
 				if util.MapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
 					break Select
 				}
+				hallAssignmentCounter = incrementHallAssignmentCounter(hallAssignmentCounter)
+
 				computationResult := computeHallAssignments(node.ID,
 					elevStatesUpdate,
 					node.GlobalHallRequests,
@@ -136,12 +138,7 @@ ForLoop:
 				for _, hallAssignment := range computationResult.OtherAssignments {
 					node.HallAssignmentTx <- hallAssignment
 				}
-				currentNodeHallAssignments = computationResult.NodeHallAssignments
-				// Printing out each node's hall assignments
-				// for id, hallAssignments := range currentNodeHallAssignments {
-				// 	fmt.Printf("Node %d hall assignments: %v\n", id, hallAssignments)
-				// }
-				// fmt.Println("")
+				nodeHallAssignments = computationResult.NodeHallAssignments
 
 			case messagehandler.AllElevStates:
 				infoToNodes := processConnectionRequestsFromOtherNodes(elevStatesUpdate, activeConnReq)
@@ -150,7 +147,7 @@ ForLoop:
 				}
 			case messagehandler.HallAssignmentRemoved:
 				fmt.Println("Hall assignment removed")
-				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
+				node.GlobalHallRequests = updateGlobalHallRequests(nodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
@@ -191,10 +188,12 @@ type connectionRequestHandler struct {
 	CabRequests map[int]messages.CabRequestInfo
 }
 
-func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FLOORS][2]bool,
+func updateGlobalHallRequests(nodeHallAssignments map[int][config.NUM_FLOORS][2]bool,
 	recentNodeElevStates map[int]elevator.ElevatorState, globalHallRequests [config.NUM_FLOORS][2]bool, hallAssignmentCounter int) [config.NUM_FLOORS][2]bool {
 
-	for id, hallAssignments := range assignedNodeHallAssignments {
+	// loop through all the nodes and their respective hall assignments
+	for id, hallAssignments := range nodeHallAssignments {
+		// if we have info about the node
 		if nodeElevState, ok := recentNodeElevStates[id]; ok {
 
 			// if the counter value is incorrect, we skip the node
@@ -203,8 +202,9 @@ func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FL
 			}
 			for floor := range config.NUM_FLOORS {
 				for btn := range config.NUM_HALL_BUTTONS {
-					if hallAssignments[floor][btn] && nodeElevState.MyHallAssignments[floor][btn] {
-						globalHallRequests[floor][btn] = true
+					if hallAssignments[floor][btn] && !nodeElevState.MyHallAssignments[floor][btn] {
+						// if the hall assignment is active and the node does not have it, we remove it
+						globalHallRequests[floor][btn] = false
 					}
 				}
 			}
@@ -212,6 +212,14 @@ func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FL
 	}
 
 	return globalHallRequests
+}
+
+func incrementHallAssignmentCounter(hallAssignmentCounter int) int {
+	hallAssignmentCounter += 1
+	if hallAssignmentCounter < 0 {
+		hallAssignmentCounter = 0
+	}
+	return hallAssignmentCounter
 }
 
 func computeHallAssignments(

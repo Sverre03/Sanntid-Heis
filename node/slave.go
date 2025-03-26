@@ -52,7 +52,8 @@ ForLoop:
 			}
 
 		case networkEvent := <-node.NetworkEventRx:
-			if iHaveLostConenction(networkEvent) {
+			// check if we have lost connection
+			if networkEvent == messagehandler.NodeHasLostConnection {
 				nextNodeState = Disconnected
 				break ForLoop
 			}
@@ -140,8 +141,4 @@ func hasChanged(newGlobalHallReq, oldGlobalHallReq [config.NUM_FLOORS][config.NU
 		}
 	}
 	return false
-}
-
-func iHaveLostConenction(networkEvent messagehandler.NetworkEvent) bool {
-	return networkEvent == messagehandler.NodeHasLostConnection
 }

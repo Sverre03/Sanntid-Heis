@@ -258,12 +258,3 @@ func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][2]bool,
 	return globalHallRequests
 }
 
-func makeNewHallReq (nodeID int,  elevMsg singleelevator.ElevatorEvent) messages.NewHallReq {
-	return messages.NewHallReq{
-		NodeID: nodeID,
-		HallReq: elevator.ButtonEvent{
-			Floor:  elevMsg.ButtonEvent.Floor,
-			Button: elevMsg.ButtonEvent.Button,
-		},
-	}
-}

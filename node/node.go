@@ -188,3 +188,27 @@ func cabRequestInfoForMe(cabRequestInfo messages.CabRequestInfo, node *NodeData)
 	return node.ID == cabRequestInfo.ReceiverNodeID && node.TOLC.IsZero()
 }
 
+func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]bool, globalHallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
+	var newMessage singleelevator.LightAndAssignmentUpdate
+	newMessage.HallAssignments = hallAssignments
+	newMessage.LightStates = globalHallReq
+	newMessage.OrderType = singleelevator.HallOrder
+	return newMessage
+}
+
+func makeLightMessage(hallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
+	var newMessage singleelevator.LightAndAssignmentUpdate
+	newMessage.LightStates = hallReq
+	newMessage.OrderType = singleelevator.LightUpdate
+	return newMessage
+}
+
+func makeNewHallReq(nodeID int,  elevMsg singleelevator.ElevatorEvent) messages.NewHallReq {
+	return messages.NewHallReq{
+		NodeID: nodeID,
+		HallReq: elevator.ButtonEvent{
+			Floor:  elevMsg.ButtonEvent.Floor,
+			Button: elevMsg.ButtonEvent.Button,
+		},
+	}
+}

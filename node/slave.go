@@ -127,21 +127,6 @@ func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallRe
 	return true
 }
 
-func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]bool, globalHallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
-	var newMessage singleelevator.LightAndAssignmentUpdate
-	newMessage.HallAssignments = hallAssignments
-	newMessage.LightStates = globalHallReq
-	newMessage.OrderType = singleelevator.HallOrder
-	return newMessage
-}
-
-func makeLightMessage(hallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
-	var newMessage singleelevator.LightAndAssignmentUpdate
-	newMessage.LightStates = hallReq
-	newMessage.OrderType = singleelevator.LightUpdate
-	return newMessage
-}
-
 func hasChanged(newGlobalHallReq, oldGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		// check if the new is equal to the old or not

@@ -101,13 +101,14 @@ ForLoop:
 
 	}
 
-	// stop transmitters
-	if nextNodeState == Disconnected {
-		fmt.Println("Exiting slave to disconnected")
-	} else {
-		fmt.Println("Exiting slave to inactive")
+	select {
+	case node.commandToServerTx <- "stopConnectionTimeoutDetection":
+		// Command sent successfully
+	default:
+		// Command not sent, channel is full
+		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "stopConnectionTimeoutDetection")
 	}
-	node.TOLC = time.Now()
+
 	return nextNodeState
 }
 

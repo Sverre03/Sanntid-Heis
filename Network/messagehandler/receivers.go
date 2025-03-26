@@ -74,7 +74,7 @@ func NodeElevStateServer(myID int,
 			activeNodes := findActiveNodes(knownNodes, lastSeen)
 
 			// if the number of active nodes change, generate an event
-			if hasActiveNodesChanged(activeNodes, lastActiveNodes) {
+			if hasActiveNodesChanged(activeNodes, lastActiveNodes) && len(activeNodes) > 1 {
 				fmt.Printf("Active nodes changed from %d to %d\n", len(lastActiveNodes), len(activeNodes))
 				select {
 				case networkEventTx <- ActiveNodeCountChange:
@@ -90,8 +90,11 @@ func NodeElevStateServer(myID int,
 			peerTimeoutTicker.Stop()
 			nodeIsConnected = false
 
-			// we have lost connection. Empty the lastActiveNodes map, just in case some strays are still left there
+			// set all the last seen times to zero
 			lastActiveNodes = make(map[int]elevator.ElevatorState)
+			for id := range lastSeen {
+				lastSeen[id] = time.Time{}
+			}
 			networkEventTx <- NodeHasLostConnection
 
 		case elevState := <-elevStatesRx:
@@ -127,6 +130,17 @@ func NodeElevStateServer(myID int,
 				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				peerTimeoutTicker.Reset(config.PEER_POLL_INTERVAL)
 				nodeIsConnected = true
+
+			case "stopConnectionTimeoutDetection":
+				connectionTimeoutTimer.Stop()
+				peerTimeoutTicker.Stop()
+				nodeIsConnected = false
+
+				// set all the last seen times to zero
+				lastActiveNodes = make(map[int]elevator.ElevatorState)
+				for id := range lastSeen {
+					lastSeen[id] = time.Time{}
+				}
 			}
 		}
 	}

@@ -12,11 +12,11 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 
 	myConnReq := messages.ConnectionReq{
-		TOLC:      node.TOLC,
-		NodeID:    node.ID,
+		TOLC:   node.TOLC,
+		NodeID: node.ID,
 	}
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
-	
+
 	var nextNodeState nodestate
 
 	// Set up heartbeat for connection requests
@@ -50,19 +50,20 @@ ForLoop:
 			decisionTimer.Reset(config.DISCONNECTED_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:
-			if doorIsStuck(elevMsg) {
+			if elevMsg.IsElevDown {
 				nextNodeState = Inactive
 				break ForLoop
 			}
 
 		case cabRequestInfo := <-node.CabRequestInfoRx: // Check if the master has any info about us
 			fmt.Println("Master found -> go to Slave")
-			if cabRequestInfoForMe(cabRequestInfo, node) {
-				// we have received info about us from the master, so we can become a slave
-				node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(cabRequestInfo.CabRequest)
+			if cabRequestInfo.ReceiverNodeID == node.ID {
+				if node.TOLC.IsZero() {
+					node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(cabRequestInfo.CabRequest)
+				}
+				nextNodeState = Slave
+				break ForLoop
 			}
-			nextNodeState = Slave
-			break ForLoop
 		case <-node.HallAssignmentsRx:
 		case <-node.NodeElevStateUpdate:
 		case <-node.NetworkEventRx:
@@ -101,4 +102,3 @@ func makeCabOrderMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.Lig
 		HallAssignments: [config.NUM_FLOORS][2]bool{},
 	}
 }
-

@@ -11,8 +11,8 @@ import (
 type ElevatorEventType int
 
 const (
-	HallButtonEvent ElevatorEventType = iota // Receives local hall button presses from node
-	DoorStuckEvent                           // Receives the elevator's door state (if it is stuck or not)
+	HallButtonEvent       ElevatorEventType = iota // Receives local hall button presses from node
+	ElevStatusUpdateEvent                          // Receives the elevator's door state (if it is stuck or not)
 )
 
 type ElevatorOrderType int
@@ -27,7 +27,7 @@ const (
 type ElevatorEvent struct {
 	EventType   ElevatorEventType
 	ButtonEvent elevator.ButtonEvent // For hall button events and completed hall assignments
-	DoorIsStuck bool                 // For door stuck status
+	IsElevDown  bool                 // For elevator status
 }
 
 type LightAndAssignmentUpdate struct {
@@ -181,8 +181,8 @@ func ElevatorProgram(
 }
 
 func makeDoorStuckMessage(isDoorStuck bool) ElevatorEvent {
-	return ElevatorEvent{EventType: DoorStuckEvent,
-		DoorIsStuck: isDoorStuck,
+	return ElevatorEvent{EventType: ElevStatusUpdateEvent,
+		IsElevDown: isDoorStuck,
 	}
 }
 

@@ -34,8 +34,8 @@ ForLoop:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
-			case singleelevator.DoorStuckEvent:
-				if doorIsStuck(elevMsg) {
+			case singleelevator.ElevStatusUpdateEvent:
+				if elevMsg.IsElevDown {
 					nextNodeState = Inactive
 					break ForLoop
 				}
@@ -77,7 +77,6 @@ ForLoop:
 					lastHallAssignmentMessageID = newHA.MessageID
 				}
 			}
-
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
 			node.TOLC = time.Now()

@@ -51,10 +51,10 @@ ForLoop:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
-			case singleelevator.DoorStuckEvent:
-				fmt.Printf("Master received door stuck event: stuck: %v\n", elevMsg.DoorIsStuck)
-				// if the door is stuck, we go to inactive
-				if doorIsStuck(elevMsg) {
+			case singleelevator.ElevStatusUpdateEvent:
+				fmt.Printf("Received elevator status update, stuck: %v\n", elevMsg.IsElevDown)
+				// if the elevator is no longer functioning, we go to inactive
+				if elevMsg.IsElevDown {
 					nextNodeState = Inactive
 					break ForLoop
 				}
@@ -90,7 +90,7 @@ ForLoop:
 				fmt.Println("Connection timed out")
 				nextNodeState = Disconnected
 				break ForLoop
-			
+
 			case messagehandler.ActiveNodeCountChange:
 				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
 				select {
@@ -101,7 +101,6 @@ ForLoop:
 					fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
 				}
 			}
-			
 
 		case newHallReq := <-node.NewHallReqRx:
 			node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
@@ -124,7 +123,7 @@ ForLoop:
 			default:
 				// Command not sent, channel is full
 				fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getAllElevStates")
-			}	
+			}
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
 
 			switch elevStatesUpdate.DataType {
@@ -265,8 +264,7 @@ func processConnectionRequestsFromOtherNodes(elevStatesUpdate messagehandler.Ele
 		if states, ok := elevStatesUpdate.NodeElevStatesMap[id]; ok {
 			cabRequestInfo = messages.CabRequestInfo{CabRequest: states.CabRequests, ReceiverNodeID: id}
 		} else {
-			emptySlice := [config.NUM_FLOORS]bool{}
-			cabRequestInfo = messages.CabRequestInfo{CabRequest: emptySlice, ReceiverNodeID: id}
+			cabRequestInfo = messages.CabRequestInfo{CabRequest: [config.NUM_FLOORS]bool{}, ReceiverNodeID: id}
 		}
 		// add the cab request info to the result
 		result.CabRequests[id] = cabRequestInfo

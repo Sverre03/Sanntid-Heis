@@ -171,14 +171,6 @@ func mapIsEmpty[k comparable, v any](m map[k]v) bool {
 	return len(m) == 0
 }
 
-func doorIsStuck(elevMsg singleelevator.ElevatorEvent) bool {
-	return elevMsg.DoorIsStuck && elevMsg.EventType == singleelevator.DoorStuckEvent
-}
-
-func cabRequestInfoForMe(cabRequestInfo messages.CabRequestInfo, node *NodeData) bool {
-	return node.ID == cabRequestInfo.ReceiverNodeID && node.TOLC.IsZero()
-}
-
 func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]bool, globalHallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
 	var newMessage singleelevator.LightAndAssignmentUpdate
 	newMessage.HallAssignments = hallAssignments

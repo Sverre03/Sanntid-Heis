@@ -95,7 +95,7 @@ func ElevatorProgram(
 
 				// Add new assignments from the message
 				for floor := range config.NUM_FLOORS {
-					for btn := range 2 {
+					for btn := range config.NUM_HALL_BUTTONS {
 						if msg.HallAssignments[floor][btn] {
 							mergedHallAssignments[floor][btn] = true
 							if !elevator_fsm.GetElevator().Requests[floor][btn] {
@@ -111,7 +111,7 @@ func ElevatorProgram(
 				// Only remove assignments that are explicitly not in the message
 				// and are present in our current assignments
 				for floor := range config.NUM_FLOORS {
-					for btn := range 2 {
+					for btn := range config.NUM_HALL_BUTTONS {
 						if elevator_fsm.GetElevator().Requests[floor][btn] &&
 							!msg.HallAssignments[floor][btn] &&
 							!msg.LightStates[floor][btn] {
@@ -254,7 +254,7 @@ func makeHallReqMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 func getCurrentHallAssignments() [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool {
 	var hallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
 	for floor := range config.NUM_FLOORS {
-		for btn := range 2 {
+		for btn := range config.NUM_HALL_BUTTONS {
 			hallAssignments[floor][btn] = elevator_fsm.GetElevator().Requests[floor][btn]
 		}
 	}

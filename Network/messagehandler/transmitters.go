@@ -40,7 +40,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 			HallAssignmentsTx <- newAssignment
 
 			// check for whether message is not acknowledged within duration
-			time.AfterFunc(500*time.Millisecond, func() {
+			time.AfterFunc(config.HALL_ASSIGNMENT_ACK_TIMEOUT, func() {
 				timeoutChannel <- newAssignment.MessageID
 			})
 
@@ -52,7 +52,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 
 					// fmt.Printf("resending message id %d \n", timedOutMsgID)
 					HallAssignmentsTx <- msg
-					time.AfterFunc(500*time.Millisecond, func() {
+					time.AfterFunc(config.HALL_ASSIGNMENT_ACK_TIMEOUT, func() {
 						timeoutChannel <- msg.MessageID
 					})
 					break
@@ -78,7 +78,6 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool, GlobalHallReque
 
 	for {
 		select {
-
 		case enable = <-transmitEnableCh:
 		case GHallRequests = <-requestsForBroadcastCh:
 		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):

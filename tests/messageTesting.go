@@ -75,8 +75,8 @@ func testHAss() error {
 	go messagehandler.HallAssignmentsTransmitter(HallAssignmentsTx, OutgoingNewHallAssignments, HallAssignmentsAck, enableCh)
 
 	enableCh <- true
-	dummyHallAssignment1 := messages.NewHallAssignments{NodeID: id, HallAssignment: [config.NUM_FLOORS][2]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
-	dummyHallAssignment2 := messages.NewHallAssignments{NodeID: id + 1, HallAssignment: [config.NUM_FLOORS][2]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
+	dummyHallAssignment1 := messages.NewHallAssignments{NodeID: id, HallAssignment: [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
+	dummyHallAssignment2 := messages.NewHallAssignments{NodeID: id + 1, HallAssignment: [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool{{false, false}, {false, false}, {false, false}, {false, false}}, MessageID: 0}
 
 	OutgoingNewHallAssignments <- dummyHallAssignment1
 	OutgoingNewHallAssignments <- dummyHallAssignment2
@@ -222,7 +222,7 @@ func testGlobalHallReqTransmitter() error {
 
 	go messagehandler.GlobalHallRequestsTransmitter(transmitEnableCh, GlobalHallRequestTx, requestsForBroadcastCh)
 
-	var currentHallRequests [config.NUM_FLOORS][2]bool
+	var currentHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 
 	time.AfterFunc(5*time.Second, func() {
 		timeoutChannel <- 10

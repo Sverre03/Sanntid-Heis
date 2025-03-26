@@ -30,10 +30,10 @@ func OnInitBetweenFloors() {
 	elev.Behavior = elevator.Moving
 }
 
-func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool) bool {
+func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	shouldStop := false
 	for floor := range config.NUM_FLOORS {
-		for btn := range 2 {
+		for btn := range config.NUM_HALL_BUTTONS {
 			if elev.Requests[floor][btn] && !newHallAssignments[floor][btn] {
 				fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, btn)
 				elev.Requests[floor][btn] = false
@@ -44,11 +44,11 @@ func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool) bool {
 	return shouldStop
 }
 
-func UpdateHallAssignments(mergedHallAssignments [config.NUM_FLOORS][2]bool) bool {
+func UpdateHallAssignments(mergedHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	shouldStop := false
 
 	for floor := range config.NUM_FLOORS {
-		for btn := range 2 {
+		for btn := range config.NUM_HALL_BUTTONS {
 			if elev.Requests[floor][btn] && !mergedHallAssignments[floor][btn] {
 				// An assignment was removed
 				elev.Requests[floor][btn] = false

@@ -29,7 +29,7 @@ const (
 type NodeData struct {
 	ID                 int
 	State              nodestate
-	GlobalHallRequests [config.NUM_FLOORS][2]bool
+	GlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	TOLC               time.Time
 
 	AckTx               chan messages.Ack                   // Send acks to udp broadcaster
@@ -159,7 +159,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 }
 
 // functions used in the state machines of the different nodes
-func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]bool, globalHallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
+func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool, globalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) singleelevator.LightAndAssignmentUpdate {
 	var newMessage singleelevator.LightAndAssignmentUpdate
 	newMessage.HallAssignments = hallAssignments
 	newMessage.LightStates = globalHallReq
@@ -167,7 +167,7 @@ func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]boo
 	return newMessage
 }
 
-func makeLightMessage(hallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
+func makeLightMessage(hallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) singleelevator.LightAndAssignmentUpdate {
 	var newMessage singleelevator.LightAndAssignmentUpdate
 	newMessage.LightStates = hallReq
 	newMessage.OrderType = singleelevator.LightUpdate

@@ -11,7 +11,7 @@ package tests
 // func TestHRA() {
 // 	var newMessage1 messages.NodeElevState
 // 	var newMessage2 messages.NodeElevState
-// 	var GlobalHallRequest [config.NUM_FLOORS][2]bool
+// 	var GlobalHallRequest [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 
 // 	for i := 0; i < config.NUM_FLOORS; i++ {
 // 		for j := 0; j < 2; j++ {

@@ -4,14 +4,18 @@ import (
 	"time"
 )
 
-const DOOR_OPEN_DURATION = 3 * time.Second
-const DOOR_STUCK_DURATION = 30 * time.Second
 const NUM_FLOORS = 4
 const NUM_BUTTONS = 3
+const NUM_HALL_BUTTONS = 2
+
 const MSG_ID_PARTITION_SIZE = uint64(2 << 60)
+
+const DOOR_OPEN_DURATION = 3 * time.Second
+const DOOR_STUCK_DURATION = 30 * time.Second
 const MASTER_TRANSMIT_INTERVAL = 50 * time.Millisecond
 const ELEV_STATE_TRANSMIT_INTERVAL = 50 * time.Millisecond
 
+const HALL_ASSIGNMENT_ACK_TIMEOUT = 500 * time.Millisecond
 const MASTER_CONNECTION_TIMEOUT = 500 * time.Millisecond
 
 const ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT = 10 * time.Second

@@ -22,11 +22,11 @@ type HRAElevState struct {
 }
 
 type HRAInput struct {
-	HallRequests [config.NUM_FLOORS][2]bool `json:"hallRequests"`
-	States       map[string]HRAElevState    `json:"states"`
+	HallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool `json:"hallRequests"`
+	States       map[string]HRAElevState                          `json:"states"`
 }
 
-func HRAalgorithm(allElevStates map[int]elevator.ElevatorState, hallRequests [config.NUM_FLOORS][2]bool) map[int][config.NUM_FLOORS][2]bool {
+func HRAalgorithm(allElevStates map[int]elevator.ElevatorState, hallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
 	allElevStatesInputFormat := make(map[string]HRAElevState)
 
 	for id, nodeState := range allElevStates {
@@ -66,14 +66,14 @@ func HRAalgorithm(allElevStates map[int]elevator.ElevatorState, hallRequests [co
 		return nil
 	}
 
-	HRAoutput := new(map[string][config.NUM_FLOORS][2]bool)
+	HRAoutput := new(map[string][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 	err = json.Unmarshal(ret, &HRAoutput)
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
 		return nil
 	}
 
-	HRAoutputFormatting := make(map[int][config.NUM_FLOORS][2]bool) // Convert map[string][config.NUM_FLOORS][2]bool to map[int][config.NUM_FLOORS][2]bool
+	HRAoutputFormatting := make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) // Convert map[string][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool to map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	for id, output := range *HRAoutput {
 		id, err := strconv.Atoi(id)
 		if err != nil {
@@ -81,5 +81,5 @@ func HRAalgorithm(allElevStates map[int]elevator.ElevatorState, hallRequests [co
 		}
 		HRAoutputFormatting[id] = output
 	}
-	return HRAoutputFormatting // map[int][config.NUM_FLOORS][2]bool
+	return HRAoutputFormatting // map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 }

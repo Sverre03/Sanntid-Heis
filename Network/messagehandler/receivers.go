@@ -167,8 +167,8 @@ func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int
 	return activeNodes
 }
 
-func hallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
-	newGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
+func hallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+	newGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		for button := range 2 {
 			// Check if change is from (true -> false), assignment complete

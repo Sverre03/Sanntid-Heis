@@ -29,7 +29,7 @@ type CabRequestInfo struct {
 
 // Message with the hall requests of the system. Meant to be broadcast by master and only master at a fixed interval. If you receive this message, it means a master exists
 type GlobalHallRequest struct {
-	HallRequests [config.NUM_FLOORS][2]bool
+	HallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 }
 
 // Message containing the states of your elevator, as well as your node id. This is broadcast as an alive message
@@ -40,18 +40,18 @@ type NodeElevState struct {
 
 // Broadcast when you are in state disconnected. used to create a connection with other node
 type ConnectionReq struct {
-	TOLC      time.Time
-	NodeID    int
+	TOLC   time.Time
+	NodeID int
 }
 
 // Message from master to slaves on network, containing their new hall assignments
 type NewHallAssignments struct {
 	NodeID         int
-	HallAssignment [config.NUM_FLOORS][2]bool
+	HallAssignment [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	MessageID      uint64
 }
 
 type NewHallReq struct {
-	NodeID int
+	NodeID  int
 	HallReq elevator.ButtonEvent
 }

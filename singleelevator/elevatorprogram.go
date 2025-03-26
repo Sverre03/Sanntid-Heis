@@ -76,21 +76,13 @@ func ElevatorProgram(
 			case HallOrder:
 				elevator_fsm.SetHallLights(msg.LightStates)
 
-				var mergedHallAssignments [config.NUM_FLOORS][2]bool
-
-				// Start with current assignments from the elevator
-				for floor := range config.NUM_FLOORS {
-					for btn := range 2 {
-						mergedHallAssignments[floor][btn] = elevator_fsm.GetElevator().Requests[floor][btn]
-					}
-				}
+				mergedHallAssignments := getCurrentHallAssignments()
 
 				// Add new assignments from the message
 				for floor := range config.NUM_FLOORS {
 					for btn := range 2 {
 						if msg.HallAssignments[floor][btn] {
 							mergedHallAssignments[floor][btn] = true
-							// This is critical - explicitly notify the FSM about each new button press
 							if !elevator_fsm.GetElevator().Requests[floor][btn] {
 								btnType := elevator.ButtonType(btn)
 								elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
@@ -107,7 +99,6 @@ func ElevatorProgram(
 						if elevator_fsm.GetElevator().Requests[floor][btn] &&
 							!msg.HallAssignments[floor][btn] &&
 							!msg.LightStates[floor][btn] {
-							// This is a hall assignment that should be removed
 							mergedHallAssignments[floor][btn] = false
 							fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, btn)
 						}
@@ -199,4 +190,14 @@ func makeHallReqMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 	return ElevatorEvent{EventType: HallButtonEvent,
 		ButtonEvent: buttonEvent,
 	}
+}
+
+func getCurrentHallAssignments() [config.NUM_FLOORS][2]bool {
+	var hallAssignments [config.NUM_FLOORS][2]bool
+	for floor := range config.NUM_FLOORS {
+		for btn := range 2 {
+			hallAssignments[floor][btn] = elevator_fsm.GetElevator().Requests[floor][btn]
+		}
+	}
+	return hallAssignments
 }

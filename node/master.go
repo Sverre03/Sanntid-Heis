@@ -91,7 +91,7 @@ ForLoop:
 				nextNodeState = Disconnected
 				break ForLoop
 			
-			case messagehandler.NodeConnectDisconnect:
+			case messagehandler.ActiveNodeCountChange:
 				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
 				select {
 				case node.commandToServerTx <- "getActiveElevStates":

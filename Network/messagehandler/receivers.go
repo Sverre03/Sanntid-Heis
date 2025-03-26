@@ -6,9 +6,9 @@ import (
 	"elev/elevator"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand"
 	"time"
-	"maps"
 )
 
 type MessageIDType uint64
@@ -22,7 +22,7 @@ const (
 type NetworkEvent int
 
 const (
-	NodeConnectDisconnect NetworkEvent = iota
+	ActiveNodeCountChange NetworkEvent = iota
 	NodeHasLostConnection
 )
 
@@ -104,7 +104,7 @@ func NodeElevStateServer(myID int,
 			if hasActiveNodesChanged(activeNodes, lastActiveNodes) {
 				fmt.Printf("Active nodes changed from %d to %d\n", len(lastActiveNodes), len(activeNodes))
 				select {
-				case networkEventTx <- NodeConnectDisconnect:
+				case networkEventTx <- ActiveNodeCountChange:
 
 				default:
 					fmt.Printf("Error sending network event\n")
@@ -204,8 +204,8 @@ func makeDeepCopy(elevStateMap map[int]elevator.ElevatorState) map[int]elevator.
 }
 
 func nodeIsConnectedToNetwork(myID int, msgID int, nodeIsConnected bool) bool {
-	return nodeIsConnected && myID != msgID 
-}	
+	return nodeIsConnected && myID != msgID
+}
 
 func hasActiveNodesChanged(activeNodes map[int]elevator.ElevatorState, lastActiveNodes map[int]elevator.ElevatorState) bool {
 	return len(activeNodes) != len(lastActiveNodes)

@@ -13,14 +13,14 @@ import (
 )
 
 func MasterProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %d is now Master\n", node.ID)
+	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
 
 	activeConnReq := make(map[int]messages.ConnectionReq)
 	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][2]bool)
 	var nextNodeState nodestate
 
 	//Check if we should distribute hall requests
-	if shouldDistributeHallRequests(node.GlobalHallRequests) {
+	if anyHallRequestsActive(node.GlobalHallRequests) {
 		select {
 		case node.commandToServerTx <- "getActiveElevStates":
 			// Command sent successfully
@@ -31,13 +31,11 @@ func MasterProgram(node *NodeData) nodestate {
 	}
 
 	// inform the global hall request transmitter of the new global hall requests
-	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
 	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 	node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
-
-	// start the transmitters
 	node.GlobalHallReqTransmitEnableTx <- true
 	node.HallRequestAssignerTransmitEnableTx <- true
+
 	select {
 	case node.commandToServerTx <- "startConnectionTimeoutDetection":
 		// Command sent successfully
@@ -160,7 +158,7 @@ ForLoop:
 				// fmt.Println("Hall assignment removed")
 				// fmt.Printf("Updated elevator states: %v\n", elevStatesUpdate.NodeElevStatesMap)
 				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap)
-				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
+				// fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
@@ -203,12 +201,6 @@ func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FL
 	recentNodeElevStates map[int]elevator.ElevatorState) [config.NUM_FLOORS][2]bool {
 
 	var globalHallRequests [config.NUM_FLOORS][2]bool
-
-	for floor := range config.NUM_FLOORS {
-		for btn := range 2 {
-			globalHallRequests[floor][btn] = false
-		}
-	}
 
 	// If the hall assignment which was assigned to a node is still active for that node, we add it to the global hall requests
 	for id, hallAssignments := range assignedNodeHallAssignments {
@@ -282,12 +274,11 @@ func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][2]bool,
 		return globalHallRequests
 	}
 	// if the button is valid we update the global hall requests
-	fmt.Printf("updating global hall requests\n")
 	globalHallRequests[newHallReq.HallReq.Floor][newHallReq.HallReq.Button] = true
 	return globalHallRequests
 }
 
-func shouldDistributeHallRequests(globalHallRequests [config.NUM_FLOORS][2]bool) bool {
+func anyHallRequestsActive(globalHallRequests [config.NUM_FLOORS][2]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		for btn := range 2 {
 			if globalHallRequests[floor][btn] {

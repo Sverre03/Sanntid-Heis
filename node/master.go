@@ -20,7 +20,13 @@ func MasterProgram(node *NodeData) nodestate {
 
 	//Check if we should distribute hall requests
 	if shouldDistributeHallRequests(node.GlobalHallRequests) {
-		sendCommandToServer("getActiveElevStates", node)
+		select {
+		case node.commandToServerTx <- "getActiveElevStates":
+			// Command sent successfully
+		default:
+			// Command not sent, channel is full
+			fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
+		}
 	}
 
 	// inform the global hall request transmitter of the new global hall requests
@@ -31,7 +37,13 @@ func MasterProgram(node *NodeData) nodestate {
 	// start the transmitters
 	node.GlobalHallReqTransmitEnableTx <- true
 	node.HallRequestAssignerTransmitEnableTx <- true
-	sendCommandToServer("startConnectionTimeoutDetection", node)
+	select {
+	case node.commandToServerTx <- "startConnectionTimeoutDetection":
+		// Command sent successfully
+	default:
+		// Command not sent, channel is full
+		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "startConnectionTimeoutDetection")
+	}
 
 ForLoop:
 	for {
@@ -39,10 +51,10 @@ ForLoop:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
-			case singleelevator.DoorStuckEvent:
-				fmt.Printf("Master received door stuck event: stuck: %v\n", elevMsg.DoorIsStuck)
-				// if the door is stuck, we go to inactive
-				if doorIsStuck(elevMsg) {
+			case singleelevator.ElevStatusUpdateEvent:
+				fmt.Printf("Received elevator status update, stuck: %v\n", elevMsg.IsElevDown)
+				// if the elevator is no longer functioning, we go to inactive
+				if elevMsg.IsElevDown {
 					nextNodeState = Inactive
 					break ForLoop
 				}
@@ -53,7 +65,13 @@ ForLoop:
 				newHallReq := makeNewHallReq(node.ID, elevMsg)
 				node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
-				sendCommandToServer("getActiveElevStates", node)
+				select {
+				case node.commandToServerTx <- "getActiveElevStates":
+					// Command sent successfully
+				default:
+					// Command not sent, channel is full
+					fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
+				}
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 			}
 
@@ -72,24 +90,40 @@ ForLoop:
 				fmt.Println("Connection timed out")
 				nextNodeState = Disconnected
 				break ForLoop
-			
-			case messagehandler.NodeConnectDisconnect:
+
+			case messagehandler.ActiveNodeCountChange:
 				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
-				sendCommandToServer("getActiveElevStates", node)
+				select {
+				case node.commandToServerTx <- "getActiveElevStates":
+					// Command sent successfully
+				default:
+					// Command not sent, channel is full
+					fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
+				}
 			}
-			
 
 		case newHallReq := <-node.NewHallReqRx:
 			node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
-			sendCommandToServer("getActiveElevStates", node)
+			select {
+			case node.commandToServerTx <- "getActiveElevStates":
+				// Command sent successfully
+			default:
+				// Command not sent, channel is full
+				fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
+			}
 			fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
 		case connReq := <-node.ConnectionReqRx:
 
 			activeConnReq[connReq.NodeID] = connReq
-			sendCommandToServer("getAllElevStates", node)
-
+			select {
+			case node.commandToServerTx <- "getAllElevStates":
+				// Command sent successfully
+			default:
+				// Command not sent, channel is full
+				fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getAllElevStates")
+			}
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
 
 			switch elevStatesUpdate.DataType {
@@ -140,7 +174,13 @@ ForLoop:
 	// stop transmitters
 	node.GlobalHallReqTransmitEnableTx <- false
 	node.HallRequestAssignerTransmitEnableTx <- false
-	sendCommandToServer("stopConnectionTimeoutDetection", node)
+	select {
+	case node.commandToServerTx <- "stopConnectionTimeoutDetection":
+		// Command sent successfully
+	default:
+		// Command not sent, channel is full
+		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "stopConnectionTimeoutDetection")
+	}
 	node.TOLC = time.Now()
 	fmt.Printf("Exiting master, setting TOLC to %v\n", node.TOLC)
 	return nextNodeState
@@ -224,8 +264,7 @@ func processConnectionRequestsFromOtherNodes(elevStatesUpdate messagehandler.Ele
 		if states, ok := elevStatesUpdate.NodeElevStatesMap[id]; ok {
 			cabRequestInfo = messages.CabRequestInfo{CabRequest: states.CabRequests, ReceiverNodeID: id}
 		} else {
-			emptySlice := [config.NUM_FLOORS]bool{}
-			cabRequestInfo = messages.CabRequestInfo{CabRequest: emptySlice, ReceiverNodeID: id}
+			cabRequestInfo = messages.CabRequestInfo{CabRequest: [config.NUM_FLOORS]bool{}, ReceiverNodeID: id}
 		}
 		// add the cab request info to the result
 		result.CabRequests[id] = cabRequestInfo

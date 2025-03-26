@@ -4,11 +4,10 @@ import (
 	"elev/Network/messages"
 	"elev/config"
 	"elev/elevator"
-	"errors"
 	"fmt"
+	"maps"
 	"math/rand"
 	"time"
-	"maps"
 )
 
 type MessageIDType uint64
@@ -22,7 +21,7 @@ const (
 type NetworkEvent int
 
 const (
-	NodeConnectDisconnect NetworkEvent = iota
+	ActiveNodeCountChange NetworkEvent = iota
 	NodeHasLostConnection
 )
 
@@ -40,34 +39,8 @@ type ElevStateUpdate struct {
 }
 
 // generates a message ID that corresponsds to the message type
-func GenerateMessageID(partition MessageIDType) (uint64, error) {
-	offset := uint64(partition)
-
-	if offset > uint64(CONNECTION_REQ) {
-		return 0, errors.New("invalid messageIDType")
-	}
-
-	i := uint64(rand.Int63n(int64(config.MSG_ID_PARTITION_SIZE)))
-	i += uint64((config.MSG_ID_PARTITION_SIZE) * offset)
-
-	return i, nil
-}
-
-// Listens to incoming acknowledgment messages from UDP, distributes them to their corresponding channels
-func IncomingAckDistributor(ackRx <-chan messages.Ack,
-	hallAssignmentsAck chan<- messages.Ack,
-	connectionReqAck chan<- messages.Ack) {
-
-	for ackMsg := range ackRx {
-
-		if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(NEW_HALL_ASSIGNMENT)+1) {
-			hallAssignmentsAck <- ackMsg
-
-		} else if ackMsg.MessageID < config.MSG_ID_PARTITION_SIZE*(uint64(CONNECTION_REQ)+1) {
-			connectionReqAck <- ackMsg
-
-		}
-	}
+func GenerateMessageID(partition MessageIDType) uint64 {
+	return uint64(rand.Int63n(int64(config.MSG_ID_PARTITION_SIZE)))
 }
 
 // server that tracks the states of all elevators by listening to the elevStatesRx channel
@@ -101,10 +74,10 @@ func NodeElevStateServer(myID int,
 			activeNodes := findActiveNodes(knownNodes, lastSeen)
 
 			// if the number of active nodes change, generate an event
-			if len(lastActiveNodes) != len(activeNodes) {
+			if hasActiveNodesChanged(activeNodes, lastActiveNodes) {
 				fmt.Printf("Active nodes changed from %d to %d\n", len(lastActiveNodes), len(activeNodes))
 				select {
-				case networkEventTx <- NodeConnectDisconnect:
+				case networkEventTx <- ActiveNodeCountChange:
 
 				default:
 					fmt.Printf("Error sending network event\n")
@@ -124,21 +97,18 @@ func NodeElevStateServer(myID int,
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
 
-			if id != myID && nodeIsConnected { // if we are connected, we should update reset the connection timer
+			if nodeIsConnectedToNetwork(id, myID, nodeIsConnected) { // if we are connected, we should update reset the connection timer
 				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 			}
 
 			// if I have seen this node before, check if it has cleared any hall assignments!
-			if _, ok := knownNodes[id]; ok {
-				if HallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
+			if nodeExistInMap(id, knownNodes) && hallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
+				// update the lastActiveNodes with the new state, and send it to the node
+				newActiveNodes := makeDeepCopy(lastActiveNodes)
+				newActiveNodes[id] = elevState.ElevState
+				elevStateUpdateTx <- makeHallAssignmentRemovedMessage(newActiveNodes)
 
-					// update the lastActiveNodes with the new state, and send it to the node
-					newActiveNodes := makeDeepCopy(lastActiveNodes)
-					newActiveNodes[id] = elevState.ElevState
-					elevStateUpdateTx <- makeHallAssignmentRemovedMessage(newActiveNodes)
-
-					// fmt.Printf(("Hall assignment removed by node %d\n"), id)
-				}
+				// fmt.Printf(("Hall assignment removed by node %d\n"), id)
 			}
 			// finally, register the node as seen
 			lastSeen[id] = time.Now()
@@ -183,7 +153,7 @@ func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int
 	return activeNodes
 }
 
-func HallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
+func hallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 	newGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		for button := range 2 {
@@ -201,4 +171,17 @@ func makeDeepCopy(elevStateMap map[int]elevator.ElevatorState) map[int]elevator.
 	newMap := make(map[int]elevator.ElevatorState)
 	maps.Copy(newMap, elevStateMap)
 	return newMap
+}
+
+func nodeIsConnectedToNetwork(myID int, msgID int, nodeIsConnected bool) bool {
+	return nodeIsConnected && myID != msgID
+}
+
+func hasActiveNodesChanged(activeNodes map[int]elevator.ElevatorState, lastActiveNodes map[int]elevator.ElevatorState) bool {
+	return len(activeNodes) != len(lastActiveNodes)
+}
+
+func nodeExistInMap(id int, knownNodes map[int]elevator.ElevatorState) bool {
+	_, ok := knownNodes[id]
+	return ok
 }

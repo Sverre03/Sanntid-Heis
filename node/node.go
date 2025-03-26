@@ -10,7 +10,6 @@ import (
 	"elev/config"
 	"elev/elevator"
 	"elev/singleelevator"
-	"fmt"
 	"time"
 )
 
@@ -74,7 +73,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	}
 
 	node.AckTx = make(chan messages.Ack)
-	ackRx := make(chan messages.Ack)
 
 	node.NodeElevStatesTx = make(chan messages.NodeElevState)
 	node.NodeElevStateUpdate = make(chan messagehandler.ElevStateUpdate)
@@ -102,7 +100,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.GlobalHallRequestRx = make(chan messages.GlobalHallRequest)
 
 	hallAssignmentsAckRx := make(chan messages.Ack)
-	ConnectionReqAckRx := make(chan messages.Ack)
 
 	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate, 3)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
@@ -126,18 +123,13 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 
 	// start receiver process that listens for messages on the port
 	go bcast.Receiver(bcastReceiverPort,
-		ackRx,
+		hallAssignmentsAckRx,
 		receiverToServerCh,
 		node.HallAssignmentsRx,
 		node.CabRequestInfoRx,
 		node.GlobalHallRequestRx,
 		node.ConnectionReqRx,
 		node.NewHallReqRx)
-
-	// process for distributing incoming acks in ackRx to different processes
-	go messagehandler.IncomingAckDistributor(ackRx,
-		hallAssignmentsAckRx,
-		ConnectionReqAckRx)
 
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,
@@ -168,26 +160,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 
 // functions used in the state machines of the different nodes
 
-func sendCommandToServer(command string, node *NodeData) {
-	select {
-	case node.commandToServerTx <- command:
-		// Command sent successfully
-	default:
-		// Command not sent, channel is full
-		fmt.Printf("Warning: Command channel is full, command %s not sent\n", command)
-	}
-}
-
 func mapIsEmpty[k comparable, v any](m map[k]v) bool {
 	return len(m) == 0
-}	
-
-func doorIsStuck(elevMsg singleelevator.ElevatorEvent) bool {
-	return elevMsg.DoorIsStuck && elevMsg.EventType == singleelevator.DoorStuckEvent
-}
-
-func cabRequestInfoForMe(cabRequestInfo messages.CabRequestInfo, node *NodeData) bool {
-	return node.ID == cabRequestInfo.ReceiverNodeID && node.TOLC.IsZero()
 }
 
 func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]bool, globalHallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
@@ -205,7 +179,7 @@ func makeLightMessage(hallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAn
 	return newMessage
 }
 
-func makeNewHallReq(nodeID int,  elevMsg singleelevator.ElevatorEvent) messages.NewHallReq {
+func makeNewHallReq(nodeID int, elevMsg singleelevator.ElevatorEvent) messages.NewHallReq {
 	return messages.NewHallReq{
 		NodeID: nodeID,
 		HallReq: elevator.ButtonEvent{

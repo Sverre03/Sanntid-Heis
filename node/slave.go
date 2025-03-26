@@ -21,17 +21,21 @@ func SlaveProgram(node *NodeData) nodestate {
 	masterConnectionTimeoutTimer.Stop()
 
 	// start the transmitters
-	sendCommandToServer("startConnectionTimeoutDetection", node)
-	// set them lights
+	select {
+	case node.commandToServerTx <- "startConnectionTimeoutDetection":
+		// Command sent successfully
+	default:
+		// Command not sent, channel is full
+		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "startConnectionTimeoutDetection")
+	}
 
 ForLoop:
 	for {
-	Select:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
-			case singleelevator.DoorStuckEvent:
-				if doorIsStuck(elevMsg) {
+			case singleelevator.ElevStatusUpdateEvent:
+				if elevMsg.IsElevDown {
 					nextNodeState = Inactive
 					break ForLoop
 				}
@@ -72,10 +76,7 @@ ForLoop:
 					node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
 					lastHallAssignmentMessageID = newHA.MessageID
 				}
-			}else{
-				break Select
 			}
-
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
 			node.TOLC = time.Now()

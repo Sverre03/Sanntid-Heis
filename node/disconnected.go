@@ -4,6 +4,7 @@ import (
 	"elev/Network/messages"
 	"elev/config"
 	"elev/singleelevator"
+	"elev/util"
 	"fmt"
 	"time"
 )
@@ -39,7 +40,7 @@ ForLoop:
 			}
 
 		case <-decisionTimer.C:
-			if !mapIsEmpty(incomingConnRequests) {
+			if !util.MapIsEmpty(incomingConnRequests) {
 				if ShouldBeMaster(node.ID, node.TOLC, incomingConnRequests) {
 					nextNodeState = Master
 					break ForLoop

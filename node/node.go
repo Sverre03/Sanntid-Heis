@@ -10,7 +10,6 @@ import (
 	"elev/config"
 	"elev/elevator"
 	"elev/singleelevator"
-	"fmt"
 	"time"
 )
 
@@ -168,19 +167,9 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 
 // functions used in the state machines of the different nodes
 
-func sendCommandToServer(command string, node *NodeData) {
-	select {
-	case node.commandToServerTx <- command:
-		// Command sent successfully
-	default:
-		// Command not sent, channel is full
-		fmt.Printf("Warning: Command channel is full, command %s not sent\n", command)
-	}
-}
-
 func mapIsEmpty[k comparable, v any](m map[k]v) bool {
 	return len(m) == 0
-}	
+}
 
 func doorIsStuck(elevMsg singleelevator.ElevatorEvent) bool {
 	return elevMsg.DoorIsStuck && elevMsg.EventType == singleelevator.DoorStuckEvent
@@ -205,7 +194,7 @@ func makeLightMessage(hallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAn
 	return newMessage
 }
 
-func makeNewHallReq(nodeID int,  elevMsg singleelevator.ElevatorEvent) messages.NewHallReq {
+func makeNewHallReq(nodeID int, elevMsg singleelevator.ElevatorEvent) messages.NewHallReq {
 	return messages.NewHallReq{
 		NodeID: nodeID,
 		HallReq: elevator.ButtonEvent{

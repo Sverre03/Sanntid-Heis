@@ -17,18 +17,8 @@ func MasterProgram(node *NodeData) nodestate {
 
 	activeConnReq := make(map[int]messages.ConnectionReq)
 	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][2]bool)
+	hallAssignmentCounter := 0
 	var nextNodeState nodestate
-
-	//Check if we should distribute hall requests
-	if anyHallRequestsActive(node.GlobalHallRequests) {
-		select {
-		case node.commandToServerTx <- "getActiveElevStates":
-			// Command sent successfully
-		default:
-			// Command not sent, channel is full
-			fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
-		}
-	}
 
 	// inform the global hall request transmitter of the new global hall requests
 	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
@@ -129,13 +119,17 @@ ForLoop:
 
 			case messagehandler.ActiveElevStates:
 				fmt.Printf("Computing assignments:\n")
+				// increase the hall assignment counter
+				hallAssignmentCounter++
+
 				// Guard clause to break out of the loop if there are no active connection requests
 				if util.MapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
 					break Select
 				}
 				computationResult := computeHallAssignments(node.ID,
 					elevStatesUpdate,
-					node.GlobalHallRequests)
+					node.GlobalHallRequests,
+					hallAssignmentCounter)
 
 				node.ElevLightAndAssignmentUpdateTx <- computationResult.MyAssignment
 
@@ -151,14 +145,14 @@ ForLoop:
 
 			case messagehandler.AllElevStates:
 				infoToNodes := processConnectionRequestsFromOtherNodes(elevStatesUpdate, activeConnReq)
-				for _, info := range infoToNodes.CabRequests {
-					node.CabRequestInfoTx <- info
+				for _, infoMessage := range infoToNodes.CabRequests {
+					node.CabRequestInfoTx <- infoMessage
 				}
 			case messagehandler.HallAssignmentRemoved:
-				// fmt.Println("Hall assignment removed")
-				// fmt.Printf("Updated elevator states: %v\n", elevStatesUpdate.NodeElevStatesMap)
-				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap)
-				// fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
+				fmt.Println("Hall assignment removed")
+				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, hallAssignmentCounter)
+				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
+
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
@@ -198,16 +192,18 @@ type connectionRequestHandler struct {
 }
 
 func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FLOORS][2]bool,
-	recentNodeElevStates map[int]elevator.ElevatorState) [config.NUM_FLOORS][2]bool {
+	recentNodeElevStates map[int]elevator.ElevatorState, globalHallRequests [config.NUM_FLOORS][2]bool, hallAssignmentCounter int) [config.NUM_FLOORS][2]bool {
 
-	var globalHallRequests [config.NUM_FLOORS][2]bool
-
-	// If the hall assignment which was assigned to a node is still active for that node, we add it to the global hall requests
 	for id, hallAssignments := range assignedNodeHallAssignments {
 		if nodeElevState, ok := recentNodeElevStates[id]; ok {
+
+			// if the counter value is incorrect, we skip the node
+			if nodeElevState.HACounterVersion != hallAssignmentCounter {
+				continue
+			}
 			for floor := range config.NUM_FLOORS {
 				for btn := range 2 {
-					if hallAssignments[floor][btn] && nodeElevState.MyHallAssignments[floor][btn] {
+					if hallAssignments[floor][btn] && !nodeElevState.MyHallAssignments[floor][btn] {
 						globalHallRequests[floor][btn] = true
 					}
 				}
@@ -221,7 +217,8 @@ func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FL
 func computeHallAssignments(
 	myID int,
 	elevStatesUpdate messagehandler.ElevStateUpdate,
-	globalHallRequests [config.NUM_FLOORS][2]bool) HallAssignmentResult {
+	globalHallRequests [config.NUM_FLOORS][2]bool,
+	HACounter int) HallAssignmentResult {
 
 	var result HallAssignmentResult
 	result.NodeHallAssignments = make(map[int][config.NUM_FLOORS][2]bool)
@@ -238,7 +235,7 @@ func computeHallAssignments(
 			result.MyAssignment = makeHallAssignmentAndLightMessage(hallRequests, globalHallRequests)
 		} else {
 			// if the assignment is for another node, we make a new hall assignment message
-			result.OtherAssignments[id] = messages.NewHallAssignments{NodeID: id, HallAssignment: hallRequests, MessageID: 0}
+			result.OtherAssignments[id] = messages.NewHallAssignments{NodeID: id, HallAssignment: hallRequests, MessageID: 0, HallAssignmentCounter: HACounter}
 		}
 	}
 	return result

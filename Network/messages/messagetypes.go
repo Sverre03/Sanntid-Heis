@@ -40,18 +40,19 @@ type NodeElevState struct {
 
 // Broadcast when you are in state disconnected. used to create a connection with other node
 type ConnectionReq struct {
-	TOLC      time.Time
-	NodeID    int
+	TOLC   time.Time
+	NodeID int
 }
 
 // Message from master to slaves on network, containing their new hall assignments
 type NewHallAssignments struct {
-	NodeID         int
-	HallAssignment [config.NUM_FLOORS][2]bool
-	MessageID      uint64
+	NodeID                int
+	HallAssignment        [config.NUM_FLOORS][2]bool
+	MessageID             uint64 // message identifier, generated in the transmitter
+	HallAssignmentCounter int
 }
 
 type NewHallReq struct {
-	NodeID int
+	NodeID  int
 	HallReq elevator.ButtonEvent
 }

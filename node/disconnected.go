@@ -98,8 +98,8 @@ func ShouldBeMaster(myID int, tolc time.Time, connectionRequests map[int]message
 func makeCabOrderMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.LightAndAssignmentUpdate {
 	return singleelevator.LightAndAssignmentUpdate{
 		CabAssignments:  cabRequests,
-		LightStates:     [config.NUM_FLOORS][2]bool{},
+		LightStates:     [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool{},
 		OrderType:       singleelevator.CabOrder,
-		HallAssignments: [config.NUM_FLOORS][2]bool{},
+		HallAssignments: [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool{},
 	}
 }

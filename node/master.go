@@ -16,7 +16,7 @@ func MasterProgram(node *NodeData) nodestate {
 	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
 
 	activeConnReq := make(map[int]messages.ConnectionReq)
-	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][2]bool)
+	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 	hallAssignmentCounter := 0
 	var nextNodeState nodestate
 
@@ -182,7 +182,7 @@ ForLoop:
 
 // HallAssignmentResult is a struct that holds the result of the hall assignment computation
 type HallAssignmentResult struct {
-	NodeHallAssignments map[int][config.NUM_FLOORS][2]bool
+	NodeHallAssignments map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	MyAssignment        singleelevator.LightAndAssignmentUpdate
 	OtherAssignments    map[int]messages.NewHallAssignments
 }
@@ -202,8 +202,8 @@ func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FL
 				continue
 			}
 			for floor := range config.NUM_FLOORS {
-				for btn := range 2 {
-					if hallAssignments[floor][btn] && !nodeElevState.MyHallAssignments[floor][btn] {
+				for btn := range config.NUM_HALL_BUTTONS {
+					if hallAssignments[floor][btn] && nodeElevState.MyHallAssignments[floor][btn] {
 						globalHallRequests[floor][btn] = true
 					}
 				}
@@ -217,11 +217,11 @@ func updateGlobalHallRequests(assignedNodeHallAssignments map[int][config.NUM_FL
 func computeHallAssignments(
 	myID int,
 	elevStatesUpdate messagehandler.ElevStateUpdate,
-	globalHallRequests [config.NUM_FLOORS][2]bool,
+	globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
 	HACounter int) HallAssignmentResult {
 
 	var result HallAssignmentResult
-	result.NodeHallAssignments = make(map[int][config.NUM_FLOORS][2]bool)
+	result.NodeHallAssignments = make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 	// run the hall request assigner algorithm
 	hraOutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
 
@@ -263,8 +263,8 @@ func processConnectionRequestsFromOtherNodes(elevStatesUpdate messagehandler.Ele
 
 }
 
-func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][2]bool,
-	newHallReq messages.NewHallReq) [config.NUM_FLOORS][2]bool {
+func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+	newHallReq messages.NewHallReq) [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
 	// if button is invalid we return false
 	if newHallReq.HallReq.Button == elevator.ButtonCab {
 		// fmt.Printf("Received a new hall request, but the button type was invalid\n")
@@ -275,9 +275,9 @@ func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][2]bool,
 	return globalHallRequests
 }
 
-func anyHallRequestsActive(globalHallRequests [config.NUM_FLOORS][2]bool) bool {
+func anyHallRequestsActive(globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	for floor := range config.NUM_FLOORS {
-		for btn := range 2 {
+		for btn := range config.NUM_HALL_BUTTONS {
 			if globalHallRequests[floor][btn] {
 				return true
 			}

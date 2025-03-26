@@ -112,7 +112,7 @@ ForLoop:
 	return nextNodeState
 }
 
-func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallReq [config.NUM_FLOORS][2]bool, myID int) bool {
+func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool, myID int) bool {
 	if newHAmsg.NodeID != myID {
 		return false
 	} else {
@@ -129,7 +129,7 @@ func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallRe
 	return true
 }
 
-func hasChanged(newGlobalHallReq, oldGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
+func hasChanged(newGlobalHallReq, oldGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		// check if the new is equal to the old or not
 		if oldGlobalHallReq[floor][elevator.ButtonHallDown] != newGlobalHallReq[floor][elevator.ButtonHallDown] {

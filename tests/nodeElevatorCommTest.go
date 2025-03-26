@@ -6,7 +6,7 @@ package tests
 // )
 
 // func NodeElevatorCommTest() {
-// 	ElevatorHallButtonAssignmentRx := make(chan [config.NUM_FLOORS][2]bool)
+// 	ElevatorHallButtonAssignmentRx := make(chan [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 // 	ElevatorHRAStatesRx := make(chan elevator.ElevatorState)
 // 	ElevatorHallButtonEventTx := make(chan elevator.ButtonEvent)
 // 	DoorIsStuckCh := make(chan bool)

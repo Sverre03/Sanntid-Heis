@@ -29,7 +29,7 @@ type ElevatorState struct {
 	Direction         MotorDirection
 	Behavior          ElevatorBehavior
 	CabRequests       [config.NUM_FLOORS]bool
-	MyHallAssignments [config.NUM_FLOORS][2]bool
+	MyHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	HACounterVersion  int
 }
 
@@ -42,6 +42,8 @@ func (eb ElevatorBehavior) String() string {
 		return "doorOpen"
 	case Moving:
 		return "moving"
+	case StoppedBetweenFloors:
+		return "stoppedBetweenFloors"
 	default:
 		return fmt.Sprintf("unknown(%d)", int(eb))
 	}

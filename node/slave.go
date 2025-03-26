@@ -31,20 +31,13 @@ ForLoop:
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
 			case singleelevator.DoorStuckEvent:
-				if elevMsg.DoorIsStuck {
+				if doorIsStuck(elevMsg) {
 					nextNodeState = Inactive
 					break ForLoop
 				}
 
 			case singleelevator.HallButtonEvent:
-				node.NewHallReqTx <- messages.NewHallReq{
-					NodeID: node.ID,
-					HallReq: elevator.ButtonEvent{
-						Floor:  elevMsg.ButtonEvent.Floor,
-						Button: elevMsg.ButtonEvent.Button,
-					},
-				}
-
+				node.NewHallReqTx <- makeNewHallReq(node.ID, elevMsg)
 			}
 
 		case myElevStates := <-node.MyElevStatesRx:
@@ -55,25 +48,34 @@ ForLoop:
 			}
 
 		case networkEvent := <-node.NetworkEventRx:
-			if networkEvent == messagehandler.NodeHasLostConnection {
+			if iHaveLostConenction(networkEvent) {
 				nextNodeState = Disconnected
 				break ForLoop
 			}
 
 		case newHA := <-node.HallAssignmentsRx:
-			if newHA.NodeID != node.ID ||
-				!canAcceptHallAssignments(newHA.HallAssignment, node.GlobalHallRequests) {
+			if canAcceptHallAssignments(newHA, node.GlobalHallRequests, node.ID) {
+				// the hall assignments are for me, so I can ack them
+				node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
+
+				// lets check if I have already received this message, if not its update time!
+				if lastHallAssignmentMessageID != newHA.MessageID {
+					node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
+					lastHallAssignmentMessageID = newHA.MessageID
+				}
+
+				// the hall assignments are for me, so I can ack them
+				node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
+
+				// lets check if I have already received this message, if not its update time!
+				if lastHallAssignmentMessageID != newHA.MessageID {
+					node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
+					lastHallAssignmentMessageID = newHA.MessageID
+				}
+			}else{
 				break Select
 			}
 
-			// the hall assignments are for me, so I can ack them
-			node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
-
-			// lets check if I have already received this message, if not its update time!
-			if lastHallAssignmentMessageID != newHA.MessageID {
-				node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests)
-				lastHallAssignmentMessageID = newHA.MessageID
-			}
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
 			node.TOLC = time.Now()
@@ -108,14 +110,18 @@ ForLoop:
 	return nextNodeState
 }
 
-func canAcceptHallAssignments(newHallAssignments, globalHallReq [config.NUM_FLOORS][2]bool) bool {
-	for floor := range config.NUM_FLOORS {
-		// check if my new assignment contains assignments that I am yet to be informed of from master
-		if newHallAssignments[floor][elevator.ButtonHallDown] && !(globalHallReq[floor][elevator.ButtonHallDown]) {
-			return false
-		}
-		if newHallAssignments[floor][elevator.ButtonHallUp] && !(globalHallReq[floor][elevator.ButtonHallUp]) {
-			return false
+func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallReq [config.NUM_FLOORS][2]bool, myID int) bool {
+	if newHAmsg.NodeID != myID {
+		return false
+	} else {
+		for floor := range config.NUM_FLOORS {
+			// check if my new assignment contains assignments that I am yet to be informed of from master
+			if newHAmsg.HallAssignment[floor][elevator.ButtonHallDown] && !(globalHallReq[floor][elevator.ButtonHallDown]) {
+				return false
+			}
+			if newHAmsg.HallAssignment[floor][elevator.ButtonHallUp] && !(globalHallReq[floor][elevator.ButtonHallUp]) {
+				return false
+			}
 		}
 	}
 	return true
@@ -147,4 +153,8 @@ func hasChanged(newGlobalHallReq, oldGlobalHallReq [config.NUM_FLOORS][2]bool) b
 		}
 	}
 	return false
+}
+
+func iHaveLostConenction(networkEvent messagehandler.NetworkEvent) bool {
+	return networkEvent == messagehandler.NodeHasLostConnection
 }

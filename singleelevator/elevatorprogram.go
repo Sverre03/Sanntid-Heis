@@ -53,23 +53,35 @@ func ElevatorProgram(
 	doorOpenTimer := time.NewTimer(config.DOOR_OPEN_DURATION)   // 3-second timer to detect door timeout
 	doorStuckTimer := time.NewTimer(config.DOOR_STUCK_DURATION) // 30-second timer to detect stuck doors
 	stuckBetweenFloorsTimer := time.NewTimer(config.ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT)
-	
+
 	doorOpenTimer.Stop()
 	doorStuckTimer.Stop()
 	stuckBetweenFloorsTimer.Stop()
+
+	lastFloorChange := time.Now()
+	recoveryAttempts := 0
+	maxRecoveryAttempts := 3
 
 	// Start hardware monitoring routines
 	go elevator.PollButtons(buttonEventRx)
 	go elevator.PollFloorSensor(floorEventRx)
 	go elevator.PollObstructionSwitch(obstructionEventRx)
 
-	elevatorEventTx <- makeDoorStuckMessage(false)
+	elevatorEventTx <- makeIsElevatorDownMessage(false)
+
+	startStuckMonitoring := func() {
+		if elevator_fsm.GetElevator().Behavior == elevator.Moving {
+			stuckBetweenFloorsTimer.Reset(config.ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT)
+			lastFloorChange = time.Now()
+		}
+	}
 
 	for {
 		select {
 		case button := <-buttonEventRx:
 			if button.Button == elevator.ButtonCab { // Handle cab calls locally
 				elevator_fsm.OnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
+				startStuckMonitoring()
 			} else {
 				elevatorEventTx <- makeHallReqMessage(button)
 			}
@@ -90,6 +102,7 @@ func ElevatorProgram(
 								btnType := elevator.ButtonType(btn)
 								elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
 								fmt.Printf("New hall assignment added at floor %d, button %d\n", floor, btn)
+
 							}
 						}
 					}
@@ -134,8 +147,15 @@ func ElevatorProgram(
 				fmt.Printf("My elevator hall lights: %v\n\n", elevator_fsm.GetElevator().HallLightStates)
 			}
 
+			startStuckMonitoring()
+
 		case floor := <-floorEventRx:
+			stuckBetweenFloorsTimer.Stop()
+			recoveryAttempts = 0 // Reset recovery attempts when we reach a floor
+			lastFloorChange = time.Now()
+
 			elevator_fsm.OnFloorArrival(floor, doorOpenTimer)
+			startStuckMonitoring()
 
 		case isObstructed := <-obstructionEventRx:
 			fmt.Printf("Obstruction detected: %v\n", isObstructed)
@@ -143,20 +163,61 @@ func ElevatorProgram(
 			if !isObstructed {
 				// Stop the door stuck timer if the obstruction is cleared
 				doorStuckTimer.Stop()
-				elevatorEventTx <- makeDoorStuckMessage(false)
+				elevatorEventTx <- makeIsElevatorDownMessage(false)
 			}
 
 		case <-doorOpenTimer.C:
 			// Start the door stuck timer, which is stopped by OnDoorTimeout if the doors are able to close
 			elevator_fsm.OnDoorTimeout(doorOpenTimer, doorStuckTimer)
+			startStuckMonitoring()
 
 		case <-doorStuckTimer.C:
 			fmt.Println("Door stuck timer timed out")
-			elevatorEventTx <- makeDoorStuckMessage(true)
+			elevatorEventTx <- makeIsElevatorDownMessage(true)
 
 		case <-stuckBetweenFloorsTimer.C:
-			fmt.Println("The elevator spent too long between floors")
-			elevator_fsm.OnInitBetweenFloors()
+			fmt.Println("The elevator spent too long between floors!")
+
+			if recoveryAttempts < maxRecoveryAttempts {
+				fmt.Printf("Attempting recovery (attempt %d of %d)...\n", recoveryAttempts+1, maxRecoveryAttempts)
+
+				elevator_fsm.OnInitBetweenFloors()
+				recoveryAttempts++
+
+				// Start monitoring again
+				startStuckMonitoring()
+			} else {
+				fmt.Printf("Failed to recover after %d attempts - reporting elevator as down\n", maxRecoveryAttempts)
+
+				elevatorEventTx <- makeIsElevatorDownMessage(true)
+			}
+		case <-time.Tick(config.ELEVATOR_STUCK_BETWEEN_FLOORS_POLL_INTERVAL):
+
+			elev := elevator_fsm.GetElevator()
+
+			// If we're supposed to be moving but haven't changed floors in too long
+			if elev.Behavior == elevator.Moving &&
+				time.Since(lastFloorChange) > config.ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT {
+				fmt.Println("Detected elevator not moving between floors (timeout)")
+				stuckBetweenFloorsTimer.Stop()   // Stop current timer
+				stuckBetweenFloorsTimer.Reset(0) // Trigger immediately
+			}
+
+			// If we're in StoppedBetweenFloors but have assignments, attempt to resume operation
+			if elev.Behavior == elevator.StoppedBetweenFloors && hasAssignments(elev.Requests) {
+				fmt.Println("Detected elevator stopped between floors with pending requests")
+				fmt.Println("Attempting to resume operation...")
+				elevator_fsm.ResumeElevator()
+
+				// If it's still not moving after resume attempt, something is wrong
+				if elevator_fsm.GetElevator().Behavior != elevator.Moving {
+					fmt.Println("Failed to resume operation - attempting emergency recovery")
+					stuckBetweenFloorsTimer.Stop()   // Stop current timer
+					stuckBetweenFloorsTimer.Reset(0) // Trigger immediately
+				} else {
+					startStuckMonitoring()
+				}
+			}
 
 		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
 			elev := elevator_fsm.GetElevator()
@@ -178,9 +239,9 @@ func ElevatorProgram(
 	}
 }
 
-func makeDoorStuckMessage(isDoorStuck bool) ElevatorEvent {
+func makeIsElevatorDownMessage(isElevDown bool) ElevatorEvent {
 	return ElevatorEvent{EventType: ElevStatusUpdateEvent,
-		IsElevDown: isDoorStuck,
+		IsElevDown: isElevDown,
 	}
 }
 

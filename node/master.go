@@ -54,7 +54,7 @@ ForLoop:
 			case singleelevator.DoorStuckEvent:
 				fmt.Printf("Master received door stuck event: stuck: %v\n", elevMsg.DoorIsStuck)
 				// if the door is stuck, we go to inactive
-				if elevMsg.DoorIsStuck {
+				if doorIsStuck(elevMsg) {
 					nextNodeState = Inactive
 					break ForLoop
 				}
@@ -62,14 +62,8 @@ ForLoop:
 
 			case singleelevator.HallButtonEvent:
 
-				newHallReq := messages.NewHallReq{
-					NodeID: node.ID,
-					HallReq: elevator.ButtonEvent{
-						Floor:  elevMsg.ButtonEvent.Floor,
-						Button: elevMsg.ButtonEvent.Button,
-					},
-				}
-				node.GlobalHallRequests = ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
+				newHallReq := makeNewHallReq(node.ID, elevMsg)
+				node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				sendCommandToServer("getActiveElevStates", node)
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
@@ -84,19 +78,21 @@ ForLoop:
 
 		case networkEvent := <-node.NetworkEventRx:
 			fmt.Println("Network event received")
+			switch networkEvent {
+			case messagehandler.NodeHasLostConnection:
 
-			if networkEvent == messagehandler.NodeHasLostConnection {
 				fmt.Println("Connection timed out")
 				nextNodeState = Disconnected
 				break ForLoop
-
-			} else if networkEvent == messagehandler.NodeConnectDisconnect {
+			
+			case messagehandler.NodeConnectDisconnect:
 				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
 				sendCommandToServer("getActiveElevStates", node)
 			}
+			
 
 		case newHallReq := <-node.NewHallReqRx:
-			node.GlobalHallRequests = ProcessNewHallRequest(node.GlobalHallRequests, newHallReq)
+			node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 			sendCommandToServer("getActiveElevStates", node)
 			fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
@@ -112,7 +108,7 @@ ForLoop:
 
 			case messagehandler.ActiveElevStates:
 				fmt.Printf("Computing assignments:\n")
-				if len(elevStatesUpdate.NodeElevStatesMap) == 0 {
+				if mapIsEmpty(activeConnReq) {
 					break Select
 				}
 				computationResult := computeHallAssignments(node.ID,
@@ -249,7 +245,7 @@ func processConnectionRequestsFromOtherNodes(elevStatesUpdate messagehandler.Ele
 
 }
 
-func ProcessNewHallRequest(globalHallRequests [config.NUM_FLOORS][2]bool,
+func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][2]bool,
 	newHallReq messages.NewHallReq) [config.NUM_FLOORS][2]bool {
 	// if button is invalid we return false
 	if newHallReq.HallReq.Button == elevator.ButtonCab {
@@ -260,4 +256,14 @@ func ProcessNewHallRequest(globalHallRequests [config.NUM_FLOORS][2]bool,
 	fmt.Printf("updating global hall requests\n")
 	globalHallRequests[newHallReq.HallReq.Floor][newHallReq.HallReq.Button] = true
 	return globalHallRequests
+}
+
+func makeNewHallReq (nodeID int,  elevMsg singleelevator.ElevatorEvent) messages.NewHallReq {
+	return messages.NewHallReq{
+		NodeID: nodeID,
+		HallReq: elevator.ButtonEvent{
+			Floor:  elevMsg.ButtonEvent.Floor,
+			Button: elevMsg.ButtonEvent.Button,
+		},
+	}
 }

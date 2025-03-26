@@ -102,14 +102,3 @@ func makeCabOrderMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.Lig
 	}
 }
 
-func mapIsEmpty(m map[int]messages.ConnectionReq) bool {
-	return len(m) == 0
-}	
-
-func doorIsStuck(elevMsg singleelevator.ElevatorEvent) bool {
-	return elevMsg.DoorIsStuck && elevMsg.EventType == singleelevator.DoorStuckEvent
-}
-
-func cabRequestInfoForMe(cabRequestInfo messages.CabRequestInfo, node *NodeData) bool {
-	return node.ID == cabRequestInfo.ReceiverNodeID && node.TOLC.IsZero()
-}

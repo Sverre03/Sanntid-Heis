@@ -18,21 +18,9 @@ func MasterProgram(node *NodeData) nodestate {
 	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][2]bool)
 	var nextNodeState nodestate
 
-	globalHallRequestsExists := false
-
-	// Check if we should distribute hall requests
-	for floor := range config.NUM_FLOORS {
-		for btn := range 2 {
-			if node.GlobalHallRequests[floor][btn] {
-				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
-				sendCommandToServer("getActiveElevStates", node)
-				globalHallRequestsExists = true
-				break
-			}
-		}
-		if globalHallRequestsExists {
-			break
-		}
+	//Check if we should distribute hall requests
+	if shouldDistributeHallRequests(node.GlobalHallRequests) {
+		sendCommandToServer("getActiveElevStates", node)
 	}
 
 	// inform the global hall request transmitter of the new global hall requests
@@ -108,7 +96,8 @@ ForLoop:
 
 			case messagehandler.ActiveElevStates:
 				fmt.Printf("Computing assignments:\n")
-				if mapIsEmpty(activeConnReq) {
+				// Guard clause to break out of the loop if there are no active connection requests
+				if mapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
 					break Select
 				}
 				computationResult := computeHallAssignments(node.ID,
@@ -258,3 +247,13 @@ func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][2]bool,
 	return globalHallRequests
 }
 
+func shouldDistributeHallRequests(globalHallRequests [config.NUM_FLOORS][2]bool) bool {
+	for floor := range config.NUM_FLOORS {
+		for btn := range 2 {
+			if globalHallRequests[floor][btn] {
+				return true
+			}
+		}
+	}
+	return false
+}

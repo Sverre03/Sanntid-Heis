@@ -166,6 +166,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	return node
 }
 
+// functions used in the state machines of the different nodes
+
 func sendCommandToServer(command string, node *NodeData) {
 	select {
 	case node.commandToServerTx <- command:
@@ -176,7 +178,7 @@ func sendCommandToServer(command string, node *NodeData) {
 	}
 }
 
-func mapIsEmpty(m map[int]messages.ConnectionReq) bool {
+func mapIsEmpty[k comparable, v any](m map[k]v) bool {
 	return len(m) == 0
 }	
 

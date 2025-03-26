@@ -41,12 +41,13 @@ func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool) bool {
 			}
 		}
 	}
-	if shouldStop {
-		elevator.SetMotorDirection(elevator.DirectionStop)
-		elev.Dir = elevator.DirectionStop
-		elev.Behavior = elevator.Idle
-	}
 	return shouldStop
+}
+
+func StopElevator() {
+	elevator.SetMotorDirection(elevator.DirectionStop)
+	elev.Dir = elevator.DirectionStop
+	elev.Behavior = elevator.Idle
 }
 
 func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {

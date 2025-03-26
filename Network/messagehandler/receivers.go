@@ -157,12 +157,7 @@ func NodeElevStateServer(myID int,
 }
 
 func makeHallAssignmentRemovedMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
-	// Create a deep copy of the elevator states to ensure we're passing current state
-	elevStatesCopy := make(map[int]elevator.ElevatorState)
-	for id, state := range elevStates {
-		elevStatesCopy[id] = state
-	}
-	return ElevStateUpdate{NodeElevStatesMap: elevStatesCopy, DataType: HallAssignmentRemoved}
+	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: HallAssignmentRemoved}
 }
 
 func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {

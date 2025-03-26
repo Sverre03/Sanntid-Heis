@@ -15,7 +15,7 @@ func DisconnectedProgram(node *NodeData) nodestate {
 
 	connectionReqMsgID, _ := messagehandler.GenerateMessageID(messagehandler.CONNECTION_REQ)
 	globalHallRequestReceived := false
-	fmt.Printf("%t", globalHallRequestReceived)
+	fmt.Printf("%t\n", globalHallRequestReceived)
 
 	myConnReq := messages.ConnectionReq{
 		TOLC:      node.TOLC,

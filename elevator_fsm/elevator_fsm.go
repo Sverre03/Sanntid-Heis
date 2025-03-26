@@ -76,8 +76,7 @@ func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer 
 		switch pair.Behavior {
 		case elevator.DoorOpen:
 			resetDoorTimer = true
-			updatedElev := elevator.RequestsClearAtCurrentFloor(newState)
-			newState = updatedElev
+			newState = elevator.RequestsClearAtCurrentFloor(newState)
 		case elevator.Moving, elevator.Idle:
 			// do nothing
 		}
@@ -88,7 +87,7 @@ func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer 
 
 func RemoveRequest(floor int, btnType elevator.ButtonType) {
 	elev.Requests[floor][btnType] = false
-	elevator.SetButtonLamp(btnType, floor, false)
+	// elevator.SetButtonLamp(btnType, floor, false)
 }
 
 func SetObstruction(isObstructed bool) {
@@ -104,16 +103,15 @@ func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer) {
 	switch elev.Behavior {
 	case elevator.Moving:
 		if elevator.RequestsShouldStop(elev) {
-			var updatedElev elevator.Elevator
-
+			fmt.Printf("Elevator stopped at floor %d\n", elev.Floor)
+			fmt.Printf("Motor direction: %s\n", elev.Dir.String())
 			elevator.SetMotorDirection(elevator.DirectionStop)
 			elevator.SetDoorOpenLamp(true)
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 
-			updatedElev = elevator.RequestsClearAtCurrentFloor(elev)
-			elev = updatedElev
+			elev = elevator.RequestsClearAtCurrentFloor(elev)
+			elevator.SetButtonLamp(elevator.ButtonCab, elev.Floor, false)
 
-			elevator.SetAllLights(&elev)
 			elev.Behavior = elevator.DoorOpen
 		}
 	default:
@@ -148,6 +146,9 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 			// if pair.Behavior == elevator.Moving {
 			// 	elevator.SetMotorDirection(elev.Dir)
 			// }
+			fmt.Printf("Motor direction: %s\n", elev.Dir.String())
+			updatedElev := elevator.RequestsClearAtCurrentFloor(elev)
+			elev = updatedElev
 
 			switch elev.Behavior {
 			case elevator.DoorOpen:

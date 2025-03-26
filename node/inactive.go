@@ -1,7 +1,6 @@
 package node
 
 import (
-	"elev/singleelevator"
 	"fmt"
 )
 
@@ -14,7 +13,7 @@ ForLoop:
 
 		case elevMsg := <-node.ElevatorEventRx:
 			// check whether the door is not stuck
-			if !elevMsg.DoorIsStuck && elevMsg.EventType == singleelevator.DoorStuckEvent {
+			if !isDoorStuck(elevMsg) {
 				nextNodeState = Disconnected
 				break ForLoop
 			}

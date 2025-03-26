@@ -76,7 +76,7 @@ func ElevatorProgram(
 		case msg := <-elevLightAndAssignmentUpdateRx:
 			switch msg.OrderType {
 			case HallOrder:
-				elevator_fsm.UpdateHallAssignments(msg.HallAssignments)
+				elevator_fsm.UpdateHallAssignments(msg.HallAssignments, msg.LightStates, doorOpenTimer)
 				// for floor := range config.NUM_FLOORS {
 				// 	for hallButton := range 2 {
 						// if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open

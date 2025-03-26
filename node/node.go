@@ -108,7 +108,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
 	node.MyElevStatesRx = make(chan elevator.ElevatorState)
 
-	node.commandToServerTx = make(chan string)
+	node.commandToServerTx = make(chan string, 5)
 	node.NetworkEventRx = make(chan messagehandler.NetworkEvent)
 
 	node.GlobalHallReqTransmitEnableTx = make(chan bool)

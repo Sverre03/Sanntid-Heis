@@ -35,10 +35,42 @@ func RemoveHallAssignment(floor int, btnType elevator.ButtonType) {
 	// elevator.SetAllLights(&elev)
 }
 
-func UpdateHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool) {
+func UpdateHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool, newLightStates [config.NUM_FLOORS][2]bool, doorOpenTimer *time.Timer) {
+	SetHallLights(newLightStates)
 	for floor := range config.NUM_FLOORS {
 		for btn := range 2 {
-			elev.Requests[floor][btn] = newHallAssignments[floor][btn]
+			btnType := elevator.ButtonType(btn)
+			if !elev.Requests[floor][btn] && newHallAssignments[floor][btn] {
+				elev.Requests[floor][btnType] = true
+				// If the elevator is idle and the button is pressed in the same floor, the door should remain open
+				switch elev.Behavior {
+				case elevator.DoorOpen:
+					// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
+					if elevator.RequestsShouldClearImmediately(elev, floor, btnType) {
+						doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+					} else {
+						elev.Requests[floor][btnType] = true
+					}
+				case elevator.Moving:
+					elev.Requests[floor][btnType] = true
+				case elevator.Idle:
+					elev.Requests[floor][btnType] = true
+					pair := elevator.RequestsChooseDirection(elev)
+					elev.Dir = pair.Dir
+					elev.Behavior = pair.Behavior
+
+					switch pair.Behavior {
+					case elevator.DoorOpen:
+						doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+						elev = elevator.RequestsClearAtCurrentFloor(elev)
+					case elevator.Moving:
+						elevator.SetMotorDirection(elev.Dir)
+					case elevator.Idle:
+					}
+				}
+			} else if elev.Requests[floor][btn] && !newHallAssignments[floor][btn] {
+				elev.Requests[floor][btnType] = false
+			}
 		}
 	}
 }

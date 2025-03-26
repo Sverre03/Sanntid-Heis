@@ -18,14 +18,20 @@ func MasterProgram(node *NodeData) nodestate {
 	currentNodeHallAssignments := make(map[int][config.NUM_FLOORS][2]bool)
 	var nextNodeState nodestate
 
+	globalHallRequestsExists := false
+
 	// Check if we should distribute hall requests
 	for floor := range config.NUM_FLOORS {
 		for btn := range 2 {
 			if node.GlobalHallRequests[floor][btn] {
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 				sendCommandToServer("getActiveElevStates", node)
+				globalHallRequestsExists = true
 				break
 			}
+		}
+		if globalHallRequestsExists {
+			break
 		}
 	}
 
@@ -77,7 +83,7 @@ ForLoop:
 			}
 
 		case networkEvent := <-node.NetworkEventRx:
-			// fmt.Println("Network event received")
+			fmt.Println("Network event received")
 
 			if networkEvent == messagehandler.NodeHasLostConnection {
 				fmt.Println("Connection timed out")
@@ -85,7 +91,7 @@ ForLoop:
 				break ForLoop
 
 			} else if networkEvent == messagehandler.NodeConnectDisconnect {
-				// fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
+				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
 				sendCommandToServer("getActiveElevStates", node)
 			}
 
@@ -134,7 +140,7 @@ ForLoop:
 				// fmt.Println("Hall assignment removed")
 				// fmt.Printf("Updated elevator states: %v\n", elevStatesUpdate.NodeElevStatesMap)
 				node.GlobalHallRequests = updateGlobalHallRequests(currentNodeHallAssignments, elevStatesUpdate.NodeElevStatesMap)
-				// fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
+				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}

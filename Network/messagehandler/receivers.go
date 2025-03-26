@@ -5,6 +5,7 @@ import (
 	"elev/config"
 	"elev/elevator"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -98,7 +99,13 @@ func NodeElevStateServer(myID int,
 
 			// if the number of active nodes change, generate an event
 			if len(lastActiveNodes) != len(activeNodes) {
-				networkEventTx <- NodeConnectDisconnect
+				fmt.Printf("Active nodes changed from %d to %d\n", len(lastActiveNodes), len(activeNodes))
+				select {
+				case networkEventTx <- NodeConnectDisconnect:
+					//
+				default:
+					fmt.Printf("Error sending network event\n")
+				}
 			}
 			lastActiveNodes = activeNodes
 

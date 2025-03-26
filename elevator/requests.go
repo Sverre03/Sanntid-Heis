@@ -147,9 +147,7 @@ func RequestsClearAtCurrentFloor(e Elevator) Elevator {
 			e.Requests[e.Floor][ButtonHallUp] = false
 			e.HallLightStates[e.Floor][ButtonHallUp] = false
 			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallUp)
-		}
-
-		if e.Requests[e.Floor][ButtonHallDown] {
+		} else if e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
 			e.HallLightStates[e.Floor][ButtonHallDown] = false
 			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)

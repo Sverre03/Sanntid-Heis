@@ -48,19 +48,6 @@ func (eb ElevatorBehavior) String() string {
 	}
 }
 
-func (button ButtonType) String() string {
-	switch button {
-	case ButtonHallUp:
-		return "HallUp"
-	case ButtonHallDown:
-		return "HallDown"
-	case ButtonCab:
-		return "Cab"
-	default:
-		return "Unknown"
-	}
-}
-
 // String returns a string representation of the MotorDirection
 func (md MotorDirection) String() string {
 	switch md {

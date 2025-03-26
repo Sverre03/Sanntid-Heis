@@ -1,7 +1,6 @@
 package node
 
 import (
-	"elev/Network/messagehandler"
 	"elev/Network/messages"
 	"elev/config"
 	"elev/singleelevator"
@@ -10,35 +9,28 @@ import (
 )
 
 func DisconnectedProgram(node *NodeData) nodestate {
-	// note: this function could use a rewrite
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
-
-	connectionReqMsgID, _ := messagehandler.GenerateMessageID(messagehandler.CONNECTION_REQ)
-	globalHallRequestReceived := false
-	fmt.Printf("%t\n", globalHallRequestReceived)
 
 	myConnReq := messages.ConnectionReq{
 		TOLC:      node.TOLC,
 		NodeID:    node.ID,
-		MessageID: connectionReqMsgID,
 	}
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
+	
 	var nextNodeState nodestate
 
 	// Set up heartbeat for connection requests
-	connectionRequestTicker := time.NewTicker(500 * time.Millisecond)
+	connRequestTicker := time.NewTicker(config.CONNECTION_REQ_INTERVAL)
 	decisionTimer := time.NewTimer(config.DISCONNECTED_DECISION_INTERVAL)
-	defer connectionRequestTicker.Stop()
+	defer connRequestTicker.Stop()
 
-	// start servicing the global hall requests
-
-	// running the line below will cause unwanted behavior UNTIL the elevator is able to clear hall assignments when it gets a message from the node
+	// Doing my own hall assignments
 	node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests)
 
 ForLoop:
 	for {
 		select {
-		case <-connectionRequestTicker.C: // Send connection request periodically
+		case <-connRequestTicker.C: // Send connection request periodically
 			node.ConnectionReqTx <- myConnReq
 
 		case incomingConnReq := <-node.ConnectionReqRx:
@@ -47,7 +39,7 @@ ForLoop:
 			}
 
 		case <-decisionTimer.C:
-			if len(incomingConnRequests) != 0 {
+			if !isMapEmtpy(incomingConnRequests) {
 				if ShouldBeMaster(node.ID, node.TOLC, incomingConnRequests) {
 					nextNodeState = Master
 					break ForLoop
@@ -58,33 +50,23 @@ ForLoop:
 			decisionTimer.Reset(config.DISCONNECTED_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:
-			switch elevMsg.EventType {
-			case singleelevator.DoorStuckEvent:
-				if elevMsg.DoorIsStuck {
-					nextNodeState = Inactive
-					break ForLoop
-				}
-
-			case singleelevator.HallButtonEvent:
-				// ignore hall button presses
+			if isDoorStuck(elevMsg) {
+				nextNodeState = Inactive
+				break ForLoop
 			}
 
-		case info := <-node.CabRequestInfoRx: // Check if the master has any info about us
+		case cabRequestInfo := <-node.CabRequestInfoRx: // Check if the master has any info about us
 			fmt.Println("Master found -> go to Slave")
-			if node.ID == info.ReceiverNodeID && node.TOLC.IsZero() {
+			if cabRequestInfoForMe(cabRequestInfo, node) {
 				// we have received info about us from the master, so we can become a slave
-				node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(info.CabRequest)
+				node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(cabRequestInfo.CabRequest)
 			}
 			nextNodeState = Slave
 			break ForLoop
 		case <-node.HallAssignmentsRx:
 		case <-node.NodeElevStateUpdate:
 		case <-node.NetworkEventRx:
-		case globalHallRequest := <-node.GlobalHallRequestRx:
-			// Update the global hall requests if received from existing master
-			node.GlobalHallRequests = globalHallRequest.HallRequests
-			globalHallRequestReceived = true
-			// fmt.Printf("Disconnected state: received global hall requests: %v\n", node.GlobalHallRequests)
+		case <-node.GlobalHallRequestRx:
 		case <-node.MyElevStatesRx:
 		case <-node.NewHallReqRx:
 
@@ -118,4 +100,16 @@ func makeCabOrderMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.Lig
 		OrderType:       singleelevator.CabOrder,
 		HallAssignments: [config.NUM_FLOORS][2]bool{},
 	}
+}
+
+func isMapEmtpy(m map[int]messages.ConnectionReq) bool {
+	return len(m) == 0
+}	
+
+func isDoorStuck(elevMsg singleelevator.ElevatorEvent) bool {
+	return elevMsg.DoorIsStuck
+}
+
+func cabRequestInfoForMe(cabRequestInfo messages.CabRequestInfo, node *NodeData) bool {
+	return node.ID == cabRequestInfo.ReceiverNodeID && node.TOLC.IsZero()
 }

@@ -42,7 +42,6 @@ type NodeElevState struct {
 type ConnectionReq struct {
 	TOLC      time.Time
 	NodeID    int
-	MessageID uint64
 }
 
 // Message from master to slaves on network, containing their new hall assignments

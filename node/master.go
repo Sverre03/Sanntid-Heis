@@ -236,6 +236,7 @@ func computeHallAssignments(
 	result.OtherAssignments = make(map[int]messages.NewHallAssignments)
 	// fmt.Printf("Hall request assigner output: %v\n", hraOutput)
 	// make the hall assignments for all nodes
+
 	for id, hallRequests := range hraOutput {
 		result.NodeHallAssignments[id] = hallRequests
 		// if the assignment is for me, we make the light and assignment message

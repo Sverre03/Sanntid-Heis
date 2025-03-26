@@ -46,9 +46,10 @@ type ConnectionReq struct {
 
 // Message from master to slaves on network, containing their new hall assignments
 type NewHallAssignments struct {
-	NodeID         int
-	HallAssignment [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
-	MessageID      uint64
+	NodeID                int
+	HallAssignment        [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
+	MessageID             uint64 // message identifier, generated in the transmitter
+	HallAssignmentCounter int
 }
 
 type NewHallReq struct {

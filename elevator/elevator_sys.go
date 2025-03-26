@@ -30,6 +30,7 @@ type ElevatorState struct {
 	Behavior          ElevatorBehavior
 	CabRequests       [config.NUM_FLOORS]bool
 	MyHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
+	HACounterVersion  int
 }
 
 // String returns a string representation of the ElevatorBehavior

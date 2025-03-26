@@ -74,7 +74,8 @@ func ElevatorProgram(
 		case msg := <-elevLightAndAssignmentUpdateRx:
 			switch msg.OrderType {
 			case HallOrder:
-				elevator_fsm.UpdateHallAssignments(msg.HallAssignments, msg.LightStates, doorOpenTimer)
+				elevator_fsm.SetHallLights(msg.LightStates)
+				elevator_fsm.UpdateHallAssignments(msg.HallAssignments, doorOpenTimer)
 				// for floor := range config.NUM_FLOORS {
 				// 	for hallButton := range 2 {
 				// if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
@@ -97,8 +98,9 @@ func ElevatorProgram(
 					}
 				}
 				fmt.Printf("My local hall assignments: %v\n", localHallAssignments)
-				fmt.Printf("Light states: %v\n", msg.LightStates)
+				fmt.Printf("Light states            : %v\n", msg.LightStates)
 				fmt.Printf("My elevator hall lights: %v\n\n", elevator_fsm.GetElevator().HallLightStates)
+
 			case CabOrder:
 				for floor := range config.NUM_FLOORS {
 					if msg.CabAssignments[floor] {
@@ -107,6 +109,7 @@ func ElevatorProgram(
 				}
 			case LightUpdate:
 				elevator_fsm.SetHallLights(msg.LightStates)
+				fmt.Printf("Light states            : %v\n", msg.LightStates)
 			}
 
 		case floor := <-floorEventRx:

@@ -32,9 +32,9 @@ type ElevatorEvent struct {
 
 type LightAndAssignmentUpdate struct {
 	OrderType       ElevatorOrderType
-	HallAssignments [config.NUM_FLOORS][2]bool // For assigning hall calls to the elevator
-	CabAssignments  [config.NUM_FLOORS]bool    // For assigning cab calls to the elevator
-	LightStates     [config.NUM_FLOORS][2]bool // The new state of the lights
+	HallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // For assigning hall calls to the elevator
+	CabAssignments  [config.NUM_FLOORS]bool                         // For assigning cab calls to the elevator
+	LightStates     [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // The new state of the lights
 }
 
 func ElevatorProgram(
@@ -52,8 +52,11 @@ func ElevatorProgram(
 
 	doorOpenTimer := time.NewTimer(config.DOOR_OPEN_DURATION)   // 3-second timer to detect door timeout
 	doorStuckTimer := time.NewTimer(config.DOOR_STUCK_DURATION) // 30-second timer to detect stuck doors
+	stuckBetweenFloorsTimer := time.NewTimer(config.ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT)
+	
 	doorOpenTimer.Stop()
 	doorStuckTimer.Stop()
+	stuckBetweenFloorsTimer.Stop()
 
 	// Start hardware monitoring routines
 	go elevator.PollButtons(buttonEventRx)
@@ -107,26 +110,17 @@ func ElevatorProgram(
 
 				shouldStop := elevator_fsm.UpdateHallAssignments(mergedHallAssignments)
 
-				if shouldStop {
+				currentElevator := elevator_fsm.GetElevator()
+
+				if shouldStop && currentElevator.Behavior == elevator.Moving {
 					elevator_fsm.StopElevator()
-				}
 
-				if shouldStop && elevator_fsm.GetElevator().Behavior == elevator.Idle {
-					elevator_fsm.ResumeElevator()
-				}
-
-				fmt.Printf("Hall assignments received: %v\n", msg.HallAssignments)
-				var localHallAssignments [config.NUM_FLOORS][2]bool
-				for floor := range config.NUM_FLOORS {
-					for hallButton := range 2 {
-						if elevator_fsm.GetElevator().Requests[floor][hallButton] {
-							localHallAssignments[floor][hallButton] = true
-						}
+					if hasAssignments(currentElevator.Requests) {
+						elevator_fsm.ResumeElevator()
+					} else { // Go to closest floor if no assignments
+						elevator_fsm.OnInitBetweenFloors()
 					}
 				}
-				fmt.Printf("My local hall assignments: %v\n", localHallAssignments)
-				fmt.Printf("Light states            : %v\n", msg.LightStates)
-				fmt.Printf("My elevator hall lights: %v\n\n", elevator_fsm.GetElevator().HallLightStates)
 
 			case CabOrder:
 				for floor := range config.NUM_FLOORS {
@@ -160,9 +154,13 @@ func ElevatorProgram(
 			fmt.Println("Door stuck timer timed out")
 			elevatorEventTx <- makeDoorStuckMessage(true)
 
+		case <-stuckBetweenFloorsTimer.C:
+			fmt.Println("The elevator spent too long between floors")
+			elevator_fsm.OnInitBetweenFloors()
+
 		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
 			elev := elevator_fsm.GetElevator()
-			var localHallAssignments [config.NUM_FLOORS][2]bool
+			var localHallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
 			for floor := range config.NUM_FLOORS {
 				for button := range 2 {
 					localHallAssignments[floor][button] = elev.Requests[floor][button]
@@ -192,12 +190,23 @@ func makeHallReqMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 	}
 }
 
-func getCurrentHallAssignments() [config.NUM_FLOORS][2]bool {
-	var hallAssignments [config.NUM_FLOORS][2]bool
+func getCurrentHallAssignments() [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool {
+	var hallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
 	for floor := range config.NUM_FLOORS {
 		for btn := range 2 {
 			hallAssignments[floor][btn] = elevator_fsm.GetElevator().Requests[floor][btn]
 		}
 	}
 	return hallAssignments
+}
+
+func hasAssignments(requests [config.NUM_FLOORS][config.NUM_BUTTONS]bool) bool {
+	for floor := range config.NUM_FLOORS {
+		for btn := range config.NUM_BUTTONS {
+			if requests[floor][btn] {
+				return true
+			}
+		}
+	}
+	return false
 }

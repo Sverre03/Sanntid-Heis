@@ -101,7 +101,7 @@ func RequestsShouldStop(e Elevator) bool {
 }
 
 func RequestsShouldClearImmediately(e Elevator, btnFloor int, btnType ButtonType) bool {
-	return e.Floor == btnFloor && ((e.Dir == DirectionUp && btnType == ButtonHallUp) || (e.Dir == DirectionDown && btnType == ButtonHallDown) || e.Dir == DirectionStop || btnType == ButtonCab)
+	return e.Floor == btnFloor && e.Behavior != StoppedBetweenFloors && ((e.Dir == DirectionUp && btnType == ButtonHallUp) || (e.Dir == DirectionDown && btnType == ButtonHallDown) || e.Dir == DirectionStop || btnType == ButtonCab)
 }
 
 func RequestsClearAtCurrentFloor(e Elevator) Elevator {

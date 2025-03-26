@@ -30,14 +30,7 @@ func OnInitBetweenFloors() {
 	elev.Behavior = elevator.Moving
 }
 
-func RemoveHallAssignment(floor int, btnType elevator.ButtonType) {
-	elev.Requests[floor][btnType] = false
-	// elev.HallLightStates[floor][btnType] = false
-	// elevator.SetAllLights(&elev)
-}
-
-func UpdateHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool, doorOpenTimer *time.Timer) {
-	fmt.Printf("Hall assignments received: %v\n", newHallAssignments)
+func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool) bool {
 	shouldStop := false
 	for floor := range config.NUM_FLOORS {
 		for btn := range 2 {
@@ -53,22 +46,7 @@ func UpdateHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool, doorOp
 		elev.Dir = elevator.DirectionStop
 		elev.Behavior = elevator.Idle
 	}
-	for floor := range config.NUM_FLOORS {
-		for btn := range 2 {
-			btnType := elevator.ButtonType(btn)
-			if !elev.Requests[floor][btn] && newHallAssignments[floor][btn] {
-				OnRequestButtonPress(floor, btnType, doorOpenTimer)
-				fmt.Printf("Hall assignment added at floor %d, button %d\n", floor, btn)
-				// If the elevator is idle and the button is pressed in the same floor, the door should remain open
-			}
-		}
-	}
-	if shouldStop && elev.Behavior == elevator.Idle {
-		pair := elevator.RequestsChooseDirection(elev)
-		elev.Dir = pair.Dir
-		elev.Behavior = pair.Behavior
-		elevator.SetMotorDirection(elev.Dir)
-	}
+	return shouldStop
 }
 
 func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {

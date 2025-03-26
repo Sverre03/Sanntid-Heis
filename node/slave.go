@@ -31,8 +31,7 @@ ForLoop:
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
 			case singleelevator.DoorStuckEvent:
-				if elevMsg.DoorIsStuck && node.ID == elevMsg.SourceNodeID {
-					fmt.Printf("Slave %d received door stuck event with source node id %d\n", node.ID, elevMsg.SourceNodeID)
+				if elevMsg.DoorIsStuck {
 					nextNodeState = Inactive
 					break ForLoop
 				}

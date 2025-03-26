@@ -25,10 +25,9 @@ const (
 
 // ElevatorEvent encapsulates all messages sent from elevator to node
 type ElevatorEvent struct {
-	EventType    ElevatorEventType
-	ButtonEvent  elevator.ButtonEvent // For hall button events and completed hall assignments
-	DoorIsStuck  bool                 // For door stuck status
-	SourceNodeID int
+	EventType   ElevatorEventType
+	ButtonEvent elevator.ButtonEvent // For hall button events and completed hall assignments
+	DoorIsStuck bool                 // For door stuck status
 }
 
 type LightAndAssignmentUpdate struct {
@@ -42,8 +41,7 @@ func ElevatorProgram(
 	portNum string,
 	elevatorEventTx chan<- ElevatorEvent,
 	elevLightAndAssignmentUpdateRx <-chan LightAndAssignmentUpdate,
-	elevatorStatesTx chan<- elevator.ElevatorState,
-	nodeID int) {
+	elevatorStatesTx chan<- elevator.ElevatorState) {
 
 	elevator.Init(portNum, config.NUM_FLOORS)
 	elevator_fsm.InitFSM()
@@ -62,7 +60,7 @@ func ElevatorProgram(
 	go elevator.PollFloorSensor(floorEventRx)
 	go elevator.PollObstructionSwitch(obstructionEventRx)
 
-	elevatorEventTx <- makeDoorStuckMessage(false, nodeID)
+	elevatorEventTx <- makeDoorStuckMessage(false)
 
 	for {
 		select {
@@ -70,7 +68,7 @@ func ElevatorProgram(
 			if button.Button == elevator.ButtonCab { // Handle cab calls locally
 				elevator_fsm.OnRequestButtonPress(button.Floor, button.Button, doorOpenTimer)
 			} else {
-				elevatorEventTx <- makeHallReqMessage(button, nodeID)
+				elevatorEventTx <- makeHallReqMessage(button)
 			}
 
 		case msg := <-elevLightAndAssignmentUpdateRx:
@@ -79,14 +77,14 @@ func ElevatorProgram(
 				elevator_fsm.UpdateHallAssignments(msg.HallAssignments, msg.LightStates, doorOpenTimer)
 				// for floor := range config.NUM_FLOORS {
 				// 	for hallButton := range 2 {
-						// if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
-						// 	elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
-						// } else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] { // If hall assignment is removed and redistributed
-						// 	// elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
-						// 	elevator_fsm.RemoveHallAssignment(floor, elevator.ButtonType(hallButton))
-						// }
+				// if msg.HallAssignments[floor][hallButton] { // If the elevator is idle and the button is pressed in the same floor, the door should remain open
+				// 	elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonType(hallButton), doorOpenTimer)
+				// } else if !msg.HallAssignments[floor][hallButton] && elevator_fsm.GetElevator().Requests[floor][hallButton] { // If hall assignment is removed and redistributed
+				// 	// elevator_fsm.RemoveRequest(floor, elevator.ButtonType(hallButton))
+				// 	elevator_fsm.RemoveHallAssignment(floor, elevator.ButtonType(hallButton))
+				// }
 
-					// }
+				// }
 				// }
 				// elevator_fsm.SetHallLights(msg.LightStates)
 				fmt.Printf("Hall assignments received: %v\n", msg.HallAssignments)
@@ -120,7 +118,7 @@ func ElevatorProgram(
 			if !isObstructed {
 				// Stop the door stuck timer if the obstruction is cleared
 				doorStuckTimer.Stop()
-				elevatorEventTx <- makeDoorStuckMessage(false, nodeID)
+				elevatorEventTx <- makeDoorStuckMessage(false)
 			}
 
 		case <-doorOpenTimer.C:
@@ -129,7 +127,7 @@ func ElevatorProgram(
 
 		case <-doorStuckTimer.C:
 			fmt.Println("Door stuck timer timed out")
-			elevatorEventTx <- makeDoorStuckMessage(true, nodeID)
+			elevatorEventTx <- makeDoorStuckMessage(true)
 
 		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
 			elev := elevator_fsm.GetElevator()
@@ -151,14 +149,14 @@ func ElevatorProgram(
 	}
 }
 
-func makeDoorStuckMessage(isDoorStuck bool, nodeID int) ElevatorEvent {
+func makeDoorStuckMessage(isDoorStuck bool) ElevatorEvent {
 	return ElevatorEvent{EventType: DoorStuckEvent,
-		DoorIsStuck: isDoorStuck, SourceNodeID: nodeID,
+		DoorIsStuck: isDoorStuck,
 	}
 }
 
-func makeHallReqMessage(buttonEvent elevator.ButtonEvent, nodeID int) ElevatorEvent {
+func makeHallReqMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 	return ElevatorEvent{EventType: HallButtonEvent,
-		ButtonEvent: buttonEvent, SourceNodeID: nodeID,
+		ButtonEvent: buttonEvent,
 	}
 }

@@ -149,8 +149,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	go singleelevator.ElevatorProgram(portNum,
 		node.ElevatorEventRx,
 		node.ElevLightAndAssignmentUpdateTx,
-		node.MyElevStatesRx,
-		node.ID)
+		node.MyElevStatesRx)
 
 	// process that listens to active nodes on network
 	go messagehandler.NodeElevStateServer(node.ID,

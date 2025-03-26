@@ -23,4 +23,4 @@ const NODE_CONNECTION_TIMEOUT = 2 * time.Second
 const PORT_NUM = 20011
 const INPUT_POLL_INTERVAL = 25 * time.Millisecond
 const MASTER_TIMEOUT = 600 * time.Millisecond
-const PEER_POLL_INTERVAL = 30 * time.Millisecond
+const PEER_POLL_INTERVAL = 20 * time.Millisecond

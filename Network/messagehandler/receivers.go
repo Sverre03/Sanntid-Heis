@@ -89,7 +89,9 @@ func NodeElevStateServer(myID int,
 	lastSeen := make(map[int]time.Time)
 	knownNodes := make(map[int]elevator.ElevatorState)
 
+	// map of the last active nodes, only mutate this in the peer timeout ticker case
 	lastActiveNodes := make(map[int]elevator.ElevatorState)
+
 	for {
 		select {
 
@@ -102,7 +104,7 @@ func NodeElevStateServer(myID int,
 				fmt.Printf("Active nodes changed from %d to %d\n", len(lastActiveNodes), len(activeNodes))
 				select {
 				case networkEventTx <- NodeConnectDisconnect:
-					//
+
 				default:
 					fmt.Printf("Error sending network event\n")
 				}
@@ -121,25 +123,24 @@ func NodeElevStateServer(myID int,
 		case elevState := <-elevStatesRx:
 			id := elevState.NodeID
 
-			if id != myID { // Check if we received our own message
-				if nodeIsConnected {
-					connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
+			if id != myID && nodeIsConnected { // if we are connected, we should update reset the connection timer
+				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
+			}
+
+			// if I have seen this node before, check if it has cleared any hall assignments!
+			if _, ok := knownNodes[id]; ok {
+				if HallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
+
+					// update the lastActiveNodes with the new state, and send it to the node
+					newActiveNodes := makeDeepCopy(lastActiveNodes)
+					newActiveNodes[id] = elevState.ElevState
+					elevStateUpdateTx <- makeHallAssignmentRemovedMessage(newActiveNodes)
+
+					// fmt.Printf(("Hall assignment removed by node %d\n"), id)
 				}
 			}
+			// finally, register the node as seen
 			lastSeen[id] = time.Now()
-
-			if isHallAssignmentRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
-				// Update the known nodes with the new state
-				knownNodes[id] = elevState.ElevState
-
-				// Find the active nodes and send the hall assignment removed message
-				lastActiveNodes = findActiveNodes(knownNodes, lastSeen)
-
-				// fmt.Printf(("Hall assignment removed by node %d\n"), id)
-
-				elevStateUpdateTx <- makeHallAssignmentRemovedMessage(lastActiveNodes)
-			}
-
 			knownNodes[id] = elevState.ElevState
 
 		case command := <-commandRx:
@@ -181,7 +182,7 @@ func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int
 	return activeNodes
 }
 
-func isHallAssignmentRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
+func HallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 	newGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		for button := range 2 {
@@ -193,4 +194,12 @@ func isHallAssignmentRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 		}
 	}
 	return false
+}
+
+func makeDeepCopy(elevStateMap map[int]elevator.ElevatorState) map[int]elevator.ElevatorState {
+	newMap := make(map[int]elevator.ElevatorState)
+	for id, elevState := range elevStateMap {
+		newMap[id] = elevState
+	}
+	return newMap
 }

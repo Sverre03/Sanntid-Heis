@@ -130,7 +130,7 @@ func NodeElevStateServer(myID int,
 
 			// if I have seen this node before, check if it has cleared any hall assignments!
 			if _, ok := knownNodes[id]; ok {
-				if HallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
+				if hallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
 
 					// update the lastActiveNodes with the new state, and send it to the node
 					newActiveNodes := makeDeepCopy(lastActiveNodes)
@@ -183,7 +183,7 @@ func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int
 	return activeNodes
 }
 
-func HallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
+func hallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][2]bool,
 	newGlobalHallReq [config.NUM_FLOORS][2]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		for button := range 2 {

@@ -11,6 +11,7 @@ const (
 	Idle ElevatorBehavior = iota
 	DoorOpen
 	Moving
+	StoppedBetweenFloors
 )
 
 type Elevator struct {

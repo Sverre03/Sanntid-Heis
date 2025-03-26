@@ -65,8 +65,8 @@ func UpdateHallAssignments(mergedHallAssignments [config.NUM_FLOORS][2]bool) boo
 
 func StopElevator() {
 	elevator.SetMotorDirection(elevator.DirectionStop)
+	elev.Behavior = elevator.StoppedBetweenFloors
 	elev.Dir = elevator.DirectionStop
-	elev.Behavior = elevator.Idle
 }
 
 func ResumeElevator() {
@@ -109,7 +109,7 @@ func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer 
 		} else {
 			newState.Requests[btnFloor][btnType] = true
 		}
-	case elevator.Moving:
+	case elevator.Moving, elevator.StoppedBetweenFloors:
 		newState.Requests[btnFloor][btnType] = true
 	case elevator.Idle:
 		newState.Requests[btnFloor][btnType] = true

@@ -18,6 +18,9 @@ const HALL_BUTTON_TO_NODE_DELAY = 50 * time.Millisecond
 const MASTER_CONNECTION_TIMEOUT = 500 * time.Millisecond
 const STATE_REQUEST_INTERVAL = 100 * time.Millisecond
 
+const ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT = 10 * time.Second
+const ELEVATOR_STUCK_BETWEEN_FLOORS_POLL_INTERVAL = 1 * time.Second
+
 const CONNECTION_REQ_INTERVAL = 100 * time.Millisecond
 const DISCONNECTED_DECISION_INTERVAL = 2000 * time.Millisecond
 const NODE_CONNECTION_TIMEOUT = 2 * time.Second

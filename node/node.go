@@ -159,11 +159,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 }
 
 // functions used in the state machines of the different nodes
-
-func mapIsEmpty[k comparable, v any](m map[k]v) bool {
-	return len(m) == 0
-}
-
 func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][2]bool, globalHallReq [config.NUM_FLOORS][2]bool) singleelevator.LightAndAssignmentUpdate {
 	var newMessage singleelevator.LightAndAssignmentUpdate
 	newMessage.HallAssignments = hallAssignments

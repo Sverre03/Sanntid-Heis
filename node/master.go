@@ -7,6 +7,7 @@ import (
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
 	"elev/singleelevator"
+	"elev/util"
 	"fmt"
 	"time"
 )
@@ -131,7 +132,7 @@ ForLoop:
 			case messagehandler.ActiveElevStates:
 				fmt.Printf("Computing assignments:\n")
 				// Guard clause to break out of the loop if there are no active connection requests
-				if mapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
+				if util.MapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
 					break Select
 				}
 				computationResult := computeHallAssignments(node.ID,

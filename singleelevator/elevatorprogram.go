@@ -79,7 +79,7 @@ func ElevatorProgram(
 				shouldStop := elevator_fsm.ClearHallAssignments(msg.HallAssignments)
 
 				if shouldStop {
-					// stop the elevator
+					elevator_fsm.StopElevator()
 				}
 
 				for floor := range config.NUM_FLOORS {
@@ -91,6 +91,9 @@ func ElevatorProgram(
 							// If the elevator is idle and the button is pressed in the same floor, the door should remain open
 						}
 					}
+				}
+				if shouldStop && elevator_fsm.GetElevator().Behavior == elevator.Idle {
+					// her må vi starte heisen igjen, det vil si manuelt gjøre det som skjer i handlebuttonpress
 				}
 
 				fmt.Printf("Hall assignments received: %v\n", msg.HallAssignments)

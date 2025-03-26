@@ -12,11 +12,11 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 
 	myConnReq := messages.ConnectionReq{
-		TOLC:      node.TOLC,
-		NodeID:    node.ID,
+		TOLC:   node.TOLC,
+		NodeID: node.ID,
 	}
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
-	
+
 	var nextNodeState nodestate
 
 	// Set up heartbeat for connection requests
@@ -101,4 +101,3 @@ func makeCabOrderMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.Lig
 		HallAssignments: [config.NUM_FLOORS][2]bool{},
 	}
 }
-

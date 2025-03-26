@@ -3,7 +3,6 @@ package messagehandler
 import (
 	"elev/Network/messages"
 	"elev/config"
-	"fmt"
 	"time"
 )
 
@@ -31,10 +30,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 				break Select
 			}
 			//fmt.Printf("got new hall assignment with id %d\n", newAssignment.NodeID)
-			new_msg_id, err := GenerateMessageID(NEW_HALL_ASSIGNMENT)
-			if err != nil {
-				fmt.Println("Fatal error, invalid message id type used to generate a message id in HallAssignmentTransmitter")
-			}
+			new_msg_id := GenerateMessageID(NEW_HALL_ASSIGNMENT)
 
 			newAssignment.MessageID = new_msg_id
 

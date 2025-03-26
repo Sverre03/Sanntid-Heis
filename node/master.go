@@ -90,7 +90,7 @@ ForLoop:
 				fmt.Println("Connection timed out")
 				nextNodeState = Disconnected
 				break ForLoop
-			
+
 			case messagehandler.ActiveNodeCountChange:
 				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
 				select {
@@ -101,7 +101,6 @@ ForLoop:
 					fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
 				}
 			}
-			
 
 		case newHallReq := <-node.NewHallReqRx:
 			node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
@@ -124,7 +123,7 @@ ForLoop:
 			default:
 				// Command not sent, channel is full
 				fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getAllElevStates")
-			}	
+			}
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
 
 			switch elevStatesUpdate.DataType {

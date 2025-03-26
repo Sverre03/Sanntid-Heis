@@ -60,7 +60,7 @@ ForLoop:
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
 			case singleelevator.DoorStuckEvent:
-				if elevMsg.DoorIsStuck && node.ID == elevMsg.SourceNodeID {
+				if elevMsg.DoorIsStuck {
 					nextNodeState = Inactive
 					break ForLoop
 				}

@@ -54,7 +54,7 @@ ForLoop:
 			case singleelevator.DoorStuckEvent:
 				fmt.Printf("Master received door stuck event: stuck: %v\n", elevMsg.DoorIsStuck)
 				// if the door is stuck, we go to inactive
-				if elevMsg.DoorIsStuck && node.ID == elevMsg.SourceNodeID {
+				if elevMsg.DoorIsStuck {
 					nextNodeState = Inactive
 					break ForLoop
 				}

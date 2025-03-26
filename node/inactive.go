@@ -13,9 +13,8 @@ ForLoop:
 		select {
 
 		case elevMsg := <-node.ElevatorEventRx:
-			fmt.Printf("Inactive received elevator event from nodeID: %d\n", elevMsg.SourceNodeID)
 			// check whether the door is not stuck
-			if !elevMsg.DoorIsStuck && node.ID == elevMsg.SourceNodeID && elevMsg.EventType == singleelevator.DoorStuckEvent {
+			if !elevMsg.DoorIsStuck && elevMsg.EventType == singleelevator.DoorStuckEvent {
 				nextNodeState = Disconnected
 				break ForLoop
 			}

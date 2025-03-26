@@ -48,6 +48,7 @@ func UpdateHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool, newLig
 					// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
 					if elevator.RequestsShouldClearImmediately(elev, floor, btnType) {
 						doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+						elevator.SetDoorOpenLamp(true)
 					} else {
 						elev.Requests[floor][btnType] = true
 					}
@@ -62,6 +63,7 @@ func UpdateHallAssignments(newHallAssignments [config.NUM_FLOORS][2]bool, newLig
 					switch pair.Behavior {
 					case elevator.DoorOpen:
 						doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+						elevator.SetDoorOpenLamp(true)
 						elev = elevator.RequestsClearAtCurrentFloor(elev)
 					case elevator.Moving:
 						elevator.SetMotorDirection(elev.Dir)

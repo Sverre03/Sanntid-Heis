@@ -1,11 +1,11 @@
 package node
 
 import (
-	"elev/network/messages"
 	"elev/config"
-	"elev/costFNS/hallRequestAssigner"
+	"elev/costFNS/hallrequestassigner"
 	"elev/elevator"
 	"elev/network/communication"
+	"elev/network/messages"
 	"elev/singleelevator"
 	"elev/util"
 	"fmt"
@@ -207,7 +207,7 @@ func computeHallAssignments(
 
 	var result HRAresult
 	result.NodeHallAssignments = make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
-	hraOutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
+	hraOutput := hallrequestassigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
 
 	result.OtherAssignments = make(map[int]messages.NewHallAssignments)
 

@@ -161,7 +161,6 @@ func UpdateElevStuckTimerActiveState(isActive bool) {
 func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 	if elev.Behavior == elevator.DoorOpen {
 		if elev.IsObstructed {
-			fmt.Println("door is obstructed, and i tried to close it")
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 			if !elev.DoorStuckTimerActive {
 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)

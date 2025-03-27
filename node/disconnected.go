@@ -45,8 +45,6 @@ ForLoop:
 					nextNodeState = Master
 					break ForLoop
 				}
-			} else {
-				fmt.Printf("---\n")
 			}
 			decisionTimer.Reset(config.STATE_TRANSITION_DECISION_INTERVAL)
 
@@ -61,7 +59,6 @@ ForLoop:
 			}
 
 		case cabRequestInfo := <-node.CabRequestInfoRx: // Check if the master has any info about us
-			fmt.Println("Master found -> go to Slave")
 			if cabRequestInfo.ReceiverNodeID == node.ID {
 				if node.ContactCounter == 0 {
 					node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(cabRequestInfo.CabRequest)
@@ -73,7 +70,6 @@ ForLoop:
 		case elevStates := <-node.MyElevStatesRx:
 
 			if util.HallAssignmentIsRemoved(node.GlobalHallRequests, elevStates.MyHallAssignments) {
-				fmt.Printf("Light States: %v", elevStates.MyHallAssignments)
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(elevStates.MyHallAssignments)
 			}
 			node.GlobalHallRequests = elevStates.MyHallAssignments
@@ -92,7 +88,6 @@ ForLoop:
 func ShouldBeMaster(myID int, contactCounter uint64, connectionRequests map[int]messages.ConnectionReq) bool {
 
 	for _, connReq := range connectionRequests {
-		fmt.Printf("My Counter %d, other counter: %d\n", contactCounter, connReq.ContactCounterValue)
 		if util.MyCounterIsSmaller(contactCounter, connReq.ContactCounterValue) {
 			return false
 		}

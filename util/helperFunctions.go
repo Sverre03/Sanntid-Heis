@@ -27,16 +27,15 @@ func IncrementCounterUint64(counter uint64) uint64 {
 	return counter
 }
 
-func MyCounterIsSmaller(myCounter uint64, otherCounter uint64) bool {
+func MyCounterIsSmaller(myCounter, otherCounter uint64) bool {
 	return myCounter < otherCounter
 }
 
-func HallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
-	newGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
+func HallAssignmentIsRemoved(oldGlobalHallReq, newGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	for floor := range config.NUM_FLOORS {
-		for button := range 2 {
+		for button := range config.NUM_HALL_BUTTONS {
 			// If change is from (true -> false) => Assignment completed
-			if oldGlobalHallRequests[floor][button] && !newGlobalHallReq[floor][button] {
+			if oldGlobalHallReq[floor][button] && !newGlobalHallReq[floor][button] {
 				return true
 			}
 		}

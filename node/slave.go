@@ -23,9 +23,7 @@ func SlaveProgram(node *NodeData) nodestate {
 	// start the transmitters
 	select {
 	case node.commandToServerTx <- "startConnectionTimeoutDetection":
-		// Command sent successfully
 	default:
-		// Command not sent, channel is full
 		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "startConnectionTimeoutDetection")
 	}
 
@@ -83,13 +81,12 @@ ForLoop:
 			node.ContactCounter = newGlobalHallReq.CounterValue
 			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
 
-			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
+			if hasChanged(node.GlobalHallRequests, newGlobalHallReq.HallRequests) {
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 			}
 
 		case <-masterConnectionTimeoutTimer.C:
-			fmt.Println("Lost connection to master")
 			nextNodeState = Disconnected
 			break ForLoop
 
@@ -127,7 +124,7 @@ func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallRe
 	return true
 }
 
-func hasChanged(newGlobalHallReq, oldGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
+func hasChanged(oldGlobalHallReq, newGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	for floor := range config.NUM_FLOORS {
 		// check if the new is equal to the old or not
 		if oldGlobalHallReq[floor][elevator.ButtonHallDown] != newGlobalHallReq[floor][elevator.ButtonHallDown] {

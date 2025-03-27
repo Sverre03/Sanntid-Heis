@@ -141,7 +141,6 @@ func ElevatorProgram(
 			startStuckMonitoring()
 
 		case isObstructed := <-obstructionEventRx:
-			fmt.Printf("Obstruction detected: %v\n", isObstructed)
 			elevator_fsm.SetObstruction(isObstructed)
 			if !isObstructed {
 				// Stop the door stuck timer if the obstruction is cleared
@@ -151,16 +150,12 @@ func ElevatorProgram(
 			}
 
 		case <-doorOpenTimer.C:
-			// Start the door stuck timer, which is stopped by OnDoorTimeout if the doors are able to close
 			elevator_fsm.OnDoorTimeout(doorOpenTimer, doorStuckTimer)
 
 		case <-doorStuckTimer.C:
-			fmt.Println("Door stuck timer timed out")
 			elevatorEventTx <- makeElevatorIsDownMessage(true)
 
 		case <-stuckBetweenFloorsTimer.C:
-			fmt.Println("The elevator spent too long between floors!")
-
 			if recoveryAttempts < maxRecoveryAttempts {
 				fmt.Printf("Attempting recovery (attempt %d of %d)...\n", recoveryAttempts+1, maxRecoveryAttempts)
 

@@ -103,8 +103,6 @@ func ElevStatusServer(myID int,
 					newActiveNodes := makeDeepCopy(lastActiveNodes)
 					newActiveNodes[id] = elevState.ElevState
 					elevStateUpdateTx <- makeHallAssignmentRemovedMessage(newActiveNodes)
-
-					// fmt.Printf(("Hall assignment removed by node %d\n"), id)
 				}
 			}
 			// finally, register the node as seen

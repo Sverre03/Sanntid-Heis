@@ -150,15 +150,13 @@ ForLoop:
 				}
 			case messagehandler.HallAssignmentRemoved:
 				node.GlobalHallRequests = updateGlobalHallRequests(nodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
-				// fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
-
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
 
 		case <-GlobalHallReqSendTicker.C:
 			node.ContactCounter++
 			node.GlobalHallRequestTx <- makeGlobalHallRequestMessage(node.GlobalHallRequests, node.ContactCounter)
-			// when you get a message on any of these channels, do nothing
+
 		case <-node.HallAssignmentsRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
@@ -225,7 +223,6 @@ func computeHallAssignments(
 	hraOutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
 
 	result.OtherAssignments = make(map[int]messages.NewHallAssignments)
-	// make the hall assignments for all nodes
 
 	for id, hallRequests := range hraOutput {
 		result.NodeHallAssignments[id] = hallRequests
@@ -266,7 +263,6 @@ func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][config.NUM_HAL
 	newHallReq messages.NewHallReq) [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
 	// if button is invalid we return false
 	if newHallReq.HallReq.Button == elevator.ButtonCab {
-		// fmt.Printf("Received a new hall request, but the button type was invalid\n")
 		return globalHallRequests
 	}
 	// if the button is valid we update the global hall requests

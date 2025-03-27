@@ -42,6 +42,4 @@ func IncrementCounterUint64(counter uint64) uint64 {
 
 func MyCounterIsSmaller(myCounter uint64, otherCounter uint64) bool {
 	return myCounter < otherCounter
-	// halfRange := MAX_UINT64_COUNTER_VALUE / 2
-	// return ((myCounter - otherCounter) % MAX_UINT64_COUNTER_VALUE) < halfRange
 }

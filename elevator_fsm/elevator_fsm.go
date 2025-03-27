@@ -21,13 +21,21 @@ func InitFSM() {
 			elevator.SetButtonLamp(elevator.ButtonType(btn), floor, false)
 		}
 	}
-	OnInitBetweenFloors()
+	OnInitBetweenFloors(elevator.DirectionDown)
 }
 
-func OnInitBetweenFloors() {
-	elevator.SetMotorDirection(elevator.DirectionDown)
-	elev.Dir = elevator.DirectionDown
+func OnInitBetweenFloors(direction elevator.MotorDirection) {
+	elevator.SetMotorDirection(direction)
+	elev.Dir = direction
 	elev.Behavior = elevator.Moving
+}
+
+func RecoverFromStuckBetweenFloors() {
+	if 0 < elev.Floor && elev.Floor <= config.NUM_FLOORS-1 {
+		OnInitBetweenFloors(elevator.DirectionDown)
+	} else if elev.Floor == 0 {
+		OnInitBetweenFloors(elevator.DirectionUp)
+	}
 }
 
 func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
@@ -68,6 +76,15 @@ func StopElevator() {
 
 func ResumeElevator() {
 	pair := elevator.RequestsChooseDirection(elev)
+
+	// Prevent out of bounds movement
+	if (elev.Floor == 0 && pair.Dir == elevator.DirectionDown) ||
+		(elev.Floor == config.NUM_FLOORS-1 && pair.Dir == elevator.DirectionUp) {
+		fmt.Printf("Safety: Prevented invalid direction %d at floor %d\n", pair.Dir, elev.Floor)
+		pair.Dir = elevator.DirectionStop
+		pair.Behavior = elevator.Idle
+	}
+
 	elev.Dir = pair.Dir
 	elev.Behavior = pair.Behavior
 	elevator.SetMotorDirection(elev.Dir)
@@ -80,7 +97,7 @@ func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTim
 	// Apply side effects
 	if resetDoorTimer {
 		doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
-		fmt.Println("Lighting door open lamp")
+		// fmt.Println("Lighting door open lamp")
 		elevator.SetDoorOpenLamp(true)
 	}
 
@@ -117,9 +134,9 @@ func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer 
 		switch pair.Behavior {
 		case elevator.DoorOpen:
 			resetDoorTimer = true
-			fmt.Println("Clearing the request immediately")
+			// fmt.Println("Clearing the request immediately")
 			newState = elevator.RequestsClearAtCurrentFloor(newState)
-			elevator.PrintElevator(elev)
+			// elevator.PrintElevator(elev)
 		case elevator.Moving, elevator.Idle:
 			// do nothing
 		}

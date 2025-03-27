@@ -27,7 +27,7 @@ const (
 type ElevatorEvent struct {
 	EventType   ElevatorEventType
 	ButtonEvent elevator.ButtonEvent // For hall button events and completed hall assignments
-	IsElevDown  bool                 // For elevator status
+	ElevIsDown  bool                 // For elevator status
 }
 
 type LightAndAssignmentUpdate struct {
@@ -100,7 +100,7 @@ func ElevatorProgram(
 						if msg.HallAssignments[floor][btn] {
 							if !elevator_fsm.GetElevator().Requests[floor][btn] {
 								btnType := elevator.ButtonType(btn)
-								fmt.Printf("New hall assignment added at floor %d, button %d\n", floor, btn)
+								// fmt.Printf("New hall assignment added at floor %d, button %d\n", floor, btn)
 								elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
 							}
 						}
@@ -114,8 +114,8 @@ func ElevatorProgram(
 
 					if hasAssignments(currentElevator.Requests) {
 						elevator_fsm.ResumeElevator()
-					} else { // Go to closest floor if no assignments
-						elevator_fsm.OnInitBetweenFloors()
+					} else {
+						elevator_fsm.RecoverFromStuckBetweenFloors()
 					}
 				}
 
@@ -132,7 +132,7 @@ func ElevatorProgram(
 			startStuckMonitoring()
 
 		case floor := <-floorEventRx:
-			elevatorEventTx <- makeIsElevatorDownMessage(false)
+			elevatorEventTx <- makeElevatorIsDownMessage(false)
 			stuckBetweenFloorsTimer.Stop()
 			recoveryAttempts = 0 // Reset recovery attempts when we reach a floor
 			lastFloorChange = time.Now()
@@ -146,17 +146,16 @@ func ElevatorProgram(
 			if !isObstructed {
 				// Stop the door stuck timer if the obstruction is cleared
 				doorStuckTimer.Stop()
-				elevatorEventTx <- makeIsElevatorDownMessage(false)
+				elevatorEventTx <- makeElevatorIsDownMessage(false)
 			}
 
 		case <-doorOpenTimer.C:
 			// Start the door stuck timer, which is stopped by OnDoorTimeout if the doors are able to close
 			elevator_fsm.OnDoorTimeout(doorOpenTimer, doorStuckTimer)
-			startStuckMonitoring()
 
 		case <-doorStuckTimer.C:
 			fmt.Println("Door stuck timer timed out")
-			elevatorEventTx <- makeIsElevatorDownMessage(true)
+			elevatorEventTx <- makeElevatorIsDownMessage(true)
 
 		case <-stuckBetweenFloorsTimer.C:
 			fmt.Println("The elevator spent too long between floors!")
@@ -164,7 +163,7 @@ func ElevatorProgram(
 			if recoveryAttempts < maxRecoveryAttempts {
 				fmt.Printf("Attempting recovery (attempt %d of %d)...\n", recoveryAttempts+1, maxRecoveryAttempts)
 
-				elevator_fsm.OnInitBetweenFloors()
+				elevator_fsm.RecoverFromStuckBetweenFloors()
 				recoveryAttempts++
 
 				// Start monitoring again
@@ -172,7 +171,7 @@ func ElevatorProgram(
 			} else {
 				fmt.Printf("Failed to recover after %d attempts - reporting elevator as down\n", maxRecoveryAttempts)
 
-				elevatorEventTx <- makeIsElevatorDownMessage(true)
+				elevatorEventTx <- makeElevatorIsDownMessage(true)
 			}
 		case <-time.Tick(config.ELEVATOR_STUCK_BETWEEN_FLOORS_POLL_INTERVAL):
 
@@ -224,9 +223,9 @@ func ElevatorProgram(
 	}
 }
 
-func makeIsElevatorDownMessage(isElevDown bool) ElevatorEvent {
+func makeElevatorIsDownMessage(ElevIsDown bool) ElevatorEvent {
 	return ElevatorEvent{EventType: ElevStatusUpdateEvent,
-		IsElevDown: isElevDown,
+		ElevIsDown: ElevIsDown,
 	}
 }
 

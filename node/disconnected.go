@@ -53,7 +53,7 @@ ForLoop:
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
 			case singleelevator.ElevStatusUpdateEvent:
-				if elevMsg.IsElevDown {
+				if elevMsg.ElevIsDown {
 					nextNodeState = Inactive
 					break ForLoop
 				}

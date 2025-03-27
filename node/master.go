@@ -43,7 +43,7 @@ ForLoop:
 			switch elevMsg.EventType {
 			case singleelevator.ElevStatusUpdateEvent:
 				// if the elevator is no longer functioning, we go to inactive
-				if elevMsg.IsElevDown {
+				if elevMsg.ElevIsDown {
 					nextNodeState = Inactive
 					break ForLoop
 				}

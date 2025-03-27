@@ -63,7 +63,7 @@ type NodeData struct {
 }
 
 // initialize a network node and return a nodedata obj, needed for communication with the processes it starts
-func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPort int) *NodeData {
+func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 
 	node := &NodeData{
 		ID:             id,
@@ -109,7 +109,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	receiverToServerCh := make(chan messages.NodeElevState)
 
 	// start process that broadcast all messages on these channels to udp
-	go bcast.Broadcaster(bcastBroadcasterPort,
+	go bcast.Broadcaster(bcastPort,
 		node.AckTx,
 		node.NodeElevStatesTx,
 		HATransToBcastTx,
@@ -119,7 +119,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.NewHallReqTx)
 
 	// start receiver process that listens for messages on the port
-	go bcast.Receiver(bcastReceiverPort,
+	go bcast.Receiver(
+		bcastPort,
 		hallAssignmentsAckRx,
 		receiverToServerCh,
 		node.HallAssignmentsRx,
@@ -129,15 +130,16 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.NewHallReqRx)
 
 	// process responsible for sending and making sure hall assignments are acknowledged
-	go communication.HallAssignmentsTransmitter(HATransToBcastTx,
+	go communication.HallAssignmentsTransmitter(
+		HATransToBcastTx,
 		node.HallAssignmentTx,
 		hallAssignmentsAckRx,
 		node.HallRequestAssignerTransmitEnableTx)
 
 	// the physical elevator program
 	go singleelevator.ElevatorProgram(portNum,
-		node.ElevatorEventRx,
 		node.ElevLightAndAssignmentUpdateTx,
+		node.ElevatorEventRx,
 		node.MyElevStatesRx)
 
 	// process that listens to active nodes on network
@@ -151,7 +153,8 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 }
 
 // functions used in the state machines of the different nodes
-func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+func makeHallAssignmentAndLightMessage(
+	hallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
 	globalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
 	hallAssignmentCounterValue int) singleelevator.LightAndAssignmentUpdate {
 	var newMessage singleelevator.LightAndAssignmentUpdate

@@ -164,7 +164,8 @@ ForLoop:
 	return nextNodeState
 
 }
-func makeGlobalHallRequestMessage(globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+func makeGlobalHallRequestMessage(
+	globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
 	counterValue uint64) messages.GlobalHallRequest {
 	return messages.GlobalHallRequest{HallRequests: globalHallRequests,
 		CounterValue: counterValue}

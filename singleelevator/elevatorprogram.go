@@ -40,8 +40,8 @@ type LightAndAssignmentUpdate struct {
 
 func ElevatorProgram(
 	portNum string,
-	elevatorEventTx chan<- ElevatorEvent,
 	elevLightAndAssignmentUpdateRx <-chan LightAndAssignmentUpdate,
+	elevatorEventTx chan<- ElevatorEvent,
 	elevatorStatesTx chan<- elevator.ElevatorStateReport) {
 
 	elevator.Init(portNum, config.NUM_FLOORS)

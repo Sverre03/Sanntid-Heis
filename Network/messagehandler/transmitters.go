@@ -70,7 +70,7 @@ func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool,
 		select {
 		case enable = <-transmitEnableCh:
 		case currentRequests = <-requestsForBroadcastCh:
-		case <-time.After(config.MASTER_TRANSMIT_INTERVAL):
+		case <-time.After(config.MASTER_BROADCAST_INTERVAL):
 			if enable {
 				GlobalHallRequestTx <- currentRequests
 			}

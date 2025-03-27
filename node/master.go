@@ -28,10 +28,7 @@ func MasterProgram(node *NodeData) nodestate {
 
 	select {
 	case node.commandToServerTx <- "startConnectionTimeoutDetection":
-
-		// Command sent successfully
 	default:
-		// Command not sent, channel is full
 		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "startConnectionTimeoutDetection")
 	}
 
@@ -42,7 +39,6 @@ ForLoop:
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
 			case singleelevator.ElevStatusUpdateEvent:
-				// if the elevator is no longer functioning, we go to inactive
 				if elevMsg.ElevIsDown {
 					nextNodeState = Inactive
 					break ForLoop
@@ -54,18 +50,17 @@ ForLoop:
 				newHallReq := makeNewHallReq(node.ID, elevMsg)
 				node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+
 				select {
 				case node.commandToServerTx <- "getActiveElevStates":
-					// Command sent successfully
 				default:
-					// Command not sent, channel is full
 					fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
 				}
+
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 			}
 
 		case myElevStates := <-node.MyElevStatesRx:
-			// Transmit elevator states to network
 			node.NodeElevStatesTx <- messages.NodeElevState{
 				NodeID:    node.ID,
 				ElevState: myElevStates,
@@ -82,11 +77,10 @@ ForLoop:
 
 			case messagehandler.ActiveNodeCountChange:
 				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
+
 				select {
 				case node.commandToServerTx <- "getActiveElevStates":
-					// Command sent successfully
 				default:
-					// Command not sent, channel is full
 					fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
 				}
 			}
@@ -94,25 +88,24 @@ ForLoop:
 		case newHallReq := <-node.NewHallReqRx:
 			node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
 			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
+
 			select {
 			case node.commandToServerTx <- "getActiveElevStates":
-				// Command sent successfully
 			default:
-				// Command not sent, channel is full
 				fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
 			}
+
 			fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
 		case connReq := <-node.ConnectionReqRx:
-
 			activeConnReq[connReq.NodeID] = connReq
+			
 			select {
 			case node.commandToServerTx <- "getAllElevStates":
-				// Command sent successfully
 			default:
-				// Command not sent, channel is full
 				fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getAllElevStates")
 			}
+
 		case elevStatesUpdate := <-node.NodeElevStateUpdate:
 
 			switch elevStatesUpdate.DataType {
@@ -120,12 +113,12 @@ ForLoop:
 			case messagehandler.ActiveElevStates:
 
 				// Guard clause to break out of the loop if there are no active nodes
-
 				if util.MapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
 					break Select
 				}
-				// increase the hall assignment counter
-				hallAssignmentCounter = incrementHallAssignmentCounter(hallAssignmentCounter)
+
+				// increment the hall assignment counter
+				hallAssignmentCounter = incrementCounter(hallAssignmentCounter)
 
 				fmt.Printf("Computing assignments: counter value is now%d\n", hallAssignmentCounter)
 
@@ -148,7 +141,7 @@ ForLoop:
 				}
 			case messagehandler.HallAssignmentRemoved:
 				node.GlobalHallRequests = updateGlobalHallRequests(nodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
-				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
+				// fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
 				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
@@ -164,13 +157,13 @@ ForLoop:
 	// stop transmitters
 	node.GlobalHallReqTransmitEnableTx <- false
 	node.HallRequestAssignerTransmitEnableTx <- false
+
 	select {
 	case node.commandToServerTx <- "stopConnectionTimeoutDetection":
-		// Command sent successfully
 	default:
-		// Command not sent, channel is full
 		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "stopConnectionTimeoutDetection")
 	}
+
 	node.TOLC = time.Now()
 	fmt.Printf("Exiting master, setting TOLC to %v\n", node.TOLC)
 	return nextNodeState
@@ -215,12 +208,12 @@ func updateGlobalHallRequests(nodeHallAssignments map[int][config.NUM_FLOORS][2]
 	return globalHallRequests
 }
 
-func incrementHallAssignmentCounter(hallAssignmentCounter int) int {
-	hallAssignmentCounter += 1
-	if hallAssignmentCounter < 0 {
-		hallAssignmentCounter = 0
+func incrementCounter(counter int) int {
+	counter += 1
+	if counter < 0 {
+		counter = 0
 	}
-	return hallAssignmentCounter
+	return counter
 }
 
 func computeHallAssignments(
@@ -231,11 +224,9 @@ func computeHallAssignments(
 
 	var result HallAssignmentResult
 	result.NodeHallAssignments = make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
-	// run the hall request assigner algorithm
 	hraOutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
 
 	result.OtherAssignments = make(map[int]messages.NewHallAssignments)
-	// fmt.Printf("Hall request assigner output: %v\n", hraOutput)
 	// make the hall assignments for all nodes
 
 	for id, hallRequests := range hraOutput {
@@ -283,15 +274,4 @@ func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][config.NUM_HAL
 	// if the button is valid we update the global hall requests
 	globalHallRequests[newHallReq.HallReq.Floor][newHallReq.HallReq.Button] = true
 	return globalHallRequests
-}
-
-func anyHallRequestsActive(globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
-	for floor := range config.NUM_FLOORS {
-		for btn := range config.NUM_HALL_BUTTONS {
-			if globalHallRequests[floor][btn] {
-				return true
-			}
-		}
-	}
-	return false
 }

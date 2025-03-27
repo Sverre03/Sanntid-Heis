@@ -52,8 +52,7 @@ func NodeElevStateServer(myID int,
 	commandRx <-chan string,
 	elevStateUpdateTx chan<- ElevStateUpdate,
 	elevStatesRx <-chan messages.NodeElevState,
-	networkEventTx chan<- NetworkEvent,
-) {
+	networkEventTx chan<- NetworkEvent) {
 
 	nodeIsConnected := false
 	connectionTimeoutTimer := time.NewTimer(config.NODE_CONNECTION_TIMEOUT)
@@ -79,7 +78,6 @@ func NodeElevStateServer(myID int,
 				fmt.Printf("Active nodes changed from %d to %d\n", len(lastActiveNodes), len(activeNodes))
 				select {
 				case networkEventTx <- ActiveNodeCountChange:
-
 				default:
 					fmt.Printf("Error sending network event\n")
 				}

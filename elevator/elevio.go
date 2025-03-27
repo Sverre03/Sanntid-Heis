@@ -60,9 +60,14 @@ func SetButtonLamp(button ButtonType, floor int, value bool) {
 func SetAllLights(elev *Elevator) {
 	for floor := range config.NUM_FLOORS {
 		SetButtonLamp(ButtonCab, floor, elev.Requests[floor][ButtonCab])
+	}
+	SetHallLights(elev.HallLightStates)
+}
 
-		for i := range config.NUM_BUTTONS - 1 {
-			SetButtonLamp(ButtonType(i), floor, elev.HallLightStates[floor][ButtonType(i)])
+func SetHallLights(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) {
+	for floor := range config.NUM_FLOORS {
+		for button := range config.NUM_BUTTONS - 1 {
+			SetButtonLamp(ButtonType(button), floor, lightStates[floor][button])
 		}
 	}
 }

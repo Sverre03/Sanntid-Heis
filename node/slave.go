@@ -85,7 +85,6 @@ ForLoop:
 
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
-				// fmt.Printf("New global hall request: %v\n", node.GlobalHallRequests)
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 			}
 
@@ -104,9 +103,7 @@ ForLoop:
 
 	select {
 	case node.commandToServerTx <- "stopConnectionTimeoutDetection":
-		// Command sent successfully
 	default:
-		// Command not sent, channel is full
 		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "stopConnectionTimeoutDetection")
 	}
 

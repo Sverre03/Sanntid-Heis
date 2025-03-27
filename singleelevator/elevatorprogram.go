@@ -53,7 +53,7 @@ func ElevatorProgram(
 
 	doorOpenTimer := time.NewTimer(config.DOOR_OPEN_DURATION)   // 3-second timer to detect door timeout
 	doorStuckTimer := time.NewTimer(config.DOOR_STUCK_DURATION) // 30-second timer to detect stuck doors
-	stuckBetweenFloorsTimer := time.NewTimer(config.ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT)
+	stuckBetweenFloorsTimer := time.NewTimer(config.MOVEMENT_TIMEOUT)
 
 	doorOpenTimer.Stop()
 	doorStuckTimer.Stop()
@@ -71,7 +71,7 @@ func ElevatorProgram(
 
 	startStuckMonitoring := func() {
 		if elevator_fsm.GetElevator().Behavior == elevator.Moving {
-			stuckBetweenFloorsTimer.Reset(config.ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT)
+			stuckBetweenFloorsTimer.Reset(config.MOVEMENT_TIMEOUT)
 			lastFloorChange = time.Now()
 		}
 	}
@@ -90,7 +90,7 @@ func ElevatorProgram(
 			switch msg.OrderType {
 			case HallOrder:
 
-				elevator_fsm.SetHallLights(msg.LightStates)
+				elevator_fsm.UpdateHallLightStates(msg.LightStates)
 				HallAssignmentCounterValue = msg.HallAssignmentCounterValue
 
 				shouldStop := elevator_fsm.RemoveInvalidHallAssignments(msg.HallAssignments)
@@ -126,13 +126,13 @@ func ElevatorProgram(
 					}
 				}
 			case LightUpdate:
-				elevator_fsm.SetHallLights(msg.LightStates)
+				elevator_fsm.UpdateHallLightStates(msg.LightStates)
 			}
 
 			startStuckMonitoring()
 
 		case floor := <-floorEventRx:
-			elevatorEventTx <- makeElevatorIsDownMessage(false)
+			elevatorEventTx <- makeElevatorIsDownMessage(false) // Report elevator as up when we reach a floor
 			stuckBetweenFloorsTimer.Stop()
 			recoveryAttempts = 0 // Reset recovery attempts when we reach a floor
 			lastFloorChange = time.Now()
@@ -173,13 +173,12 @@ func ElevatorProgram(
 
 				elevatorEventTx <- makeElevatorIsDownMessage(true)
 			}
-		case <-time.Tick(config.ELEVATOR_STUCK_BETWEEN_FLOORS_POLL_INTERVAL):
+		case <-time.Tick(config.MOVEMENT_MONITOR_INTERVAL):
 
 			elev := elevator_fsm.GetElevator()
 
 			// If we're supposed to be moving but haven't changed floors in too long
-			if elev.Behavior == elevator.Moving &&
-				time.Since(lastFloorChange) > config.ELEVATOR_STUCK_BETWEEN_FLOORS_TIMEOUT {
+			if elev.Behavior == elevator.Moving && time.Since(lastFloorChange) > config.MOVEMENT_TIMEOUT {
 				fmt.Println("Detected elevator not moving between floors (timeout)")
 				stuckBetweenFloorsTimer.Stop()   // Stop current timer
 				stuckBetweenFloorsTimer.Reset(0) // Trigger immediately
@@ -210,7 +209,6 @@ func ElevatorProgram(
 				}
 			}
 
-			//elevator.PrintElevator(elevator_fsm.GetElevator())
 			elevatorStatesTx <- elevator.ElevatorState{
 				Behavior:          elev.Behavior,
 				Floor:             elev.Floor,

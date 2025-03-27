@@ -38,27 +38,11 @@ func RecoverFromStuckBetweenFloors() {
 	}
 }
 
-func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
-	shouldStop := false
-	for floor := range config.NUM_FLOORS {
-		for btn := range config.NUM_HALL_BUTTONS {
-			if elev.Requests[floor][btn] && !newHallAssignments[floor][btn] {
-				fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, btn)
-				elev.Requests[floor][btn] = false
-				shouldStop = true
-			}
-		}
-	}
-	return shouldStop
-}
-
 // remove active hall assignments from the elevator that are not in the new hall assignments
 func RemoveInvalidHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	shouldStop := false
-
 	for floor := range config.NUM_FLOORS {
 		for btn := range config.NUM_HALL_BUTTONS {
-			// An assignment was
 			if elev.Requests[floor][btn] && !newHallAssignments[floor][btn] {
 				elev.Requests[floor][btn] = false
 				shouldStop = true
@@ -169,9 +153,9 @@ func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer) {
 	}
 }
 
-func SetHallLights(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) {
+func UpdateHallLightStates(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) {
 	elev.HallLightStates = lightStates
-	elevator.SetAllLights(&elev)
+	elevator.SetHallLights(elev.HallLightStates)
 }
 
 func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
@@ -196,7 +180,7 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 
 			switch elev.Behavior {
 			case elevator.DoorOpen:
-				fmt.Println("Door open should be the next behav")
+				// fmt.Println("Door open should be the next behav")
 				doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
 				elevator.SetDoorOpenLamp(true)

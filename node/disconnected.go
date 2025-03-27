@@ -57,12 +57,6 @@ ForLoop:
 					nextNodeState = Inactive
 					break ForLoop
 				}
-
-			//  CASE FOR DEBUG AND TESTING OF SINGLE ELEVATOR
-			case singleelevator.HallButtonEvent:
-				node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = true
-				node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests, -1)
-
 			}
 		case cabRequestInfo := <-node.CabRequestInfoRx: // Check if the master has any info about us
 			fmt.Println("Master found -> go to Slave")

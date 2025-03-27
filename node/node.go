@@ -159,11 +159,14 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 }
 
 // functions used in the state machines of the different nodes
-func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool, globalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) singleelevator.LightAndAssignmentUpdate {
+func makeHallAssignmentAndLightMessage(hallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+	globalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+	hallAssignmentCounterValue int) singleelevator.LightAndAssignmentUpdate {
 	var newMessage singleelevator.LightAndAssignmentUpdate
 	newMessage.HallAssignments = hallAssignments
 	newMessage.LightStates = globalHallReq
 	newMessage.OrderType = singleelevator.HallOrder
+	newMessage.HallAssignmentCounterValue = hallAssignmentCounterValue
 	return newMessage
 }
 

@@ -11,7 +11,7 @@ const NUM_HALL_BUTTONS = 2
 const MSG_ID_PARTITION_SIZE = uint64(2 << 60)
 
 const DOOR_OPEN_DURATION = 3 * time.Second
-const DOOR_STUCK_DURATION = 30 * time.Second
+const DOOR_STUCK_DURATION = 6 * time.Second
 const MASTER_TRANSMIT_INTERVAL = 50 * time.Millisecond
 const ELEV_STATE_TRANSMIT_INTERVAL = 50 * time.Millisecond
 

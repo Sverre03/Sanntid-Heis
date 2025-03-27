@@ -44,22 +44,19 @@ func ClearHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL
 	return shouldStop
 }
 
-func UpdateHallAssignments(mergedHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
+// remove active hall assignments from the elevator that are not in the new hall assignments
+func RemoveInvalidHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	shouldStop := false
 
 	for floor := range config.NUM_FLOORS {
 		for btn := range config.NUM_HALL_BUTTONS {
-			if elev.Requests[floor][btn] && !mergedHallAssignments[floor][btn] {
-				// An assignment was removed
+			// An assignment was
+			if elev.Requests[floor][btn] && !newHallAssignments[floor][btn] {
 				elev.Requests[floor][btn] = false
 				shouldStop = true
-			} else if !elev.Requests[floor][btn] && mergedHallAssignments[floor][btn] {
-				// A new assignment was added
-				elev.Requests[floor][btn] = true
 			}
 		}
 	}
-
 	return shouldStop
 }
 
@@ -83,6 +80,7 @@ func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTim
 	// Apply side effects
 	if resetDoorTimer {
 		doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
+		fmt.Println("Lighting door open lamp")
 		elevator.SetDoorOpenLamp(true)
 	}
 
@@ -94,13 +92,12 @@ func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTim
 	elevator.SetAllLights(&elev)
 }
 
-// HandleButtonEvent is a pure function that computes state changes
+// Applies changes to the elevator state based on a button press event
 func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) (elevator.Elevator, bool) {
 
 	newState := elev
 	resetDoorTimer := false
 
-	// If the elevator is idle and the button is pressed in the same floor, the door should remain open
 	switch newState.Behavior {
 	case elevator.DoorOpen:
 		// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
@@ -120,7 +117,9 @@ func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer 
 		switch pair.Behavior {
 		case elevator.DoorOpen:
 			resetDoorTimer = true
+			fmt.Println("Clearing the request immediately")
 			newState = elevator.RequestsClearAtCurrentFloor(newState)
+			elevator.PrintElevator(elev)
 		case elevator.Moving, elevator.Idle:
 			// do nothing
 		}
@@ -180,8 +179,10 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 
 			switch elev.Behavior {
 			case elevator.DoorOpen:
+				fmt.Println("Door open should be the next behav")
 				doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
+				elevator.SetDoorOpenLamp(true)
 
 				elev = elevator.RequestsClearAtCurrentFloor(elev)
 

@@ -101,7 +101,12 @@ func RequestsShouldStop(e Elevator) bool {
 }
 
 func RequestsShouldClearImmediately(e Elevator, btnFloor int, btnType ButtonType) bool {
-	return e.Floor == btnFloor && e.Behavior != StoppedBetweenFloors && ((e.Dir == DirectionUp && btnType == ButtonHallUp) || (e.Dir == DirectionDown && btnType == ButtonHallDown) || e.Dir == DirectionStop || btnType == ButtonCab)
+	return e.Floor == btnFloor &&
+		e.Behavior != StoppedBetweenFloors &&
+		((e.Dir == DirectionUp && btnType == ButtonHallUp) ||
+			(e.Dir == DirectionDown && btnType == ButtonHallDown) ||
+			e.Dir == DirectionStop ||
+			btnType == ButtonCab)
 }
 
 func RequestsClearAtCurrentFloor(e Elevator) Elevator {
@@ -115,41 +120,33 @@ func RequestsClearAtCurrentFloor(e Elevator) Elevator {
 	case DirectionUp:
 		if e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
-			e.HallLightStates[e.Floor][ButtonHallUp] = false
 			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallUp)
-		}
-		if e.Floor == config.NUM_FLOORS-1 && e.Requests[e.Floor][ButtonHallDown] {
+		} else if e.Floor == config.NUM_FLOORS-1 && e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			e.HallLightStates[e.Floor][ButtonHallDown] = false
+			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
+		} else if !RequestsAbove(e) && !e.Requests[e.Floor][ButtonHallUp] && e.Requests[e.Floor][ButtonHallDown] {
+			e.Requests[e.Floor][ButtonHallDown] = false
 			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
 		}
-		// if !RequestsAbove(e) && !e.Requests[e.Floor][ButtonHallUp] && e.Requests[e.Floor][ButtonHallDown] {
-		// 	e.Requests[e.Floor][ButtonHallDown] = false
-		// }
 	case DirectionDown:
 		if e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			e.HallLightStates[e.Floor][ButtonHallDown] = false
+			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
+		} else if e.Floor == 0 && e.Requests[e.Floor][ButtonHallUp] {
+			e.Requests[e.Floor][ButtonHallUp] = false
+			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallUp)
+		} else if !RequestsBelow(e) && !e.Requests[e.Floor][ButtonHallDown] && e.Requests[e.Floor][ButtonHallUp] {
+			e.Requests[e.Floor][ButtonHallUp] = false
 			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
 		}
-		if e.Floor == 0 && e.Requests[e.Floor][ButtonHallUp] {
-			e.Requests[e.Floor][ButtonHallUp] = false
-			e.HallLightStates[e.Floor][ButtonHallUp] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallUp)
-		}
-		// if !RequestsBelow(e) && !e.Requests[e.Floor][ButtonHallDown] && e.Requests[e.Floor][ButtonHallUp] {
-		// 	e.Requests[e.Floor][ButtonHallUp] = false
-		// }
 	case DirectionStop:
 		fallthrough
 	default:
 		if e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
-			e.HallLightStates[e.Floor][ButtonHallUp] = false
 			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallUp)
 		} else if e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			e.HallLightStates[e.Floor][ButtonHallDown] = false
 			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
 		}
 	}

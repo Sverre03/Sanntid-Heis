@@ -15,8 +15,9 @@ func main() {
 	id, _ := strconv.Atoi(argsWithoutProg[3])
 
 	mainNode := node.MakeNode(id, elevPort, bcastPort, receiverPort)
+	//	mainNode.GlobalHallRequests = [4][2]bool{{true, true}, {true, true}, {true, true}, {true, true}}
 	mainNode.State = node.Inactive
-	
+
 	for {
 		switch mainNode.State {
 

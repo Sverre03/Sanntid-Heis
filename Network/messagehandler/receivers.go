@@ -4,6 +4,7 @@ import (
 	"elev/Network/messages"
 	"elev/config"
 	"elev/elevator"
+	"elev/util"
 	"fmt"
 	"maps"
 	"math/rand"
@@ -105,13 +106,15 @@ func NodeElevStateServer(myID int,
 			}
 
 			// if I have seen this node before, check if it has cleared any hall assignments!
-			if nodeExistInMap(id, knownNodes) && hallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) {
-				// update the lastActiveNodes with the new state, and send it to the node
-				newActiveNodes := makeDeepCopy(lastActiveNodes)
-				newActiveNodes[id] = elevState.ElevState
-				elevStateUpdateTx <- makeHallAssignmentRemovedMessage(newActiveNodes)
+			if nodeExistInMap(id, knownNodes) {
+				if util.HallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) || knownNodes[id].HACounterVersion != elevState.ElevState.HACounterVersion {
+					// update the lastActiveNodes with the new state, and send it to the node
+					newActiveNodes := makeDeepCopy(lastActiveNodes)
+					newActiveNodes[id] = elevState.ElevState
+					elevStateUpdateTx <- makeHallAssignmentRemovedMessage(newActiveNodes)
 
-				// fmt.Printf(("Hall assignment removed by node %d\n"), id)
+					// fmt.Printf(("Hall assignment removed by node %d\n"), id)
+				}
 			}
 			// finally, register the node as seen
 			lastSeen[id] = time.Now()
@@ -127,6 +130,7 @@ func NodeElevStateServer(myID int,
 				elevStateUpdateTx <- makeAllElevStatesUpdateMessage(knownNodes)
 
 			case "startConnectionTimeoutDetection":
+				fmt.Println("Starting connection timeout detection")
 				connectionTimeoutTimer.Reset(config.NODE_CONNECTION_TIMEOUT)
 				peerTimeoutTicker.Reset(config.PEER_POLL_INTERVAL)
 				nodeIsConnected = true
@@ -165,20 +169,6 @@ func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int
 		}
 	}
 	return activeNodes
-}
-
-func hallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
-	newGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
-	for floor := range config.NUM_FLOORS {
-		for button := range 2 {
-			// Check if change is from (true -> false), assignment complete
-			if oldGlobalHallRequests[floor][button] && !newGlobalHallReq[floor][button] {
-				// fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, button)
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func makeDeepCopy(elevStateMap map[int]elevator.ElevatorState) map[int]elevator.ElevatorState {

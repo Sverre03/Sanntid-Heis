@@ -31,10 +31,11 @@ type ElevatorEvent struct {
 }
 
 type LightAndAssignmentUpdate struct {
-	OrderType       ElevatorOrderType
-	HallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // For assigning hall calls to the elevator
-	CabAssignments  [config.NUM_FLOORS]bool                         // For assigning cab calls to the elevator
-	LightStates     [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // The new state of the lights
+	OrderType                  ElevatorOrderType
+	HallAssignments            [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // For assigning hall calls to the elevator
+	CabAssignments             [config.NUM_FLOORS]bool                         // For assigning cab calls to the elevator
+	LightStates                [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // The new state of the lights
+	HallAssignmentCounterValue int
 }
 
 func ElevatorProgram(
@@ -61,13 +62,12 @@ func ElevatorProgram(
 	lastFloorChange := time.Now()
 	recoveryAttempts := 0
 	maxRecoveryAttempts := 3
+	HallAssignmentCounterValue := -1
 
 	// Start hardware monitoring routines
 	go elevator.PollButtons(buttonEventRx)
 	go elevator.PollFloorSensor(floorEventRx)
 	go elevator.PollObstructionSwitch(obstructionEventRx)
-
-	elevatorEventTx <- makeIsElevatorDownMessage(false)
 
 	startStuckMonitoring := func() {
 		if elevator_fsm.GetElevator().Behavior == elevator.Moving {
@@ -89,43 +89,27 @@ func ElevatorProgram(
 		case msg := <-elevLightAndAssignmentUpdateRx:
 			switch msg.OrderType {
 			case HallOrder:
+
 				elevator_fsm.SetHallLights(msg.LightStates)
+				HallAssignmentCounterValue = msg.HallAssignmentCounterValue
 
-				mergedHallAssignments := getCurrentHallAssignments()
+				shouldStop := elevator_fsm.RemoveInvalidHallAssignments(msg.HallAssignments)
 
-				// Add new assignments from the message
 				for floor := range config.NUM_FLOORS {
 					for btn := range config.NUM_HALL_BUTTONS {
 						if msg.HallAssignments[floor][btn] {
-							mergedHallAssignments[floor][btn] = true
 							if !elevator_fsm.GetElevator().Requests[floor][btn] {
 								btnType := elevator.ButtonType(btn)
-								elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
 								fmt.Printf("New hall assignment added at floor %d, button %d\n", floor, btn)
-
+								elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
 							}
 						}
 					}
 				}
-
-				// Only remove assignments that are explicitly not in the message
-				// and are present in our current assignments
-				for floor := range config.NUM_FLOORS {
-					for btn := range config.NUM_HALL_BUTTONS {
-						if elevator_fsm.GetElevator().Requests[floor][btn] &&
-							!msg.HallAssignments[floor][btn] &&
-							!msg.LightStates[floor][btn] {
-							mergedHallAssignments[floor][btn] = false
-							fmt.Printf("Hall assignment removed at floor %d, button %d\n", floor, btn)
-						}
-					}
-				}
-
-				shouldStop := elevator_fsm.UpdateHallAssignments(mergedHallAssignments)
-
 				currentElevator := elevator_fsm.GetElevator()
 
 				if shouldStop && currentElevator.Behavior == elevator.Moving {
+
 					elevator_fsm.StopElevator()
 
 					if hasAssignments(currentElevator.Requests) {
@@ -143,13 +127,12 @@ func ElevatorProgram(
 				}
 			case LightUpdate:
 				elevator_fsm.SetHallLights(msg.LightStates)
-				fmt.Printf("Light states            : %v\n", msg.LightStates)
-				fmt.Printf("My elevator hall lights: %v\n\n", elevator_fsm.GetElevator().HallLightStates)
 			}
 
 			startStuckMonitoring()
 
 		case floor := <-floorEventRx:
+			elevatorEventTx <- makeIsElevatorDownMessage(false)
 			stuckBetweenFloorsTimer.Stop()
 			recoveryAttempts = 0 // Reset recovery attempts when we reach a floor
 			lastFloorChange = time.Now()
@@ -223,17 +206,19 @@ func ElevatorProgram(
 			elev := elevator_fsm.GetElevator()
 			var localHallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
 			for floor := range config.NUM_FLOORS {
-				for button := range 2 {
+				for button := range config.NUM_HALL_BUTTONS {
 					localHallAssignments[floor][button] = elev.Requests[floor][button]
 				}
 			}
-			// elevator.PrintElevator(elevator_fsm.GetElevator())
+
+			//elevator.PrintElevator(elevator_fsm.GetElevator())
 			elevatorStatesTx <- elevator.ElevatorState{
 				Behavior:          elev.Behavior,
 				Floor:             elev.Floor,
 				Direction:         elev.Dir,
 				CabRequests:       elevator.GetCabRequestsAsElevState(elev),
 				MyHallAssignments: localHallAssignments,
+				HACounterVersion:  HallAssignmentCounterValue,
 			}
 		}
 	}

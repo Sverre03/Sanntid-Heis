@@ -28,6 +28,7 @@ func MasterProgram(node *NodeData) nodestate {
 
 	select {
 	case node.commandToServerTx <- "startConnectionTimeoutDetection":
+
 		// Command sent successfully
 	default:
 		// Command not sent, channel is full
@@ -41,7 +42,6 @@ ForLoop:
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
 			case singleelevator.ElevStatusUpdateEvent:
-				fmt.Printf("Received elevator status update, stuck: %v\n", elevMsg.IsElevDown)
 				// if the elevator is no longer functioning, we go to inactive
 				if elevMsg.IsElevDown {
 					nextNodeState = Inactive
@@ -118,15 +118,16 @@ ForLoop:
 			switch elevStatesUpdate.DataType {
 
 			case messagehandler.ActiveElevStates:
-				fmt.Printf("Computing assignments:\n")
-				// increase the hall assignment counter
 
 				// Guard clause to break out of the loop if there are no active nodes
 
 				if util.MapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
 					break Select
 				}
+				// increase the hall assignment counter
 				hallAssignmentCounter = incrementHallAssignmentCounter(hallAssignmentCounter)
+
+				fmt.Printf("Computing assignments: counter value is now%d\n", hallAssignmentCounter)
 
 				computationResult := computeHallAssignments(node.ID,
 					elevStatesUpdate,
@@ -146,7 +147,6 @@ ForLoop:
 					node.CabRequestInfoTx <- infoMessage
 				}
 			case messagehandler.HallAssignmentRemoved:
-				fmt.Println("Hall assignment removed")
 				node.GlobalHallRequests = updateGlobalHallRequests(nodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
 				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
@@ -198,6 +198,7 @@ func updateGlobalHallRequests(nodeHallAssignments map[int][config.NUM_FLOORS][2]
 
 			// if the counter value is incorrect, we skip the node
 			if nodeElevState.HACounterVersion != hallAssignmentCounter {
+				fmt.Printf("Skipping node %d, counter value incorrect\n", id)
 				continue
 			}
 			for floor := range config.NUM_FLOORS {
@@ -241,7 +242,7 @@ func computeHallAssignments(
 		result.NodeHallAssignments[id] = hallRequests
 		// if the assignment is for me, we make the light and assignment message
 		if id == myID {
-			result.MyAssignment = makeHallAssignmentAndLightMessage(hallRequests, globalHallRequests)
+			result.MyAssignment = makeHallAssignmentAndLightMessage(hallRequests, globalHallRequests, HACounter)
 		} else {
 			// if the assignment is for another node, we make a new hall assignment message
 			result.OtherAssignments[id] = messages.NewHallAssignments{NodeID: id, HallAssignment: hallRequests, MessageID: 0, HallAssignmentCounter: HACounter}

@@ -104,7 +104,6 @@ func RequestsShouldClearImmediately(e Elevator, btnFloor int, btnType ButtonType
 		e.Behavior != StoppedBetweenFloors &&
 		((e.Dir == DirectionUp && btnType == ButtonHallUp) ||
 			(e.Dir == DirectionDown && btnType == ButtonHallDown) ||
-			e.Dir == DirectionStop ||
 			btnType == ButtonCab)
 }
 

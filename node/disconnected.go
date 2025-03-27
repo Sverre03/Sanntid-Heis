@@ -22,7 +22,7 @@ func DisconnectedProgram(node *NodeData) nodestate {
 
 	// Set up heartbeat for connection requests
 	connRequestTicker := time.NewTicker(config.CONNECTION_REQ_INTERVAL)
-	decisionTimer := time.NewTimer(config.DISCONNECTED_DECISION_INTERVAL)
+	decisionTimer := time.NewTimer(config.STATE_TRANSITION_DECISION_INTERVAL)
 	defer connRequestTicker.Stop()
 
 	// Doing my own hall assignments
@@ -48,7 +48,7 @@ ForLoop:
 			} else {
 				fmt.Printf("---\n")
 			}
-			decisionTimer.Reset(config.DISCONNECTED_DECISION_INTERVAL)
+			decisionTimer.Reset(config.STATE_TRANSITION_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
@@ -57,7 +57,13 @@ ForLoop:
 					nextNodeState = Inactive
 					break ForLoop
 				}
+
+				//  CASE FOR DEBUG AND TESTING OF SINGLE ELEVATOR
+			case singleelevator.HallButtonEvent:
+				node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = true
+				node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests, -1)
 			}
+
 		case cabRequestInfo := <-node.CabRequestInfoRx: // Check if the master has any info about us
 			fmt.Println("Master found -> go to Slave")
 			if cabRequestInfo.ReceiverNodeID == node.ID {
@@ -67,9 +73,11 @@ ForLoop:
 				nextNodeState = Slave
 				break ForLoop
 			}
+
 		case elevStates := <-node.MyElevStatesRx:
 
 			if util.HallAssignmentIsRemoved(node.GlobalHallRequests, elevStates.MyHallAssignments) {
+				fmt.Printf("Light States: %v", elevStates.MyHallAssignments)
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(elevStates.MyHallAssignments)
 			}
 			node.GlobalHallRequests = elevStates.MyHallAssignments

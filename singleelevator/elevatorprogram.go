@@ -53,7 +53,7 @@ func ElevatorProgram(
 
 	doorOpenTimer := time.NewTimer(config.DOOR_OPEN_DURATION)   // 3-second timer to detect door timeout
 	doorStuckTimer := time.NewTimer(config.DOOR_STUCK_DURATION) // 30-second timer to detect stuck doors
-	stuckBetweenFloorsTimer := time.NewTimer(config.MOVEMENT_TIMEOUT)
+	stuckBetweenFloorsTimer := time.NewTimer(config.ELEV_STUCK_TIMEOUT)
 
 	doorOpenTimer.Stop()
 	doorStuckTimer.Stop()
@@ -71,7 +71,7 @@ func ElevatorProgram(
 
 	startStuckMonitoring := func() {
 		if elevator_fsm.GetElevator().Behavior == elevator.Moving {
-			stuckBetweenFloorsTimer.Reset(config.MOVEMENT_TIMEOUT)
+			stuckBetweenFloorsTimer.Reset(config.ELEV_STUCK_TIMEOUT)
 			lastFloorChange = time.Now()
 		}
 	}
@@ -97,9 +97,9 @@ func ElevatorProgram(
 
 				addedHallAssignments := addNewHallAssignments(msg.HallAssignments)
 
-				for floor, btn := range addedHallAssignments{
-					for btn, isActive := range btn{
-						if isActive{
+				for floor, btn := range addedHallAssignments {
+					for btn, isActive := range btn {
+						if isActive {
 							btnType := elevator.ButtonType(btn)
 							elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
 						}
@@ -173,12 +173,12 @@ func ElevatorProgram(
 
 				elevatorEventTx <- makeElevatorIsDownMessage(true)
 			}
-		case <-time.Tick(config.MOVEMENT_MONITOR_INTERVAL):
+		case <-time.Tick(config.ELEV_STUCK_POLL_INTERVAL):
 
 			elev := elevator_fsm.GetElevator()
 
 			// If we're supposed to be moving but haven't changed floors in too long
-			if elev.Behavior == elevator.Moving && time.Since(lastFloorChange) > config.MOVEMENT_TIMEOUT {
+			if elev.Behavior == elevator.Moving && time.Since(lastFloorChange) > config.ELEV_STUCK_TIMEOUT {
 				fmt.Println("Detected elevator not moving between floors (timeout)")
 				stuckBetweenFloorsTimer.Stop()   // Stop current timer
 				stuckBetweenFloorsTimer.Reset(0) // Trigger immediately

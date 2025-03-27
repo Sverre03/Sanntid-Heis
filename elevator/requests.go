@@ -2,7 +2,6 @@ package elevator
 
 import (
 	"elev/config"
-	"fmt"
 )
 
 type DirBehaviorPair struct {
@@ -120,34 +119,26 @@ func RequestsClearAtCurrentFloor(e Elevator) Elevator {
 	case DirectionUp:
 		if e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallUp)
-		} else if e.Floor == config.NUM_FLOORS - 1 && e.Requests[e.Floor][ButtonHallDown] {
+		} else if e.Floor == config.NUM_FLOORS-1 && e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
 		} else if !RequestsAbove(e) && !e.Requests[e.Floor][ButtonHallUp] && e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
 		}
 	case DirectionDown:
 		if e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
 		} else if e.Floor == 0 && e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallUp)
 		} else if !RequestsBelow(e) && !e.Requests[e.Floor][ButtonHallDown] && e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
 		}
 	case DirectionStop:
 		fallthrough
 	default:
 		if e.Requests[e.Floor][ButtonHallUp] {
 			e.Requests[e.Floor][ButtonHallUp] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallUp)
 		} else if e.Requests[e.Floor][ButtonHallDown] {
 			e.Requests[e.Floor][ButtonHallDown] = false
-			fmt.Printf("Clearing request at floor %d, button %d\n", e.Floor, ButtonHallDown)
 		}
 	}
 	return e

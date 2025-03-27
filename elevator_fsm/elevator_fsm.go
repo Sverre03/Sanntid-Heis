@@ -133,8 +133,7 @@ func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer) {
 	elev.Floor = newFloor
 	elevator.SetFloorIndicator(elev.Floor)
 
-	switch elev.Behavior {
-	case elevator.Moving:
+	if elev.Behavior == elevator.Moving {
 		if elevator.RequestsShouldStop(elev) {
 			elevator.SetMotorDirection(elevator.DirectionStop)
 			elevator.SetDoorOpenLamp(true)
@@ -145,7 +144,6 @@ func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer) {
 
 			elev.Behavior = elevator.DoorOpen
 		}
-	default:
 	}
 }
 
@@ -155,8 +153,7 @@ func UpdateHallLightStates(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 
 }
 
 func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
-	switch elev.Behavior {
-	case elevator.DoorOpen:
+	if elev.Behavior == elevator.DoorOpen {
 		if elev.IsObstructed {
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 			if !elev.DoorStuckTimerActive {
@@ -176,7 +173,6 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 
 			switch elev.Behavior {
 			case elevator.DoorOpen:
-				// fmt.Println("Door open should be the next behav")
 				doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
 				elevator.SetDoorOpenLamp(true)
@@ -190,6 +186,5 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 				elevator.SetMotorDirection(elev.Dir)
 			}
 		}
-	default:
 	}
 }

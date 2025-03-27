@@ -169,6 +169,7 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 		} else {
 			doorStuckTimer.Stop()
 			elevator.SetDoorOpenLamp(false)
+			elevator.SetStopLamp(false)
 
 			pair := elevator.RequestsChooseDirection(elev)
 			elev.Dir = pair.Dir

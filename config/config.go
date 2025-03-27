@@ -15,18 +15,18 @@ const MSG_ID_PARTITION_SIZE = uint64(2 << 60)
 
 // Timing constants for the elevator program
 const DOOR_OPEN_DURATION = 3 * time.Second
-const DOOR_STUCK_DURATION = 30 * time.Second
+const DOOR_STUCK_DURATION = 10 * time.Second
 const ELEV_STUCK_TIMEOUT = 5 * time.Second
 const ELEV_STUCK_POLL_INTERVAL = 250 * time.Millisecond
 
 // Timing constants for the network
-const MASTER_BROADCAST_INTERVAL = 25 * time.Millisecond
-const ELEV_STATE_TRANSMIT_INTERVAL = 2 * time.Millisecond
+const MASTER_BROADCAST_INTERVAL = 20 * time.Millisecond
+const ELEV_STATE_TRANSMIT_INTERVAL = 20 * time.Millisecond
 
 const HALL_ASSIGNMENT_ACK_TIMEOUT = 200 * time.Millisecond
 const MASTER_CONNECTION_TIMEOUT = 1500 * time.Millisecond
 
-const CONNECTION_REQ_INTERVAL = 10 * time.Millisecond
-const STATE_TRANSITION_DECISION_INTERVAL = 2 * time.Second
+const CONNECTION_REQ_INTERVAL = 20 * time.Millisecond
+const STATE_TRANSITION_DECISION_INTERVAL = 3 * time.Second
 const NODE_CONNECTION_TIMEOUT = 2 * time.Second
 const PEER_POLL_INTERVAL = 20 * time.Millisecond

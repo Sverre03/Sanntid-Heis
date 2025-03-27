@@ -22,6 +22,7 @@ func InitFSM() {
 		}
 	}
 	OnInitBetweenFloors(elevator.DirectionDown)
+	elevator.SetStopLamp(false)
 }
 
 func OnInitBetweenFloors(direction elevator.MotorDirection) {

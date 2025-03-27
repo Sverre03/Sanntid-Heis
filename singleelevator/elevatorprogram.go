@@ -95,17 +95,17 @@ func ElevatorProgram(
 
 				shouldStop := elevator_fsm.RemoveInvalidHallAssignments(msg.HallAssignments)
 
-				for floor := range config.NUM_FLOORS {
-					for btn := range config.NUM_HALL_BUTTONS {
-						if msg.HallAssignments[floor][btn] {
-							if !elevator_fsm.GetElevator().Requests[floor][btn] {
-								btnType := elevator.ButtonType(btn)
-								// fmt.Printf("New hall assignment added at floor %d, button %d\n", floor, btn)
-								elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
-							}
+				addedHallAssignments := addNewHallAssignments(msg.HallAssignments)
+
+				for floor, btn := range addedHallAssignments{
+					for btn, isActive := range btn{
+						if isActive{
+							btnType := elevator.ButtonType(btn)
+							elevator_fsm.OnRequestButtonPress(floor, btnType, doorOpenTimer)
 						}
 					}
 				}
+
 				currentElevator := elevator_fsm.GetElevator()
 
 				if shouldStop && currentElevator.Behavior == elevator.Moving {
@@ -202,19 +202,13 @@ func ElevatorProgram(
 
 		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
 			elev := elevator_fsm.GetElevator()
-			var localHallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
-			for floor := range config.NUM_FLOORS {
-				for button := range config.NUM_HALL_BUTTONS {
-					localHallAssignments[floor][button] = elev.Requests[floor][button]
-				}
-			}
 
 			elevatorStatesTx <- elevator.ElevatorState{
 				Behavior:          elev.Behavior,
 				Floor:             elev.Floor,
 				Direction:         elev.Dir,
 				CabRequests:       elevator.GetCabRequestsAsElevState(elev),
-				MyHallAssignments: localHallAssignments,
+				MyHallAssignments: getElevatorHallAssignemnts(elev.Requests),
 				HACounterVersion:  HallAssignmentCounterValue,
 			}
 		}
@@ -233,14 +227,14 @@ func makeHallReqMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 	}
 }
 
-func getCurrentHallAssignments() [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool {
-	var hallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
+func getElevatorHallAssignemnts(allElevatorRequest [config.NUM_FLOORS][config.NUM_BUTTONS]bool) [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool {
+	var elevatorHallAssignemnts [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
 	for floor := range config.NUM_FLOORS {
-		for btn := range config.NUM_HALL_BUTTONS {
-			hallAssignments[floor][btn] = elevator_fsm.GetElevator().Requests[floor][btn]
+		for button := range config.NUM_HALL_BUTTONS {
+			elevatorHallAssignemnts[floor][button] = allElevatorRequest[floor][button]
 		}
 	}
-	return hallAssignments
+	return elevatorHallAssignemnts
 }
 
 func hasAssignments(requests [config.NUM_FLOORS][config.NUM_BUTTONS]bool) bool {
@@ -252,4 +246,16 @@ func hasAssignments(requests [config.NUM_FLOORS][config.NUM_BUTTONS]bool) bool {
 		}
 	}
 	return false
+}
+
+func addNewHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
+	var addedHallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
+	for floor := range config.NUM_FLOORS {
+		for btn := range config.NUM_HALL_BUTTONS {
+			if newHallAssignments[floor][btn] && !elevator_fsm.GetElevator().Requests[floor][btn] {
+				addedHallAssignments[floor][btn] = true
+			}
+		}
+	}
+	return addedHallAssignments
 }

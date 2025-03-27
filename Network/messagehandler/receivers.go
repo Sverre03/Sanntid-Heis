@@ -74,8 +74,8 @@ func NodeElevStateServer(myID int,
 			activeNodes := findActiveNodes(knownNodes, lastSeen)
 
 			// if the number of active nodes change, generate an event
-			if hasActiveNodesChanged(activeNodes, lastActiveNodes) && len(activeNodes) > 1 {
-				fmt.Printf("Active nodes changed from %d to %d\n", len(lastActiveNodes), len(activeNodes))
+			if hasActiveNodesChanged(activeNodes, lastActiveNodes) {
+				
 				select {
 				case networkEventTx <- ActiveNodeCountChange:
 				default:
@@ -180,10 +180,11 @@ func nodeIsConnectedToNetwork(myID int, msgID int, nodeIsConnected bool) bool {
 }
 
 func hasActiveNodesChanged(activeNodes map[int]elevator.ElevatorState, lastActiveNodes map[int]elevator.ElevatorState) bool {
-	return len(activeNodes) != len(lastActiveNodes)
+	return len(activeNodes) != len(lastActiveNodes) && (len(activeNodes) > 1)
 }
 
 func nodeExistInMap(id int, knownNodes map[int]elevator.ElevatorState) bool {
 	_, ok := knownNodes[id]
 	return ok
 }
+

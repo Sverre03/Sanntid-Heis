@@ -4,11 +4,11 @@
 package node
 
 import (
-	"elev/Network/messagehandler"
-	"elev/Network/messages"
-	"elev/Network/network/bcast"
 	"elev/config"
 	"elev/elevator"
+	"elev/network/bcast"
+	"elev/network/communication"
+	"elev/network/messages"
 	"elev/singleelevator"
 )
 
@@ -31,11 +31,11 @@ type NodeData struct {
 	GlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	ContactCounter     uint64
 
-	AckTx               chan messages.Ack                   // Send acks to udp broadcaster
-	NodeElevStatesTx    chan messages.NodeElevState         // send your elev states to udp broadcaster
-	NodeElevStateUpdate chan messagehandler.ElevStateUpdate // receive elevStateUpdate
-	NewHallReqRx        chan messages.NewHallReq            // receive hall requests from udp receiver
-	NewHallReqTx        chan messages.NewHallReq            // send hall requests to udp transmitter
+	AckTx               chan messages.Ack                  // Send acks to udp broadcaster
+	NodeElevStatesTx    chan messages.NodeElevState        // send your elev states to udp broadcaster
+	NodeElevStateUpdate chan communication.ElevStateUpdate // receive elevStateUpdate
+	NewHallReqRx        chan messages.NewHallReq           // receive hall requests from udp receiver
+	NewHallReqTx        chan messages.NewHallReq           // send hall requests to udp transmitter
 
 	HallAssignmentTx  chan messages.NewHallAssignments // Sends hall assignments to hall assignment transmitter
 	HallAssignmentsRx chan messages.NewHallAssignments // Receives hall assignments from udp receiver. Messages should be acked
@@ -49,8 +49,8 @@ type NodeData struct {
 	ConnectionReqTx chan messages.ConnectionReq // send connection request messages to udp broadcaster
 	ConnectionReqRx chan messages.ConnectionReq // receive connection request messages from udp receiver
 
-	commandToServerTx chan string                      // Sends commands to the NodeElevStateServer (defined in Network/comm/receivers.go)
-	NetworkEventRx    chan messagehandler.NetworkEvent // if no contact have been made within a timeout, "true" is sent on this channel
+	commandToServerTx chan string                     // Sends commands to the NodeElevStateServer (defined in Network/comm/receivers.go)
+	NetworkEventRx    chan communication.NetworkEvent // if no contact have been made within a timeout, "true" is sent on this channel
 
 	// Elevator-Node communication
 	ElevLightAndAssignmentUpdateTx chan singleelevator.LightAndAssignmentUpdate // channel for informing elevator of changes to hall button lights, hall assignments and cab assignments
@@ -74,7 +74,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.AckTx = make(chan messages.Ack)
 
 	node.NodeElevStatesTx = make(chan messages.NodeElevState)
-	node.NodeElevStateUpdate = make(chan messagehandler.ElevStateUpdate)
+	node.NodeElevStateUpdate = make(chan communication.ElevStateUpdate)
 
 	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
@@ -104,7 +104,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.MyElevStatesRx = make(chan elevator.ElevatorStateReport)
 
 	node.commandToServerTx = make(chan string, 5)
-	node.NetworkEventRx = make(chan messagehandler.NetworkEvent, 5)
+	node.NetworkEventRx = make(chan communication.NetworkEvent, 5)
 
 	receiverToServerCh := make(chan messages.NodeElevState)
 
@@ -129,7 +129,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.NewHallReqRx)
 
 	// process responsible for sending and making sure hall assignments are acknowledged
-	go messagehandler.HallAssignmentsTransmitter(HATransToBcastTx,
+	go communication.HallAssignmentsTransmitter(HATransToBcastTx,
 		node.HallAssignmentTx,
 		hallAssignmentsAckRx,
 		node.HallRequestAssignerTransmitEnableTx)
@@ -141,7 +141,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.MyElevStatesRx)
 
 	// process that listens to active nodes on network
-	go messagehandler.NodeElevStateServer(node.ID,
+	go communication.ElevStatusServer(node.ID,
 		node.commandToServerTx,
 		node.NodeElevStateUpdate,
 		receiverToServerCh,

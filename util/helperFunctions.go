@@ -11,19 +11,6 @@ func KeyExistsInMap[K comparable, V any](key K, m map[K]V) bool {
 	return ok
 }
 
-func HallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
-	newGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
-	for floor := range config.NUM_FLOORS {
-		for button := range 2 {
-			// If change is from (true -> false) => Assignment completed
-			if oldGlobalHallRequests[floor][button] && !newGlobalHallReq[floor][button] {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func IncrementIntCounter(counter int) int {
 	counter += 1
 	if counter < 0 {
@@ -42,4 +29,17 @@ func IncrementCounterUint64(counter uint64) uint64 {
 
 func MyCounterIsSmaller(myCounter uint64, otherCounter uint64) bool {
 	return myCounter < otherCounter
+}
+
+func HallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+	newGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
+	for floor := range config.NUM_FLOORS {
+		for button := range 2 {
+			// If change is from (true -> false) => Assignment completed
+			if oldGlobalHallRequests[floor][button] && !newGlobalHallReq[floor][button] {
+				return true
+			}
+		}
+	}
+	return false
 }

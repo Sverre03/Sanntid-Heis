@@ -154,9 +154,14 @@ func UpdateHallLightStates(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 
 	elevator.SetHallLights(elev.HallLightStates)
 }
 
+func UpdateElevStuckTimerActiveState(isActive bool) {
+	elev.DoorStuckTimerActive = isActive
+}
+
 func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 	if elev.Behavior == elevator.DoorOpen {
 		if elev.IsObstructed {
+			fmt.Println("door is obstructed, and i tried to close it")
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
 			if !elev.DoorStuckTimerActive {
 				doorStuckTimer.Reset(config.DOOR_STUCK_DURATION)
@@ -165,6 +170,7 @@ func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
 			}
 		} else {
 			doorStuckTimer.Stop()
+			elev.DoorStuckTimerActive = false
 			elevator.SetDoorOpenLamp(false)
 			elevator.SetStopLamp(false)
 

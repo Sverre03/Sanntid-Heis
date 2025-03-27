@@ -1,10 +1,10 @@
 package node
 
 import (
-	"elev/Network/messagehandler"
-	"elev/Network/messages"
 	"elev/config"
 	"elev/elevator"
+	"elev/network/communication"
+	"elev/network/messages"
 	"elev/singleelevator"
 	"fmt"
 	"time"
@@ -53,7 +53,7 @@ ForLoop:
 
 		case networkEvent := <-node.NetworkEventRx:
 			// check if we have lost connection
-			if networkEvent == messagehandler.NodeHasLostConnection {
+			if networkEvent == communication.NodeHasLostConnection {
 				nextNodeState = Disconnected
 				break ForLoop
 			}

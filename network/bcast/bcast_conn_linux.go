@@ -1,7 +1,7 @@
 //go:build linux
 // +build linux
 
-package conn
+package bcast
 
 import (
 	"fmt"

@@ -1,9 +1,9 @@
-package messagehandler
+package communication
 
 import (
-	"elev/Network/messages"
 	"elev/config"
 	"elev/elevator"
+	"elev/network/messages"
 	"elev/util"
 	"fmt"
 	"maps"
@@ -40,7 +40,7 @@ func GenerateMessageID() uint64 {
 // you can requests to know the states by sending a string on  commandCh
 // commands are "getActiveElevStates", "getAllKnownNodes", "startConnectionTimeoutDetection"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
-func NodeElevStateServer(myID int,
+func ElevStatusServer(myID int,
 	commandRx <-chan string,
 	elevStateUpdateTx chan<- ElevStateUpdate,
 	elevStatesRx <-chan messages.NodeElevState,
@@ -97,7 +97,7 @@ func NodeElevStateServer(myID int,
 
 			// if I have seen this node before, check if it has cleared any hall assignments!
 			if nodeExistInMap(id, knownNodes) {
-				if util.HallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) || 
+				if util.HallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) ||
 					knownNodes[id].HACounterVersion != elevState.ElevState.HACounterVersion {
 					// update the lastActiveNodes with the new state, and send it to the node
 					newActiveNodes := makeDeepCopy(lastActiveNodes)

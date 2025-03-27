@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package conn
+package bcast
 
 // Windows socket error codes can be found here
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740668(v=vs.85).aspx

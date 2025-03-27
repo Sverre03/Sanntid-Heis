@@ -1,26 +1,22 @@
 package node
 
 import (
-	"elev/Network/messagehandler"
-	"elev/Network/messages"
+	"elev/network/messages"
 	"elev/config"
 	"elev/costFNS/hallRequestAssigner"
 	"elev/elevator"
+	"elev/network/communication"
 	"elev/singleelevator"
 	"elev/util"
 	"fmt"
 	"time"
 )
 
-// HallAssignmentResult is a struct that holds the result of the hall assignment computation
-type HallAssignmentResult struct {
+// HRAresult is a struct that holds the result of the hall assignment computation
+type HRAresult struct {
 	NodeHallAssignments map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	MyAssignment        singleelevator.LightAndAssignmentUpdate
 	OtherAssignments    map[int]messages.NewHallAssignments
-}
-
-type connectionRequestHandler struct {
-	CabRequests map[int]messages.CabRequestInfo
 }
 
 func MasterProgram(node *NodeData) nodestate {
@@ -59,7 +55,7 @@ ForLoop:
 			case singleelevator.HallButtonEvent:
 
 				newHallReq := makeNewHallReq(node.ID, elevMsg)
-				node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
+				node.GlobalHallRequests = addNewHallRequest(node.GlobalHallRequests, newHallReq)
 
 				select {
 				case node.commandToServerTx <- "getActiveElevStates":
@@ -67,7 +63,6 @@ ForLoop:
 					fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
 				}
 
-				fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 			}
 
 		case myElevStates := <-node.MyElevStatesRx:
@@ -77,16 +72,13 @@ ForLoop:
 			}
 
 		case networkEvent := <-node.NetworkEventRx:
-			fmt.Println("Network event received")
 			switch networkEvent {
-			case messagehandler.NodeHasLostConnection:
+			case communication.NodeHasLostConnection:
 
-				fmt.Println("Connection timed out")
 				nextNodeState = Disconnected
 				break ForLoop
 
-			case messagehandler.ActiveNodeCountChange:
-				fmt.Println("Node connected or disconnected, starting redistribution of hall requests")
+			case communication.ActiveNodeCountChange:
 
 				select {
 				case node.commandToServerTx <- "getActiveElevStates":
@@ -96,15 +88,13 @@ ForLoop:
 			}
 
 		case newHallReq := <-node.NewHallReqRx:
-			node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
+			node.GlobalHallRequests = addNewHallRequest(node.GlobalHallRequests, newHallReq)
 
 			select {
 			case node.commandToServerTx <- "getActiveElevStates":
 			default:
 				fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
 			}
-
-			fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
 		case connReq := <-node.ConnectionReqRx:
 			activeConnReq[connReq.NodeID] = connReq
@@ -119,7 +109,7 @@ ForLoop:
 
 			switch elevStatesUpdate.DataType {
 
-			case messagehandler.ActiveElevStates:
+			case communication.ActiveElevStates:
 
 				// Guard clause to break out of the loop if there are no active nodes
 				if util.MapIsEmpty(elevStatesUpdate.NodeElevStatesMap) {
@@ -128,8 +118,6 @@ ForLoop:
 
 				// increment the hall assignment counter
 				hallAssignmentCounter = util.IncrementIntCounter(hallAssignmentCounter)
-
-				fmt.Printf("Computing assignments: counter value is now %d\n", hallAssignmentCounter)
 
 				computationResult := computeHallAssignments(node.ID,
 					elevStatesUpdate,
@@ -143,12 +131,12 @@ ForLoop:
 				}
 				nodeHallAssignments = computationResult.NodeHallAssignments
 
-			case messagehandler.AllElevStates:
-				infoToNodes := processConnectionRequestsFromOtherNodes(elevStatesUpdate, activeConnReq)
-				for _, infoMessage := range infoToNodes.CabRequests {
+			case communication.AllElevStates:
+				infoToNodes := makeConnectionRequestReplies(elevStatesUpdate, activeConnReq)
+				for _, infoMessage := range infoToNodes {
 					node.CabRequestInfoTx <- infoMessage
 				}
-			case messagehandler.HallAssignmentRemoved:
+			case communication.HallAssignmentRemoved:
 				node.GlobalHallRequests = updateGlobalHallRequests(nodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
@@ -195,7 +183,6 @@ func updateGlobalHallRequests(
 
 			// if the counter value is incorrect, we skip the node
 			if nodeElevState.HACounterVersion != hallAssignmentCounter {
-				//fmt.Printf("Skipping node %d, counter value incorrect\n", id)
 				continue
 			}
 			for floor := range config.NUM_FLOORS {
@@ -214,11 +201,11 @@ func updateGlobalHallRequests(
 
 func computeHallAssignments(
 	myID int,
-	elevStatesUpdate messagehandler.ElevStateUpdate,
+	elevStatesUpdate communication.ElevStateUpdate,
 	globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
-	HACounter int) HallAssignmentResult {
+	HACounter int) HRAresult {
 
-	var result HallAssignmentResult
+	var result HRAresult
 	result.NodeHallAssignments = make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 	hraOutput := hallRequestAssigner.HRAalgorithm(elevStatesUpdate.NodeElevStatesMap, globalHallRequests)
 
@@ -237,13 +224,11 @@ func computeHallAssignments(
 	return result
 }
 
-func processConnectionRequestsFromOtherNodes(elevStatesUpdate messagehandler.ElevStateUpdate,
-	activeConnReq map[int]messages.ConnectionReq) connectionRequestHandler {
+func makeConnectionRequestReplies(elevStatesUpdate communication.ElevStateUpdate,
+	activeConnReq map[int]messages.ConnectionReq) map[int]messages.CabRequestInfo {
 
-	var result connectionRequestHandler
-	fmt.Printf("Dealing with connreqs\n")
 	// make cab request info for all nodes that have sent a connection request
-	result.CabRequests = make(map[int]messages.CabRequestInfo)
+	result := make(map[int]messages.CabRequestInfo)
 	for id := range activeConnReq {
 		var cabRequestInfo messages.CabRequestInfo
 		// if  we have info about the node, we send it, otherwise we send an empty slice
@@ -253,13 +238,13 @@ func processConnectionRequestsFromOtherNodes(elevStatesUpdate messagehandler.Ele
 			cabRequestInfo = messages.CabRequestInfo{CabRequest: [config.NUM_FLOORS]bool{}, ReceiverNodeID: id}
 		}
 		// add the cab request info to the result
-		result.CabRequests[id] = cabRequestInfo
+		result[id] = cabRequestInfo
 	}
 	return result
 
 }
 
-func processNewHallRequest(globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+func addNewHallRequest(globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
 	newHallReq messages.NewHallReq) [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
 	// if button is invalid we return false
 	if newHallReq.HallReq.Button == elevator.ButtonCab {

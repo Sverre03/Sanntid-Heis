@@ -1,7 +1,6 @@
 package bcast
 
 import (
-	"elev/Network/network/conn"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -24,7 +23,7 @@ func Broadcaster(port int, chans ...interface{}) {
 		typeNames[i] = reflect.TypeOf(ch).Elem().String()
 	}
 
-	conn := conn.DialBroadcastUDP(port)
+	conn := DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 	for {
 		chosen, value, _ := reflect.Select(selectCases)
@@ -54,7 +53,7 @@ func Receiver(port int, chans ...interface{}) {
 	}
 
 	var buf [BUF_SIZE]byte
-	conn := conn.DialBroadcastUDP(port)
+	conn := DialBroadcastUDP(port)
 	for {
 		n, _, e := conn.ReadFrom(buf[0:])
 		if e != nil {

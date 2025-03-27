@@ -1,8 +1,8 @@
-package messagehandler
+package communication
 
 import (
-	"elev/Network/messages"
 	"elev/config"
+	"elev/network/messages"
 	"time"
 )
 

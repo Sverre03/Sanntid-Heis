@@ -15,7 +15,7 @@ const MSG_ID_PARTITION_SIZE = uint64(2 << 60)
 
 // Timing constants for the elevator program
 const DOOR_OPEN_DURATION = 3 * time.Second
-const DOOR_STUCK_DURATION = 10 * time.Second
+const DOOR_STUCK_DURATION = 7 * time.Second
 const ELEV_STUCK_TIMEOUT = 4 * time.Second
 const ELEV_STUCK_POLL_INTERVAL = 250 * time.Millisecond
 

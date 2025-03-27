@@ -146,6 +146,7 @@ func ElevatorProgram(
 			if !isObstructed {
 				// Stop the door stuck timer if the obstruction is cleared
 				doorStuckTimer.Stop()
+				elevator_fsm.UpdateElevStuckTimerActiveState(false)
 				elevatorEventTx <- makeElevatorIsDownMessage(false)
 			}
 

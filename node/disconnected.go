@@ -1,8 +1,8 @@
 package node
 
 import (
-	"elev/Network/messages"
 	"elev/config"
+	"elev/network/messages"
 	"elev/singleelevator"
 	"elev/util"
 	"fmt"

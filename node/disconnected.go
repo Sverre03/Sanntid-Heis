@@ -13,8 +13,8 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 
 	myConnReq := messages.ConnectionReq{
-		TOLC:   node.TOLC,
-		NodeID: node.ID,
+		ContactCounterValue: node.ContactCounter,
+		NodeID:              node.ID,
 	}
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
 
@@ -41,7 +41,7 @@ ForLoop:
 
 		case <-decisionTimer.C:
 			if !util.MapIsEmpty(incomingConnRequests) {
-				if ShouldBeMaster(node.ID, node.TOLC, incomingConnRequests) {
+				if ShouldBeMaster(node.ID, node.ContactCounter, incomingConnRequests) {
 					nextNodeState = Master
 					break ForLoop
 				}
@@ -58,16 +58,12 @@ ForLoop:
 					break ForLoop
 				}
 
-				//  CASE FOR DEBUG AND TESTING OF SINGLE ELEVATOR
-			case singleelevator.HallButtonEvent:
-				node.GlobalHallRequests[elevMsg.ButtonEvent.Floor][elevMsg.ButtonEvent.Button] = true
-				node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests, -1)
 			}
 
 		case cabRequestInfo := <-node.CabRequestInfoRx: // Check if the master has any info about us
 			fmt.Println("Master found -> go to Slave")
 			if cabRequestInfo.ReceiverNodeID == node.ID {
-				if node.TOLC.IsZero() {
+				if node.ContactCounter == 0 {
 					node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(cabRequestInfo.CabRequest)
 				}
 				nextNodeState = Slave
@@ -93,21 +89,20 @@ ForLoop:
 	return nextNodeState
 }
 
-func ShouldBeMaster(myID int, tolc time.Time, connectionRequests map[int]messages.ConnectionReq) bool {
-	if tolc.IsZero() {
-		for id, connReq := range connectionRequests {
-			if id > myID || !connReq.TOLC.IsZero() {
+func ShouldBeMaster(myID int, contactCounter uint64, connectionRequests map[int]messages.ConnectionReq) bool {
+
+	for _, connReq := range connectionRequests {
+		fmt.Printf("My Counter %d, other counter: %d\n", contactCounter, connReq.ContactCounterValue)
+		if util.MyCounterIsSmaller(contactCounter, connReq.ContactCounterValue) {
+			return false
+		}
+		if contactCounter == connReq.ContactCounterValue {
+			if myID < connReq.NodeID {
 				return false
 			}
 		}
-		return true
 	}
 
-	for _, connReq := range connectionRequests {
-		if tolc.Before(connReq.TOLC) {
-			return false
-		}
-	}
 	return true
 }
 

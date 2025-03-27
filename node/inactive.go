@@ -26,7 +26,7 @@ ForLoop:
 		case <-node.NodeElevStateUpdate:
 		case <-node.NetworkEventRx:
 		case <-node.MyElevStatesRx:
-
+			// read these to prevent blocking 
 		}
 	}
 	return nextNodeState

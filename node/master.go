@@ -12,6 +12,17 @@ import (
 	"time"
 )
 
+// HallAssignmentResult is a struct that holds the result of the hall assignment computation
+type HallAssignmentResult struct {
+	NodeHallAssignments map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
+	MyAssignment        singleelevator.LightAndAssignmentUpdate
+	OtherAssignments    map[int]messages.NewHallAssignments
+}
+
+type connectionRequestHandler struct {
+	CabRequests map[int]messages.CabRequestInfo
+}
+
 func MasterProgram(node *NodeData) nodestate {
 	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
 
@@ -20,10 +31,10 @@ func MasterProgram(node *NodeData) nodestate {
 	hallAssignmentCounter := 0
 	var nextNodeState nodestate
 
+	GlobalHallReqSendTicker := time.NewTicker(config.MASTER_BROADCAST_INTERVAL)
 	// inform the global hall request transmitter of the new global hall requests
-	node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 	node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
-	node.GlobalHallReqTransmitEnableTx <- true
+
 	node.HallRequestAssignerTransmitEnableTx <- true
 
 	select {
@@ -49,7 +60,6 @@ ForLoop:
 
 				newHallReq := makeNewHallReq(node.ID, elevMsg)
 				node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
-				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 
 				select {
 				case node.commandToServerTx <- "getActiveElevStates":
@@ -87,7 +97,6 @@ ForLoop:
 
 		case newHallReq := <-node.NewHallReqRx:
 			node.GlobalHallRequests = processNewHallRequest(node.GlobalHallRequests, newHallReq)
-			node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 
 			select {
 			case node.commandToServerTx <- "getActiveElevStates":
@@ -99,7 +108,7 @@ ForLoop:
 
 		case connReq := <-node.ConnectionReqRx:
 			activeConnReq[connReq.NodeID] = connReq
-			
+
 			select {
 			case node.commandToServerTx <- "getAllElevStates":
 			default:
@@ -118,9 +127,9 @@ ForLoop:
 				}
 
 				// increment the hall assignment counter
-				hallAssignmentCounter = incrementCounter(hallAssignmentCounter)
+				hallAssignmentCounter = util.IncrementIntCounter(hallAssignmentCounter)
 
-				fmt.Printf("Computing assignments: counter value is now%d\n", hallAssignmentCounter)
+				fmt.Printf("Computing assignments: counter value is now %d\n", hallAssignmentCounter)
 
 				computationResult := computeHallAssignments(node.ID,
 					elevStatesUpdate,
@@ -143,19 +152,20 @@ ForLoop:
 				node.GlobalHallRequests = updateGlobalHallRequests(nodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
 				// fmt.Printf("Global hall requests: %v\n", node.GlobalHallRequests)
 
-				node.GlobalHallRequestTx <- messages.GlobalHallRequest{HallRequests: node.GlobalHallRequests}
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
 
+		case <-GlobalHallReqSendTicker.C:
+			node.ContactCounter++
+			node.GlobalHallRequestTx <- makeGlobalHallRequestMessage(node.GlobalHallRequests, node.ContactCounter)
+			// when you get a message on any of these channels, do nothing
 		case <-node.HallAssignmentsRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
-			// when you get a message on any of these channels, do nothing
 		}
 	}
 
 	// stop transmitters
-	node.GlobalHallReqTransmitEnableTx <- false
 	node.HallRequestAssignerTransmitEnableTx <- false
 
 	select {
@@ -164,25 +174,21 @@ ForLoop:
 		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "stopConnectionTimeoutDetection")
 	}
 
-	node.TOLC = time.Now()
-	fmt.Printf("Exiting master, setting TOLC to %v\n", node.TOLC)
+	fmt.Printf("Exiting master, counter value is %v\n", node.ContactCounter)
 	return nextNodeState
 
 }
-
-// HallAssignmentResult is a struct that holds the result of the hall assignment computation
-type HallAssignmentResult struct {
-	NodeHallAssignments map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
-	MyAssignment        singleelevator.LightAndAssignmentUpdate
-	OtherAssignments    map[int]messages.NewHallAssignments
+func makeGlobalHallRequestMessage(globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+	counterValue uint64) messages.GlobalHallRequest {
+	return messages.GlobalHallRequest{HallRequests: globalHallRequests,
+		CounterValue: counterValue}
 }
 
-type connectionRequestHandler struct {
-	CabRequests map[int]messages.CabRequestInfo
-}
-
-func updateGlobalHallRequests(nodeHallAssignments map[int][config.NUM_FLOORS][2]bool,
-	recentNodeElevStates map[int]elevator.ElevatorState, globalHallRequests [config.NUM_FLOORS][2]bool, hallAssignmentCounter int) [config.NUM_FLOORS][2]bool {
+func updateGlobalHallRequests(
+	nodeHallAssignments map[int][config.NUM_FLOORS][2]bool,
+	recentNodeElevStates map[int]elevator.ElevatorState,
+	globalHallRequests [config.NUM_FLOORS][2]bool,
+	hallAssignmentCounter int) [config.NUM_FLOORS][2]bool {
 
 	// loop through all the nodes and their respective hall assignments
 	for id, hallAssignments := range nodeHallAssignments {
@@ -191,7 +197,7 @@ func updateGlobalHallRequests(nodeHallAssignments map[int][config.NUM_FLOORS][2]
 
 			// if the counter value is incorrect, we skip the node
 			if nodeElevState.HACounterVersion != hallAssignmentCounter {
-				fmt.Printf("Skipping node %d, counter value incorrect\n", id)
+				//fmt.Printf("Skipping node %d, counter value incorrect\n", id)
 				continue
 			}
 			for floor := range config.NUM_FLOORS {
@@ -206,14 +212,6 @@ func updateGlobalHallRequests(nodeHallAssignments map[int][config.NUM_FLOORS][2]
 	}
 
 	return globalHallRequests
-}
-
-func incrementCounter(counter int) int {
-	counter += 1
-	if counter < 0 {
-		counter = 0
-	}
-	return counter
 }
 
 func computeHallAssignments(

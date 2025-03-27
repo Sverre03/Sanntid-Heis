@@ -80,7 +80,7 @@ ForLoop:
 			}
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
-			node.TOLC = time.Now()
+			node.ContactCounter = newGlobalHallReq.CounterValue
 			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
 
 			if hasChanged(newGlobalHallReq.HallRequests, node.GlobalHallRequests) {
@@ -89,7 +89,7 @@ ForLoop:
 			}
 
 		case <-masterConnectionTimeoutTimer.C:
-			fmt.Printf("Node %d timed out\n", node.ID)
+			fmt.Println("Lost connection to master")
 			nextNodeState = Disconnected
 			break ForLoop
 

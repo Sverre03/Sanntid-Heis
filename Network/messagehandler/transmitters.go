@@ -58,26 +58,6 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 	}
 }
 
-// broadcasts the global hall requests with an interval, enable or disable by sending a bool in transmitEnableCh
-func GlobalHallRequestsTransmitter(transmitEnableCh <-chan bool,
-	GlobalHallRequestTx chan<- messages.GlobalHallRequest,
-	requestsForBroadcastCh <-chan messages.GlobalHallRequest) {
-
-	enable := false
-	var currentRequests messages.GlobalHallRequest
-
-	for {
-		select {
-		case enable = <-transmitEnableCh:
-		case currentRequests = <-requestsForBroadcastCh:
-		case <-time.After(config.MASTER_BROADCAST_INTERVAL):
-			if enable {
-				GlobalHallRequestTx <- currentRequests
-			}
-		}
-	}
-}
-
 func clearActiveAssignments(activeAssignments map[int]messages.NewHallAssignments) {
 	for key := range activeAssignments {
 		delete(activeAssignments, key)

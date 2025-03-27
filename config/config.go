@@ -24,9 +24,9 @@ const MASTER_BROADCAST_INTERVAL = 25 * time.Millisecond
 const ELEV_STATE_TRANSMIT_INTERVAL = 2 * time.Millisecond
 
 const HALL_ASSIGNMENT_ACK_TIMEOUT = 200 * time.Millisecond
-const MASTER_CONNECTION_TIMEOUT = 600 * time.Millisecond
+const MASTER_CONNECTION_TIMEOUT = 1500 * time.Millisecond
 
-const CONNECTION_REQ_INTERVAL = 100 * time.Millisecond
+const CONNECTION_REQ_INTERVAL = 10 * time.Millisecond
 const STATE_TRANSITION_DECISION_INTERVAL = 2 * time.Second
 const NODE_CONNECTION_TIMEOUT = 2 * time.Second
 const PEER_POLL_INTERVAL = 20 * time.Millisecond

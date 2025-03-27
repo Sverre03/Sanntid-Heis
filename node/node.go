@@ -10,7 +10,6 @@ import (
 	"elev/config"
 	"elev/elevator"
 	"elev/singleelevator"
-	"time"
 )
 
 // NodeData represents a node in the distributed elevator system.
@@ -30,7 +29,7 @@ type NodeData struct {
 	ID                 int
 	State              nodestate
 	GlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
-	TOLC               time.Time
+	ContactCounter     uint64
 
 	AckTx               chan messages.Ack                   // Send acks to udp broadcaster
 	NodeElevStatesTx    chan messages.NodeElevState         // send your elev states to udp broadcaster
@@ -67,9 +66,9 @@ type NodeData struct {
 func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPort int) *NodeData {
 
 	node := &NodeData{
-		ID:    id,
-		State: Inactive,
-		TOLC:  time.Time{},
+		ID:             id,
+		State:          Inactive,
+		ContactCounter: 0,
 	}
 
 	node.AckTx = make(chan messages.Ack)
@@ -84,7 +83,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.ConnectionReqRx = make(chan messages.ConnectionReq)
 
 	HATransToBcastTx := make(chan messages.NewHallAssignments) // channel for communication from Hall Assignment Transmitter process to Broadcaster
-	globalHallReqTransToBroadcast := make(chan messages.GlobalHallRequest)
 
 	//Hall update
 	node.NewHallReqRx = make(chan messages.NewHallReq)
@@ -108,7 +106,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 	node.commandToServerTx = make(chan string, 5)
 	node.NetworkEventRx = make(chan messagehandler.NetworkEvent, 5)
 
-	node.GlobalHallReqTransmitEnableTx = make(chan bool)
 	receiverToServerCh := make(chan messages.NodeElevState)
 
 	// start process that broadcast all messages on these channels to udp
@@ -117,7 +114,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.NodeElevStatesTx,
 		HATransToBcastTx,
 		node.CabRequestInfoTx,
-		globalHallReqTransToBroadcast,
+		node.GlobalHallRequestTx,
 		node.ConnectionReqTx,
 		node.NewHallReqTx)
 
@@ -149,11 +146,6 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 		node.NodeElevStateUpdate,
 		receiverToServerCh,
 		node.NetworkEventRx)
-
-	// start the transmitter function
-	go messagehandler.GlobalHallRequestsTransmitter(node.GlobalHallReqTransmitEnableTx,
-		globalHallReqTransToBroadcast,
-		node.GlobalHallRequestTx)
 
 	return node
 }

@@ -23,3 +23,25 @@ func HallAssignmentIsRemoved(oldGlobalHallRequests [config.NUM_FLOORS][config.NU
 	}
 	return false
 }
+
+func IncrementIntCounter(counter int) int {
+	counter += 1
+	if counter < 0 {
+		counter = 1
+	}
+	return counter
+}
+
+func IncrementCounterUint64(counter uint64) uint64 {
+	counter += 1
+	if counter == 0 {
+		counter = 1
+	}
+	return counter
+}
+
+func MyCounterIsSmaller(myCounter uint64, otherCounter uint64) bool {
+	return myCounter < otherCounter
+	// halfRange := MAX_UINT64_COUNTER_VALUE / 2
+	// return ((myCounter - otherCounter) % MAX_UINT64_COUNTER_VALUE) < halfRange
+}

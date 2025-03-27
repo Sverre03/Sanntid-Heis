@@ -142,7 +142,6 @@ func ElevStatusServer(myID int,
 func makeHallAssignmentRemovedMessage(elevStates map[int]elevator.ElevatorStateReport) ElevStateUpdate {
 	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: HallAssignmentRemoved}
 }
-
 func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorStateReport) ElevStateUpdate {
 	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: ActiveElevStates}
 }
@@ -166,11 +165,11 @@ func makeDeepCopy(elevStateMap map[int]elevator.ElevatorStateReport) map[int]ele
 	return newMap
 }
 
-func nodeIsConnectedToNetwork(myID int, msgID int, nodeIsConnected bool) bool {
-	return nodeIsConnected && myID != msgID
+func nodeIsConnectedToNetwork(msgID, myID int, nodeIsConnected bool) bool {
+	return nodeIsConnected && msgID != myID
 }
 
-func hasActiveNodesChanged(activeNodes map[int]elevator.ElevatorStateReport, lastActiveNodes map[int]elevator.ElevatorStateReport) bool {
+func hasActiveNodesChanged(activeNodes, lastActiveNodes map[int]elevator.ElevatorStateReport) bool {
 	return len(activeNodes) != len(lastActiveNodes) && (len(activeNodes) > 1)
 }
 

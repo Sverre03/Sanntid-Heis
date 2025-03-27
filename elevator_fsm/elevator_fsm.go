@@ -149,16 +149,16 @@ func OnFloorArrival(newFloor int, doorOpenTimer *time.Timer) {
 	}
 }
 
-func UpdateHallLightStates(lightStates [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool) {
+func UpdateHallLightStates(lightStates [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) {
 	elev.HallLightStates = lightStates
 	elevator.SetHallLights(elev.HallLightStates)
 }
 
-func UpdateElevStuckTimerActiveState(isActive bool) {
+func SetElevDoorStuckTimerActive(isActive bool) {
 	elev.DoorStuckTimerActive = isActive
 }
 
-func OnDoorTimeout(doorOpenTimer *time.Timer, doorStuckTimer *time.Timer) {
+func OnDoorTimeout(doorOpenTimer, doorStuckTimer *time.Timer) {
 	if elev.Behavior == elevator.DoorOpen {
 		if elev.IsObstructed {
 			doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)

@@ -19,7 +19,7 @@ type Elevator struct {
 	Dir                  MotorDirection
 	Behavior             ElevatorBehavior
 	Requests             [config.NUM_FLOORS][config.NUM_BUTTONS]bool
-	HallLightStates      [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
+	HallLightStates      [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	IsObstructed         bool
 	DoorStuckTimerActive bool
 }

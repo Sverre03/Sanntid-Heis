@@ -32,9 +32,9 @@ type ElevatorEvent struct {
 
 type LightAndAssignmentUpdate struct {
 	OrderType                  ElevatorOrderType
-	HallAssignments            [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // For assigning hall calls to the elevator
-	CabAssignments             [config.NUM_FLOORS]bool                         // For assigning cab calls to the elevator
-	LightStates                [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool // The new state of the lights
+	HallAssignments            [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool // For assigning hall calls to the elevator
+	CabAssignments             [config.NUM_FLOORS]bool                          // For assigning cab calls to the elevator
+	LightStates                [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool // The new state of the lights
 	HallAssignmentCounterValue int
 }
 
@@ -145,7 +145,7 @@ func ElevatorProgram(
 			if !isObstructed {
 				// Stop the door stuck timer if the obstruction is cleared
 				doorStuckTimer.Stop()
-				elevator_fsm.UpdateElevStuckTimerActiveState(false)
+				elevator_fsm.SetElevDoorStuckTimerActive(false)
 				elevatorEventTx <- makeElevatorIsDownMessage(false)
 			}
 
@@ -231,8 +231,8 @@ func getCabRequests(elev elevator.Elevator) [config.NUM_FLOORS]bool {
 	return cabRequests
 }
 
-func getElevatorHallAssignments(elev elevator.Elevator) [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool {
-	var elevatorHallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
+func getElevatorHallAssignments(elev elevator.Elevator) [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
+	var elevatorHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	for floor := range config.NUM_FLOORS {
 		for button := range config.NUM_HALL_BUTTONS {
 			elevatorHallAssignments[floor][button] = elev.Requests[floor][button]
@@ -253,7 +253,7 @@ func hasAssignments(requests [config.NUM_FLOORS][config.NUM_BUTTONS]bool) bool {
 }
 
 func addNewHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
-	var addedHallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
+	var addedHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	for floor := range config.NUM_FLOORS {
 		for btn := range config.NUM_HALL_BUTTONS {
 			if newHallAssignments[floor][btn] && !elevator_fsm.GetElevator().Requests[floor][btn] {

@@ -35,7 +35,7 @@ type GlobalHallRequest struct {
 // Message containing the states of your elevator, as well as your node id. This is broadcast as an alive message
 type NodeElevState struct {
 	NodeID    int
-	ElevState elevator.ElevatorState
+	ElevState elevator.ElevatorStateReport
 }
 
 // Broadcast when you are in state disconnected. used to create a connection with other node

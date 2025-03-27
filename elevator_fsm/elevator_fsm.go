@@ -118,10 +118,7 @@ func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer 
 		switch pair.Behavior {
 		case elevator.DoorOpen:
 			resetDoorTimer = true
-			elevator.PrintElevator(updatedElev)
 			updatedElev = elevator.RequestsClearAtCurrentFloor(updatedElev)
-			fmt.Printf("Clearing requests\n")
-			elevator.PrintElevator(updatedElev)
 		case elevator.Moving, elevator.Idle:
 			// Do nothing
 		}

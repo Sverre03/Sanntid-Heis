@@ -42,7 +42,7 @@ func ElevatorProgram(
 	portNum string,
 	elevatorEventTx chan<- ElevatorEvent,
 	elevLightAndAssignmentUpdateRx <-chan LightAndAssignmentUpdate,
-	elevatorStatesTx chan<- elevator.ElevatorState) {
+	elevatorStatesTx chan<- elevator.ElevatorStateReport) {
 
 	elevator.Init(portNum, config.NUM_FLOORS)
 	elevator_fsm.InitFSM()
@@ -203,12 +203,12 @@ func ElevatorProgram(
 		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
 			elev := elevator_fsm.GetElevator()
 
-			elevatorStatesTx <- elevator.ElevatorState{
+			elevatorStatesTx <- elevator.ElevatorStateReport{
 				Behavior:          elev.Behavior,
 				Floor:             elev.Floor,
 				Direction:         elev.Dir,
-				CabRequests:       elevator.GetCabRequestsAsElevState(elev),
-				MyHallAssignments: getElevatorHallAssignemnts(elev.Requests),
+				CabRequests:       getCabRequests(elev),
+				MyHallAssignments: getElevatorHallAssignments(elev),
 				HACounterVersion:  HallAssignmentCounterValue,
 			}
 		}
@@ -227,14 +227,22 @@ func makeHallReqMessage(buttonEvent elevator.ButtonEvent) ElevatorEvent {
 	}
 }
 
-func getElevatorHallAssignemnts(allElevatorRequest [config.NUM_FLOORS][config.NUM_BUTTONS]bool) [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool {
-	var elevatorHallAssignemnts [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
+func getCabRequests(elev elevator.Elevator) [config.NUM_FLOORS]bool {
+	var cabRequests [config.NUM_FLOORS]bool
+	for floor := range config.NUM_FLOORS {
+		cabRequests[floor] = elev.Requests[floor][elevator.ButtonCab]
+	}
+	return cabRequests
+}
+
+func getElevatorHallAssignments(elev elevator.Elevator) [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool {
+	var elevatorHallAssignments [config.NUM_FLOORS][config.NUM_BUTTONS - 1]bool
 	for floor := range config.NUM_FLOORS {
 		for button := range config.NUM_HALL_BUTTONS {
-			elevatorHallAssignemnts[floor][button] = allElevatorRequest[floor][button]
+			elevatorHallAssignments[floor][button] = elev.Requests[floor][button]
 		}
 	}
-	return elevatorHallAssignemnts
+	return elevatorHallAssignments
 }
 
 func hasAssignments(requests [config.NUM_FLOORS][config.NUM_BUTTONS]bool) bool {

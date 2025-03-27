@@ -184,7 +184,7 @@ func makeGlobalHallRequestMessage(globalHallRequests [config.NUM_FLOORS][config.
 
 func updateGlobalHallRequests(
 	nodeHallAssignments map[int][config.NUM_FLOORS][2]bool,
-	recentNodeElevStates map[int]elevator.ElevatorState,
+	recentNodeElevStates map[int]elevator.ElevatorStateReport,
 	globalHallRequests [config.NUM_FLOORS][2]bool,
 	hallAssignmentCounter int) [config.NUM_FLOORS][2]bool {
 

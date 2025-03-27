@@ -24,7 +24,7 @@ type Elevator struct {
 	DoorStuckTimerActive bool
 }
 
-type ElevatorState struct {
+type ElevatorStateReport struct {
 	Floor             int
 	Direction         MotorDirection
 	Behavior          ElevatorBehavior
@@ -63,14 +63,6 @@ func (md MotorDirection) String() string {
 	}
 }
 
-func GetCabRequestsAsElevState(elev Elevator) [config.NUM_FLOORS]bool {
-	var cabRequests [config.NUM_FLOORS]bool
-	for floor := range config.NUM_FLOORS {
-		cabRequests[floor] = elev.Requests[floor][ButtonCab]
-	}
-	return cabRequests
-}
-
 func NewElevator() Elevator {
 	return Elevator{
 		Behavior:             Idle,
@@ -78,31 +70,5 @@ func NewElevator() Elevator {
 		Dir:                  DirectionStop,
 		Requests:             [config.NUM_FLOORS][config.NUM_BUTTONS]bool{},
 		DoorStuckTimerActive: false,
-	}
-}
-
-func PrintElevator(e Elevator) {
-	behavior := e.Behavior.String()
-	dir := "Stop"
-	if e.Dir == DirectionUp {
-		dir = "Up"
-	} else if e.Dir == DirectionDown {
-		dir = "Down"
-	}
-	fmt.Printf("Floor: %d\n", e.Floor)
-	fmt.Printf("Direction: %s\n", dir)
-	fmt.Printf("Behavior: %s\n", behavior)
-	fmt.Printf("Obstructed: %t\n", e.IsObstructed)
-	fmt.Println("Request Matrix:")
-	for floor := len(e.Requests) - 1; floor >= 0; floor-- {
-		fmt.Printf("Floor %d: ", floor)
-		for btn := range len(e.Requests[floor]) {
-			if e.Requests[floor][btn] {
-				fmt.Print("# ")
-			} else {
-				fmt.Print("- ")
-			}
-		}
-		fmt.Println()
 	}
 }

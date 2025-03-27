@@ -26,7 +26,7 @@ func HallAssignmentsTransmitter(HallAssignmentsTx chan<- messages.NewHallAssignm
 			if !enable {
 				continue
 			}
-			newAssignment.MessageID = GenerateMessageID(NEW_HALL_ASSIGNMENT)
+			newAssignment.MessageID = GenerateMessageID()
 			activeAssignments[newAssignment.NodeID] = newAssignment
 
 			HallAssignmentsTx <- newAssignment

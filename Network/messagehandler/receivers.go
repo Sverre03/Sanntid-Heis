@@ -11,14 +11,6 @@ import (
 	"time"
 )
 
-type MessageIDType uint64
-
-const (
-	NEW_HALL_ASSIGNMENT MessageIDType = 0
-	HALL_LIGHT_UPDATE   MessageIDType = 1
-	CONNECTION_REQ      MessageIDType = 2
-)
-
 type NetworkEvent int
 
 const (
@@ -35,12 +27,12 @@ const (
 )
 
 type ElevStateUpdate struct {
-	NodeElevStatesMap map[int]elevator.ElevatorState // map keyed by node id, holding ElevatorStates
+	NodeElevStatesMap map[int]elevator.ElevatorStateReport // map keyed by node id, holding ElevatorStates
 	DataType          UpdateType
 }
 
 // generates a message ID that corresponsds to the message type
-func GenerateMessageID(partition MessageIDType) uint64 {
+func GenerateMessageID() uint64 {
 	return uint64(rand.Int63n(int64(config.MSG_ID_PARTITION_SIZE)))
 }
 
@@ -61,10 +53,10 @@ func NodeElevStateServer(myID int,
 	peerTimeoutTicker.Stop()
 
 	lastSeen := make(map[int]time.Time)
-	knownNodes := make(map[int]elevator.ElevatorState)
+	knownNodes := make(map[int]elevator.ElevatorStateReport)
 
 	// map of the last active nodes, only mutate this in the peer timeout ticker case
-	lastActiveNodes := make(map[int]elevator.ElevatorState)
+	lastActiveNodes := make(map[int]elevator.ElevatorStateReport)
 
 	for {
 		select {
@@ -75,7 +67,7 @@ func NodeElevStateServer(myID int,
 
 			// if the number of active nodes change, generate an event
 			if hasActiveNodesChanged(activeNodes, lastActiveNodes) {
-				
+
 				select {
 				case networkEventTx <- ActiveNodeCountChange:
 				default:
@@ -90,7 +82,7 @@ func NodeElevStateServer(myID int,
 			nodeIsConnected = false
 
 			// set all the last seen times to zero
-			lastActiveNodes = make(map[int]elevator.ElevatorState)
+			lastActiveNodes = make(map[int]elevator.ElevatorStateReport)
 			for id := range lastSeen {
 				lastSeen[id] = time.Time{}
 			}
@@ -105,7 +97,8 @@ func NodeElevStateServer(myID int,
 
 			// if I have seen this node before, check if it has cleared any hall assignments!
 			if nodeExistInMap(id, knownNodes) {
-				if util.HallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) || knownNodes[id].HACounterVersion != elevState.ElevState.HACounterVersion {
+				if util.HallAssignmentIsRemoved(knownNodes[id].MyHallAssignments, elevState.ElevState.MyHallAssignments) || 
+					knownNodes[id].HACounterVersion != elevState.ElevState.HACounterVersion {
 					// update the lastActiveNodes with the new state, and send it to the node
 					newActiveNodes := makeDeepCopy(lastActiveNodes)
 					newActiveNodes[id] = elevState.ElevState
@@ -139,7 +132,7 @@ func NodeElevStateServer(myID int,
 				nodeIsConnected = false
 
 				// set all the last seen times to zero
-				lastActiveNodes = make(map[int]elevator.ElevatorState)
+				lastActiveNodes = make(map[int]elevator.ElevatorStateReport)
 				for id := range lastSeen {
 					lastSeen[id] = time.Time{}
 				}
@@ -148,19 +141,19 @@ func NodeElevStateServer(myID int,
 	}
 }
 
-func makeHallAssignmentRemovedMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
+func makeHallAssignmentRemovedMessage(elevStates map[int]elevator.ElevatorStateReport) ElevStateUpdate {
 	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: HallAssignmentRemoved}
 }
 
-func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
+func makeActiveElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorStateReport) ElevStateUpdate {
 	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: ActiveElevStates}
 }
-func makeAllElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorState) ElevStateUpdate {
+func makeAllElevStatesUpdateMessage(elevStates map[int]elevator.ElevatorStateReport) ElevStateUpdate {
 	return ElevStateUpdate{NodeElevStatesMap: elevStates, DataType: AllElevStates}
 }
 
-func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int]time.Time) map[int]elevator.ElevatorState {
-	activeNodes := make(map[int]elevator.ElevatorState)
+func findActiveNodes(knownNodes map[int]elevator.ElevatorStateReport, lastSeen map[int]time.Time) map[int]elevator.ElevatorStateReport {
+	activeNodes := make(map[int]elevator.ElevatorStateReport)
 	for id, t := range lastSeen {
 		if time.Since(t) < config.NODE_CONNECTION_TIMEOUT {
 			activeNodes[id] = knownNodes[id]
@@ -169,8 +162,8 @@ func findActiveNodes(knownNodes map[int]elevator.ElevatorState, lastSeen map[int
 	return activeNodes
 }
 
-func makeDeepCopy(elevStateMap map[int]elevator.ElevatorState) map[int]elevator.ElevatorState {
-	newMap := make(map[int]elevator.ElevatorState)
+func makeDeepCopy(elevStateMap map[int]elevator.ElevatorStateReport) map[int]elevator.ElevatorStateReport {
+	newMap := make(map[int]elevator.ElevatorStateReport)
 	maps.Copy(newMap, elevStateMap)
 	return newMap
 }
@@ -179,12 +172,11 @@ func nodeIsConnectedToNetwork(myID int, msgID int, nodeIsConnected bool) bool {
 	return nodeIsConnected && myID != msgID
 }
 
-func hasActiveNodesChanged(activeNodes map[int]elevator.ElevatorState, lastActiveNodes map[int]elevator.ElevatorState) bool {
+func hasActiveNodesChanged(activeNodes map[int]elevator.ElevatorStateReport, lastActiveNodes map[int]elevator.ElevatorStateReport) bool {
 	return len(activeNodes) != len(lastActiveNodes) && (len(activeNodes) > 1)
 }
 
-func nodeExistInMap(id int, knownNodes map[int]elevator.ElevatorState) bool {
+func nodeExistInMap(id int, knownNodes map[int]elevator.ElevatorStateReport) bool {
 	_, ok := knownNodes[id]
 	return ok
 }
-

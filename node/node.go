@@ -55,7 +55,7 @@ type NodeData struct {
 	// Elevator-Node communication
 	ElevLightAndAssignmentUpdateTx chan singleelevator.LightAndAssignmentUpdate // channel for informing elevator of changes to hall button lights, hall assignments and cab assignments
 	ElevatorEventRx                chan singleelevator.ElevatorEvent
-	MyElevStatesRx                 chan elevator.ElevatorState
+	MyElevStatesRx                 chan elevator.ElevatorStateReport
 
 	// Channels for turning on and off the transmitter functions
 	GlobalHallReqTransmitEnableTx       chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
@@ -101,7 +101,7 @@ func MakeNode(id int, portNum string, bcastBroadcasterPort int, bcastReceiverPor
 
 	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate, 3)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
-	node.MyElevStatesRx = make(chan elevator.ElevatorState)
+	node.MyElevStatesRx = make(chan elevator.ElevatorStateReport)
 
 	node.commandToServerTx = make(chan string, 5)
 	node.NetworkEventRx = make(chan messagehandler.NetworkEvent, 5)

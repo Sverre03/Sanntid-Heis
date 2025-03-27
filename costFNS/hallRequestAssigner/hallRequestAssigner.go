@@ -11,9 +11,7 @@ import (
 	"strings"
 )
 
-// Struct members must be public in order to be accessible by json.Marshal/.Unmarshal
-// This means they must start with a capital letter, so we need to use field renaming struct tags to make them camelCase
-
+// States formatted for the Hall Request Assigner
 type HRAElevState struct {
 	Behavior    string                  `json:"behavior"`
 	Floor       int                     `json:"floor"`
@@ -22,11 +20,11 @@ type HRAElevState struct {
 }
 
 type HRAInput struct {
-	HallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool `json:"hallRequests"`
+	HallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool `json:"hallRequests"` // All system hall requests
 	States       map[string]HRAElevState                          `json:"states"`
 }
 
-func HRAalgorithm(allElevStates map[int]elevator.ElevatorState, hallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
+func HRAalgorithm(allElevStates map[int]elevator.ElevatorStateReport, hallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
 	allElevStatesInputFormat := make(map[string]HRAElevState)
 
 	for id, nodeState := range allElevStates {

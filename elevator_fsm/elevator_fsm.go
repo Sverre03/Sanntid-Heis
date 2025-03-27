@@ -76,57 +76,53 @@ func ResumeElevator() {
 
 func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {
 	// Compute new elevator state
-	newState, resetDoorTimer := HandleButtonEvent(btnFloor, btnType, doorOpenTimer)
+	updatedElev, resetDoorTimer := HandleButtonEvent(btnFloor, btnType, doorOpenTimer)
 
 	// Apply side effects
 	if resetDoorTimer {
 		doorOpenTimer.Reset(config.DOOR_OPEN_DURATION)
-		// fmt.Println("Lighting door open lamp")
 		elevator.SetDoorOpenLamp(true)
 	}
 
-	if newState.Behavior == elevator.Moving && elev.Behavior != elevator.Moving {
-		elevator.SetMotorDirection(newState.Dir)
+	if updatedElev.Behavior == elevator.Moving && elev.Behavior != elevator.Moving {
+		elevator.SetMotorDirection(updatedElev.Dir)
 	}
 
-	elev = newState
+	elev = updatedElev
 	elevator.SetAllLights(&elev)
 }
 
 // Applies changes to the elevator state based on a button press event
 func HandleButtonEvent(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) (elevator.Elevator, bool) {
 
-	newState := elev
+	updatedElev := GetElevator()
 	resetDoorTimer := false
 
-	switch newState.Behavior {
+	switch updatedElev.Behavior {
 	case elevator.DoorOpen:
-		// If the elevator is at the requested floor, the door is open, and the button is pressed again, the door should remain open.
-		if elevator.RequestsShouldClearImmediately(newState, btnFloor, btnType) {
+		if elevator.RequestsShouldClearImmediately(updatedElev, btnFloor, btnType) {
 			resetDoorTimer = true
 		} else {
-			newState.Requests[btnFloor][btnType] = true
+			updatedElev.Requests[btnFloor][btnType] = true
 		}
 	case elevator.Moving, elevator.StoppedBetweenFloors:
-		newState.Requests[btnFloor][btnType] = true
+		updatedElev.Requests[btnFloor][btnType] = true
 	case elevator.Idle:
-		newState.Requests[btnFloor][btnType] = true
-		pair := elevator.RequestsChooseDirection(newState)
-		newState.Dir = pair.Dir
-		newState.Behavior = pair.Behavior
+		updatedElev.Requests[btnFloor][btnType] = true
+		pair := elevator.RequestsChooseDirection(updatedElev)
+		updatedElev.Dir = pair.Dir
+		updatedElev.Behavior = pair.Behavior
 
 		switch pair.Behavior {
 		case elevator.DoorOpen:
 			resetDoorTimer = true
-			// fmt.Println("Clearing the request immediately")
-			newState = elevator.RequestsClearAtCurrentFloor(newState)
-			// elevator.PrintElevator(elev)
+			updatedElev = elevator.RequestsClearAtCurrentFloor(updatedElev)
 		case elevator.Moving, elevator.Idle:
-			// do nothing
+			// Do nothing
 		}
 	}
 
-	return newState, resetDoorTimer
+	return updatedElev, resetDoorTimer
 }
 
 func SetObstruction(isObstructed bool) {

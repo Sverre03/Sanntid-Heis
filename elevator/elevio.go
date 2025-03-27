@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const pollInterval = 20 * time.Millisecond
-
 var driverIsInitialized bool = false
 var driverMutex sync.Mutex
 var serverConnection net.Conn
@@ -87,7 +85,7 @@ func SetStopLamp(value bool) {
 func PollButtons(receiver chan<- ButtonEvent) {
 	prev := make([][3]bool, config.NUM_FLOORS)
 	for {
-		time.Sleep(pollInterval)
+		time.Sleep(config.HARDWARE_POLL_INTERVAL)
 		for floor := range config.NUM_FLOORS {
 			for button := ButtonType(0); button < 3; button++ {
 				v := ButtonIsPressed(button, floor)
@@ -103,7 +101,7 @@ func PollButtons(receiver chan<- ButtonEvent) {
 func PollFloorSensor(receiver chan<- int) {
 	prev := -1
 	for {
-		time.Sleep(pollInterval)
+		time.Sleep(config.HARDWARE_POLL_INTERVAL)
 		v := GetFloor()
 		if v != prev && v != -1 {
 			receiver <- v
@@ -115,7 +113,7 @@ func PollFloorSensor(receiver chan<- int) {
 func PollStopButton(receiver chan<- bool) {
 	prev := false
 	for {
-		time.Sleep(pollInterval)
+		time.Sleep(config.HARDWARE_POLL_INTERVAL)
 		v := StopIsPressed()
 		if v != prev {
 			receiver <- v
@@ -127,7 +125,7 @@ func PollStopButton(receiver chan<- bool) {
 func PollObstructionSwitch(receiver chan<- bool) {
 	prev := false
 	for {
-		time.Sleep(pollInterval)
+		time.Sleep(config.HARDWARE_POLL_INTERVAL)
 		v := Obstructed()
 		if v != prev {
 			receiver <- v

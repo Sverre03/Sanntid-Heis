@@ -9,6 +9,9 @@ const NUM_FLOORS = 4
 const NUM_BUTTONS = 3
 const NUM_HALL_BUTTONS = 2
 
+const HARDWARE_POLL_INTERVAL = 20 * time.Millisecond
+
+
 const MSG_ID_PARTITION_SIZE = uint64(2 << 60)
 
 // Timing constants for the elevator program

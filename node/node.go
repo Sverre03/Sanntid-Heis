@@ -79,7 +79,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
 	node.ConnectionReqRx = make(chan messages.ConnectionReq)
 
-	HAssignmentTransmitterToBcastTx := make(chan messages.NewHallAssignments) // channel for communication from Hall Assignment Transmitter process to Broadcaster
+	HallAssignmentTransmitterToBcastTx := make(chan messages.NewHallAssignments) // channel for communication from Hall Assignment Transmitter process to Broadcaster
 
 	node.NewHallReqRx = make(chan messages.NewHallReq)
 	node.NewHallReqTx = make(chan messages.NewHallReq)
@@ -107,7 +107,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 	go bcast.Broadcaster(bcastPort,
 		node.AckTx,
 		node.NodeElevStatesTx,
-		HAssignmentTransmitterToBcastTx,
+		HallAssignmentTransmitterToBcastTx,
 		node.CabRequestInfoTx,
 		node.GlobalHallRequestTx,
 		node.ConnectionReqTx,
@@ -126,7 +126,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go communication.HallAssignmentsTransmitter(
-		HAssignmentTransmitterToBcastTx,
+		HallAssignmentTransmitterToBcastTx,
 		node.HallAssignmentTx,
 		hallAssignmentsAckRx,
 		node.HallAssignmentTransmitterEnableTx)

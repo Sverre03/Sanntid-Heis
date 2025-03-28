@@ -20,7 +20,7 @@ type HRAresult struct {
 }
 
 func MasterProgram(node *NodeData) nodestate {
-	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
+	fmt.Printf("Node %v is now Master\n", node.ID)
 
 	// Initialize master state: initialize map for connection requests from other nodes, hall assignments, and broadcast ticker.
 	activeConnReq := make(map[int]messages.ConnectionReq)
@@ -154,7 +154,7 @@ ForLoop:
 
 		case <-GlobalHallReqSendTicker.C:
 			// Periodically broadcast global hall requests
-			node.ContactCounter = util.IncrementCounterUint64(node.ContactCounter)
+			node.ContactCounter = util.IncrementUint64Counter(node.ContactCounter)
 			node.GlobalHallRequestTx <- makeGlobalHallRequestMessage(node.GlobalHallRequests, node.ContactCounter)
 
 		case <-node.HallAssignmentsRx:

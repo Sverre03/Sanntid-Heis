@@ -19,7 +19,7 @@ func IncrementIntCounter(counter int) int {
 	return counter
 }
 
-func IncrementCounterUint64(counter uint64) uint64 {
+func IncrementUint64Counter(counter uint64) uint64 {
 	counter += 1
 	if counter == 0 {
 		counter = 1

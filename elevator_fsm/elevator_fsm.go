@@ -77,7 +77,6 @@ func ResumeElevator() {
 				pair.Dir = elevator.DirectionDown
 				pair.Behavior = elevator.Moving
 			} else {
-				// This case shouldn't happen, but handle it anyway
 				pair.Dir = elevator.DirectionUp
 				pair.Behavior = elevator.Moving
 			}
@@ -94,12 +93,7 @@ func ResumeElevator() {
 		elev.Dir = pair.Dir
 		elev.Behavior = pair.Behavior
 	}
-
 	elevator.SetMotorDirection(elev.Dir)
-
-	// Add debug logging
-	fmt.Printf("Resuming elevator: Floor=%d, Dir=%d, Behavior=%d\n",
-		elev.Floor, elev.Dir, elev.Behavior)
 }
 
 func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {

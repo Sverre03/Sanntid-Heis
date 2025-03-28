@@ -23,15 +23,16 @@ func MasterProgram(node *NodeData) nodestate {
 	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
 
 	activeConnReq := make(map[int]messages.ConnectionReq)
-	nodeHallAssignments := make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
+	HallAssignmentsPerNodeMap := make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 	hallAssignmentCounter := 0
 	var nextNodeState nodestate
-
 	GlobalHallReqSendTicker := time.NewTicker(config.MASTER_BROADCAST_INTERVAL)
-	// inform the global hall request transmitter of the new global hall requests
+
+	// inform your own elevator of the lights
 	node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 
-	node.HallRequestAssignerTransmitEnableTx <- true
+	// enable the hall request transmitter
+	node.HallRequestTransmitterEnableTx <- true
 
 	select {
 	case node.commandToServerTx <- "startConnectionTimeoutDetection":
@@ -90,6 +91,7 @@ ForLoop:
 		case newHallReq := <-node.NewHallReqRx:
 			node.GlobalHallRequests = addNewHallRequest(node.GlobalHallRequests, newHallReq)
 
+			// request the active elevator states from the server, to run the hall assignment algorithm
 			select {
 			case node.commandToServerTx <- "getActiveElevStates":
 			default:
@@ -97,6 +99,7 @@ ForLoop:
 			}
 
 		case connReq := <-node.ConnectionReqRx:
+			// save the new connection request, and request all elev states from the server, so we can check if we know any of the cab button presses of the elevator that wants to connect
 			activeConnReq[connReq.NodeID] = connReq
 
 			select {
@@ -105,7 +108,7 @@ ForLoop:
 				fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getAllElevStates")
 			}
 
-		case elevStatesUpdate := <-node.NodeElevStateUpdate:
+		case elevStatesUpdate := <-node.ElevStateUpdatesFromServer:
 
 			switch elevStatesUpdate.DataType {
 
@@ -124,12 +127,15 @@ ForLoop:
 					node.GlobalHallRequests,
 					hallAssignmentCounter)
 
+				// update my elevator with the new assignments
 				node.ElevLightAndAssignmentUpdateTx <- computationResult.MyAssignment
 
+				// inform the hall assignment transmitter that there are new assignments
 				for _, hallAssignment := range computationResult.OtherAssignments {
 					node.HallAssignmentTx <- hallAssignment
 				}
-				nodeHallAssignments = computationResult.NodeHallAssignments
+				// remember which node does what, used for clearing hall assignments
+				HallAssignmentsPerNodeMap = computationResult.NodeHallAssignments
 
 			case communication.AllElevStates:
 				infoToNodes := makeConnectionRequestReplies(elevStatesUpdate, activeConnReq)
@@ -137,12 +143,12 @@ ForLoop:
 					node.CabRequestInfoTx <- infoMessage
 				}
 			case communication.HallAssignmentRemoved:
-				node.GlobalHallRequests = updateGlobalHallRequests(nodeHallAssignments, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
+				node.GlobalHallRequests = updateGlobalHallRequests(HallAssignmentsPerNodeMap, elevStatesUpdate.NodeElevStatesMap, node.GlobalHallRequests, hallAssignmentCounter)
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 			}
 
 		case <-GlobalHallReqSendTicker.C:
-			node.ContactCounter++
+			node.ContactCounter = util.IncrementCounterUint64(node.ContactCounter)
 			node.GlobalHallRequestTx <- makeGlobalHallRequestMessage(node.GlobalHallRequests, node.ContactCounter)
 
 		case <-node.HallAssignmentsRx:
@@ -152,7 +158,7 @@ ForLoop:
 	}
 
 	// stop transmitters
-	node.HallRequestAssignerTransmitEnableTx <- false
+	node.HallRequestTransmitterEnableTx <- false
 
 	select {
 	case node.commandToServerTx <- "stopConnectionTimeoutDetection":
@@ -171,13 +177,14 @@ func makeGlobalHallRequestMessage(
 		CounterValue: counterValue}
 }
 
+// go through all the active hall assignments of all node and check if any hall assignment has been completed
 func updateGlobalHallRequests(
-	nodeHallAssignments map[int][config.NUM_FLOORS][2]bool,
+	nodeHallAssignments map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
 	recentNodeElevStates map[int]elevator.ElevatorStateReport,
-	globalHallRequests [config.NUM_FLOORS][2]bool,
-	hallAssignmentCounter int) [config.NUM_FLOORS][2]bool {
+	globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
+	hallAssignmentCounter int) [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
 
-	// loop through all the nodes and their respective hall assignments
+	// looping through all the nodes and their respective hall assignments
 	for id, hallAssignments := range nodeHallAssignments {
 		// if we have info about the node
 		if nodeElevState, ok := recentNodeElevStates[id]; ok {
@@ -232,22 +239,23 @@ func makeConnectionRequestReplies(elevStatesUpdate communication.ElevStateUpdate
 	result := make(map[int]messages.CabRequestInfo)
 	for id := range activeConnReq {
 		var cabRequestInfo messages.CabRequestInfo
-		// if  we have info about the node, we send it, otherwise we send an empty slice
+
+		// if  we have info about the node, we use it, otherwise we just send an array of all false
 		if states, ok := elevStatesUpdate.NodeElevStatesMap[id]; ok {
 			cabRequestInfo = messages.CabRequestInfo{CabRequest: states.CabRequests, ReceiverNodeID: id}
 		} else {
 			cabRequestInfo = messages.CabRequestInfo{CabRequest: [config.NUM_FLOORS]bool{}, ReceiverNodeID: id}
 		}
-		// add the cab request info to the result
 		result[id] = cabRequestInfo
 	}
 	return result
 
 }
 
+// add a new button press to the global hall assignments and return it
 func addNewHallRequest(globalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool,
 	newHallReq messages.NewHallReq) [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool {
-	// if button is invalid we return false
+
 	if newHallReq.HallReq.Button == elevator.ButtonCab {
 		return globalHallRequests
 	}

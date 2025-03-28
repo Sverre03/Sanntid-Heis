@@ -13,7 +13,7 @@ ForLoop:
 		select {
 
 		case elevMsg := <-node.ElevatorEventRx:
-			// check whether the door is not stuck
+
 			if !elevMsg.ElevIsDown && elevMsg.EventType == singleelevator.ElevStatusUpdateEvent {
 				nextNodeState = Disconnected
 				break ForLoop
@@ -23,10 +23,10 @@ ForLoop:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.ConnectionReqRx:
-		case <-node.NodeElevStateUpdate:
+		case <-node.ElevStateUpdatesFromServer:
 		case <-node.NetworkEventRx:
 		case <-node.MyElevStatesRx:
-			// read these to prevent blocking 
+			// read these to prevent blocking
 		}
 	}
 	return nextNodeState

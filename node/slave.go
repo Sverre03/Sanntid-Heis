@@ -20,7 +20,6 @@ func SlaveProgram(node *NodeData) nodestate {
 	masterConnectionTimeoutTimer := time.NewTimer(config.MASTER_CONNECTION_TIMEOUT)
 	masterConnectionTimeoutTimer.Stop()
 
-	// start the transmitters
 	select {
 	case node.commandToServerTx <- "startConnectionTimeoutDetection":
 	default:
@@ -66,15 +65,6 @@ ForLoop:
 					node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests, newHA.HallAssignmentCounter)
 					lastHallAssignmentMessageID = newHA.MessageID
 				}
-
-				// the hall assignments are for me, so I can ack them
-				node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
-
-				// lets check if I have already received this message, if not its update time!
-				if lastHallAssignmentMessageID != newHA.MessageID {
-					node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests, newHA.HallAssignmentCounter)
-					lastHallAssignmentMessageID = newHA.MessageID
-				}
 			}
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
@@ -90,7 +80,7 @@ ForLoop:
 			nextNodeState = Disconnected
 			break ForLoop
 
-		case <-node.NodeElevStateUpdate:
+		case <-node.ElevStateUpdatesFromServer:
 		case <-node.ConnectionReqRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.NewHallReqRx:
@@ -111,8 +101,9 @@ func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallRe
 	if newHAmsg.NodeID != myID {
 		return false
 	} else {
+		// check if my new assignment contains assignments that I am yet to be informed of from master
+		// this means that the lights are not yet lit for the assignment
 		for floor := range config.NUM_FLOORS {
-			// check if my new assignment contains assignments that I am yet to be informed of from master
 			if newHAmsg.HallAssignment[floor][elevator.ButtonHallDown] && !(globalHallReq[floor][elevator.ButtonHallDown]) {
 				return false
 			}

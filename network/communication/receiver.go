@@ -37,10 +37,13 @@ func GenerateMessageID() uint64 {
 }
 
 // server that tracks the states of all elevators by listening to the elevStatesRx channel
+// it also can track whether the node is connected or disconnected
+// if the number of nodes change, it will generate an event
+// if there are hall assignments that are complete, it will generate an event
 // you can requests to know the states by sending a string on  commandCh
 // commands are "getActiveElevStates", "getAllKnownNodes", "startConnectionTimeoutDetection"
 // known nodes includes both nodes that are considered active (you have recent contact) and "dead" nodes - previous contact have been made
-func ElevStatusServer(myID int,
+func ConnectionMonitorServer(myID int,
 	commandRx <-chan string,
 	elevStateUpdateTx chan<- ElevStateUpdate,
 	elevStatesRx <-chan messages.NodeElevState,

@@ -13,8 +13,7 @@ import (
 )
 
 // NodeData represents a node in the distributed elevator system.
-// It contains the node's state machine, communication channels,
-// and necessary data for the node to function.
+// It contains the node's state, communication channels and necessary data for the node to function.
 
 type nodestate int
 
@@ -29,13 +28,13 @@ type NodeData struct {
 	ID                 int
 	State              nodestate
 	GlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
-	ContactCounter     uint64
+	ContactCounter     uint64 // counter that is set at contact with master
 
-	AckTx               chan messages.Ack                  // Send acks to udp broadcaster
-	NodeElevStatesTx    chan messages.NodeElevState        // send your elev states to udp broadcaster
-	NodeElevStateUpdate chan communication.ElevStateUpdate // receive elevStateUpdate
-	NewHallReqRx        chan messages.NewHallReq           // receive hall requests from udp receiver
-	NewHallReqTx        chan messages.NewHallReq           // send hall requests to udp transmitter
+	AckTx                      chan messages.Ack                  // Send acks to udp broadcaster
+	NodeElevStatesTx           chan messages.NodeElevState        // send your elev states to udp broadcaster
+	ElevStateUpdatesFromServer chan communication.ElevStateUpdate // receive elevStateUpdates from StateMonitorServer
+	NewHallReqRx               chan messages.NewHallReq           // receive hall requests from udp receiver
+	NewHallReqTx               chan messages.NewHallReq           // send hall requests to udp transmitter
 
 	HallAssignmentTx  chan messages.NewHallAssignments // Sends hall assignments to hall assignment transmitter
 	HallAssignmentsRx chan messages.NewHallAssignments // Receives hall assignments from udp receiver. Messages should be acked
@@ -57,9 +56,7 @@ type NodeData struct {
 	ElevatorEventRx                chan singleelevator.ElevatorEvent
 	MyElevStatesRx                 chan elevator.ElevatorStateReport
 
-	// Channels for turning on and off the transmitter functions
-	GlobalHallReqTransmitEnableTx       chan bool // channel that connects to GlobalHallRequestTransmitter, should be enabled when node is master
-	HallRequestAssignerTransmitEnableTx chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
+	HallRequestTransmitterEnableTx chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
 }
 
 // initialize a network node and return a nodedata obj, needed for communication with the processes it starts
@@ -74,7 +71,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 	node.AckTx = make(chan messages.Ack)
 
 	node.NodeElevStatesTx = make(chan messages.NodeElevState)
-	node.NodeElevStateUpdate = make(chan communication.ElevStateUpdate)
+	node.ElevStateUpdatesFromServer = make(chan communication.ElevStateUpdate)
 
 	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
@@ -82,14 +79,12 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
 	node.ConnectionReqRx = make(chan messages.ConnectionReq)
 
-	HATransToBcastTx := make(chan messages.NewHallAssignments) // channel for communication from Hall Assignment Transmitter process to Broadcaster
+	HAssignmentTransmitterToBcastTx := make(chan messages.NewHallAssignments) // channel for communication from Hall Assignment Transmitter process to Broadcaster
 
-	//Hall update
 	node.NewHallReqRx = make(chan messages.NewHallReq)
 	node.NewHallReqTx = make(chan messages.NewHallReq)
-	// channels for enabling and disabling the transmitter functions
-	node.GlobalHallReqTransmitEnableTx = make(chan bool)
-	node.HallRequestAssignerTransmitEnableTx = make(chan bool)
+
+	node.HallRequestTransmitterEnableTx = make(chan bool)
 
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
@@ -99,7 +94,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 
 	hallAssignmentsAckRx := make(chan messages.Ack)
 
-	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate, 3)
+	node.ElevLightAndAssignmentUpdateTx = make(chan singleelevator.LightAndAssignmentUpdate, 5)
 	node.ElevatorEventRx = make(chan singleelevator.ElevatorEvent)
 	node.MyElevStatesRx = make(chan elevator.ElevatorStateReport)
 
@@ -112,7 +107,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 	go bcast.Broadcaster(bcastPort,
 		node.AckTx,
 		node.NodeElevStatesTx,
-		HATransToBcastTx,
+		HAssignmentTransmitterToBcastTx,
 		node.CabRequestInfoTx,
 		node.GlobalHallRequestTx,
 		node.ConnectionReqTx,
@@ -131,10 +126,10 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 
 	// process responsible for sending and making sure hall assignments are acknowledged
 	go communication.HallAssignmentsTransmitter(
-		HATransToBcastTx,
+		HAssignmentTransmitterToBcastTx,
 		node.HallAssignmentTx,
 		hallAssignmentsAckRx,
-		node.HallRequestAssignerTransmitEnableTx)
+		node.HallRequestTransmitterEnableTx)
 
 	// the physical elevator program
 	go singleelevator.ElevatorProgram(portNum,
@@ -143,9 +138,9 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 		node.MyElevStatesRx)
 
 	// process that listens to active nodes on network
-	go communication.ElevStatusServer(node.ID,
+	go communication.ConnectionMonitorServer(node.ID,
 		node.commandToServerTx,
-		node.NodeElevStateUpdate,
+		node.ElevStateUpdatesFromServer,
 		receiverToServerCh,
 		node.NetworkEventRx)
 

@@ -26,7 +26,7 @@ func SlaveProgram(node *NodeData) NodeState {
 		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "startConnectionTimeoutDetection")
 	}
 
-ForLoop:
+MainLoop:
 	for {
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
@@ -34,7 +34,7 @@ ForLoop:
 			case singleelevator.ElevStatusUpdateEvent:
 				if elevMsg.ElevIsDown {
 					nextNodeState = Inactive
-					break ForLoop
+					break MainLoop
 				}
 
 			case singleelevator.HallButtonEvent:
@@ -52,7 +52,7 @@ ForLoop:
 			// Check if we have lost connection
 			if networkEvent == communication.NodeHasLostConnection {
 				nextNodeState = Disconnected
-				break ForLoop
+				break MainLoop
 			}
 
 		case newHA := <-node.HallAssignmentsRx:
@@ -81,7 +81,7 @@ ForLoop:
 		case <-masterConnectionTimeoutTimer.C:
 			// I havent received anything from master in a given time period, so change state to disconnected
 			nextNodeState = Disconnected
-			break ForLoop
+			break MainLoop
 
 		case <-node.ElevStateUpdatesFromServer:
 		case <-node.ConnectionReqRx:

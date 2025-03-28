@@ -8,16 +8,14 @@ import (
 // It waits for the elevator to become operational before transitioning to Disconnected state.
 func InactiveProgram(node *NodeData) NodeState {
 	var nextNodeState NodeState
-ForLoop:
+MainLoop:
 	for {
 		select {
-
 		case elevMsg := <-node.ElevatorEventRx:
-
-			// If the elevator is operational, go to Disconnected state
+			// Check if elevator has become operational
 			if !elevMsg.ElevIsDown && elevMsg.EventType == singleelevator.ElevStatusUpdateEvent {
 				nextNodeState = Disconnected
-				break ForLoop
+				break MainLoop
 			}
 
 		case <-node.HallAssignmentsRx:
@@ -27,7 +25,7 @@ ForLoop:
 		case <-node.ElevStateUpdatesFromServer:
 		case <-node.NetworkEventRx:
 		case <-node.MyElevStatesRx:
-			// Read these to prevent blocking
+			// Drain all other channels to prevent blocking
 		}
 	}
 	return nextNodeState

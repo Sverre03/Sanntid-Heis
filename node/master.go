@@ -43,7 +43,7 @@ func MasterProgram(node *NodeData) NodeState {
 		fmt.Printf("Warning: Command channel is full, command %s not sent\n", "startConnectionTimeoutDetection")
 	}
 
-ForLoop:
+MainLoop:
 	for {
 	Select:
 		select {
@@ -53,7 +53,7 @@ ForLoop:
 			case singleelevator.ElevStatusUpdateEvent:
 				if elevMsg.ElevIsDown {
 					nextNodeState = Inactive
-					break ForLoop
+					break MainLoop
 				}
 				break Select
 
@@ -82,7 +82,7 @@ ForLoop:
 			case communication.NodeHasLostConnection: // If master has lost connection go disconnected
 
 				nextNodeState = Disconnected
-				break ForLoop
+				break MainLoop
 
 			case communication.ActiveNodeCountChange: // If a node has connected or disconnected to network redistribute hall requests
 

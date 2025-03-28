@@ -33,7 +33,7 @@ func DisconnectedProgram(node *NodeData) NodeState {
 	// Doing my own hall assignments
 	node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests, -1)
 
-ForLoop:
+MainLoop:
 	for {
 		select {
 		case <-connRequestTicker.C: // Send connection request periodically
@@ -48,7 +48,7 @@ ForLoop:
 			if !util.MapIsEmpty(incomingConnRequests) { // Checks if  there are incoming connection requests
 				if ShouldBeMaster(node.ID, node.ContactCounter, incomingConnRequests) { //  Check if this node should become the master
 					nextNodeState = Master
-					break ForLoop
+					break MainLoop
 				}
 			}
 			// Otherwise, reset the decision timer for the next evaluation cycle
@@ -60,7 +60,7 @@ ForLoop:
 			case singleelevator.ElevStatusUpdateEvent:
 				if elevMsg.ElevIsDown {
 					nextNodeState = Inactive
-					break ForLoop
+					break MainLoop
 				}
 			} // Ignore hall button events, we do not take new calls when disc
 
@@ -72,7 +72,7 @@ ForLoop:
 					node.ElevLightAndAssignmentUpdateTx <- makeCabAssignmentMessage(cabRequestInfo.CabRequest)
 				}
 				nextNodeState = Slave
-				break ForLoop
+				break MainLoop
 			}
 
 		case elevStates := <-node.MyElevStatesRx:

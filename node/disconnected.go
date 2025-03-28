@@ -60,12 +60,12 @@ ForLoop:
 					nextNodeState = Inactive
 					break ForLoop
 				}
-			} // ignore hall button events, we do not take new calls when disc
+			} // Ignore hall button events, we do not take new calls when disc
 
 		case cabRequestInfo := <-node.CabRequestInfoRx:
 			if cabRequestInfo.ReceiverNodeID == node.ID {
-				// if the message was for us, we have established contact with a master and may now become slave
-				// if we have never had any contact, we also restore cab orders from master
+				// If the message was for us, we have established contact with a master and may now become slave
+				// If we have never had any contact, we also restore cab orders from master
 				if node.ContactCounter == 0 {
 					node.ElevLightAndAssignmentUpdateTx <- makeCabAssignmentMessage(cabRequestInfo.CabRequest)
 				}
@@ -85,13 +85,13 @@ ForLoop:
 		case <-node.NetworkEventRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.NewHallReqRx:
-			// read these to prevent blocking
+			// Read these to prevent blocking
 		}
 	}
 	return nextNodeState
 }
 
-// returns true if you have the most recent contact counter value, or you have an equivalent contact counter value to another node and the largest ID
+// Returns true if you have the most recent contact counter value, or you have an equivalent contact counter value to another node and the largest ID
 func ShouldBeMaster(myID int, contactCounter uint64, connectionRequests map[int]messages.ConnectionReq) bool {
 
 	for _, connReq := range connectionRequests {

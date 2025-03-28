@@ -39,7 +39,7 @@ func RecoverFromStuckBetweenFloors() {
 	}
 }
 
-// remove active hall assignments from the elevator that are not in the new hall assignments
+// Remove active hall assignments from the elevator that are not in the new hall assignments
 func RemoveInvalidHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	shouldStop := false
 	for floor := range config.NUM_FLOORS {

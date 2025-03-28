@@ -12,7 +12,7 @@ ForLoop:
 	for {
 		select {
 
-		case elevMsg := <-node.ElevatorEventRx: 
+		case elevMsg := <-node.ElevatorEventRx:
 
 			if !elevMsg.ElevIsDown && elevMsg.EventType == singleelevator.ElevStatusUpdateEvent { // If elevator is up , go to Disconnected state.
 				nextNodeState = Disconnected
@@ -26,7 +26,7 @@ ForLoop:
 		case <-node.ElevStateUpdatesFromServer:
 		case <-node.NetworkEventRx:
 		case <-node.MyElevStatesRx:
-			// read these to prevent blocking
+			// Read these to prevent blocking
 		}
 	}
 	return nextNodeState

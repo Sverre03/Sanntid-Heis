@@ -76,7 +76,7 @@ func Receiver(port int, chans ...interface{}) {
 	}
 }
 
-// typeTaggedJSON is a struct used to hold the type of the JSON encoded data (and the JSON encoded data itself)
+// Struct used to hold the type of the JSON encoded data (and the JSON encoded data itself)
 type typeTaggedJSON struct {
 	TypeId string
 	JSON   []byte

@@ -14,9 +14,9 @@ const (
 	MsgRequestDoorState                    // Sends a request to the elevator to check its door state
 )
 
-// a struct for acknowledging a message is received
+// Struct for acknowledging a message is received
 type Ack struct {
-	MessageID uint64 // the id of the message you received
+	MessageID uint64 // The id of the message you received
 	NodeID    int
 }
 
@@ -48,11 +48,11 @@ type ConnectionReq struct {
 type NewHallAssignments struct {
 	NodeID                int
 	HallAssignment        [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
-	MessageID             uint64 // message identifier, generated in the transmitter
+	MessageID             uint64 // Message identifier, generated in the transmitter
 	HallAssignmentCounter int
 }
 
-// Message containing a new hall request 
+// Message containing a new hall request
 type NewHallReq struct {
 	NodeID  int
 	HallReq elevator.ButtonEvent

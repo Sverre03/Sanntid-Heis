@@ -97,7 +97,7 @@ func ElevatorProgram(
 				shouldStop := elevator_fsm.RemoveInvalidHallAssignments(msg.HallAssignments)
 
 				addedHallAssignments := addNewHallAssignments(msg.HallAssignments)
-				// loop all added hall assignments and add them to elevator requests
+				// Loop all added hall assignments and add them to elevator requests
 				for floor, btn := range addedHallAssignments {
 					for btn, isActive := range btn {
 						if isActive {
@@ -121,7 +121,7 @@ func ElevatorProgram(
 				}
 
 			case CabAssignment:
-				// Add my own cab requests to elevator 
+				// Add my own cab requests to elevator
 				for floor := range config.NUM_FLOORS {
 					if msg.CabAssignments[floor] {
 						elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonCab, doorOpenTimer)
@@ -199,7 +199,7 @@ func ElevatorProgram(
 			}
 
 		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
-			// Periodically send elevator state report to node 
+			// Periodically send elevator state report to node
 			elev := elevator_fsm.GetElevator()
 
 			elevatorStatesTx <- elevator.ElevatorStateReport{

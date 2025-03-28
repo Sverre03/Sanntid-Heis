@@ -49,7 +49,7 @@ ForLoop:
 			}
 
 		case networkEvent := <-node.NetworkEventRx:
-			// check if we have lost connection
+			// Check if we have lost connection
 			if networkEvent == communication.NodeHasLostConnection {
 				nextNodeState = Disconnected
 				break ForLoop
@@ -57,10 +57,10 @@ ForLoop:
 
 		case newHA := <-node.HallAssignmentsRx:
 			if canAcceptHallAssignments(newHA, node.GlobalHallRequests, node.ID) {
-				// the hall assignments are for me, so I can ack them
+				// The hall assignments are for me, so I can ack them
 				node.AckTx <- messages.Ack{MessageID: newHA.MessageID, NodeID: node.ID}
 
-				// lets check if I have already received this message, if not its update time!
+				// Lets check if I have already received this message, if not its update time!
 				if lastHallAssignmentMessageID != newHA.MessageID {
 					node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(newHA.HallAssignment, node.GlobalHallRequests, newHA.HallAssignmentCounter)
 					lastHallAssignmentMessageID = newHA.MessageID
@@ -71,7 +71,7 @@ ForLoop:
 			// We received global hall requests from master which means master is alive, reset timer and update my contact counter
 			node.ContactCounter = newGlobalHallReq.CounterValue
 			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
-			
+
 			// If global hall requests has changed update lights
 			if hasChanged(node.GlobalHallRequests, newGlobalHallReq.HallRequests) {
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
@@ -87,7 +87,7 @@ ForLoop:
 		case <-node.ConnectionReqRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.NewHallReqRx:
-			// read these to prevent blocking
+			// Read these to prevent blocking
 		}
 
 	}
@@ -105,8 +105,8 @@ func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallRe
 	if newHAmsg.NodeID != myID {
 		return false
 	} else {
-		// check if my new assignment contains assignments that I am yet to be informed of from master
-		// this means that the lights are not yet lit for the assignment
+		// Check if my new assignment contains assignments that I am yet to be informed of from master
+		// This means that the lights are not yet lit for the assignment
 		for floor := range config.NUM_FLOORS {
 			if newHAmsg.HallAssignment[floor][elevator.ButtonHallDown] && !(globalHallReq[floor][elevator.ButtonHallDown]) {
 				return false
@@ -121,7 +121,7 @@ func canAcceptHallAssignments(newHAmsg messages.NewHallAssignments, globalHallRe
 
 func hasChanged(oldGlobalHallReq, newGlobalHallReq [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool) bool {
 	for floor := range config.NUM_FLOORS {
-		// check if the new is equal to the old or not
+		// Check if the new is equal to the old or not
 		if oldGlobalHallReq[floor][elevator.ButtonHallDown] != newGlobalHallReq[floor][elevator.ButtonHallDown] {
 			return true
 		}

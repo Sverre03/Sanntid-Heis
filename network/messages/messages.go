@@ -52,6 +52,7 @@ type NewHallAssignments struct {
 	HallAssignmentCounter int
 }
 
+// Message containing a new hall request 
 type NewHallReq struct {
 	NodeID  int
 	HallReq elevator.ButtonEvent

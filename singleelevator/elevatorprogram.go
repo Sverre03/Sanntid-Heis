@@ -18,8 +18,8 @@ const (
 type ElevatorOrderType int
 
 const (
-	HallOrder ElevatorOrderType = iota
-	CabOrder
+	HallAssignment ElevatorOrderType = iota
+	CabAssignment
 	LightUpdate
 )
 
@@ -88,15 +88,16 @@ func ElevatorProgram(
 
 		case msg := <-elevLightAndAssignmentUpdateRx:
 			switch msg.OrderType {
-			case HallOrder:
+			case HallAssignment:
 
 				elevator_fsm.UpdateHallLightStates(msg.LightStates)
+
 				HallAssignmentCounterValue = msg.HallAssignmentCounterValue
 
 				shouldStop := elevator_fsm.RemoveInvalidHallAssignments(msg.HallAssignments)
 
 				addedHallAssignments := addNewHallAssignments(msg.HallAssignments)
-
+				// loop all added hall assignments and add them to elevator requests
 				for floor, btn := range addedHallAssignments {
 					for btn, isActive := range btn {
 						if isActive {
@@ -119,7 +120,8 @@ func ElevatorProgram(
 					}
 				}
 
-			case CabOrder:
+			case CabAssignment:
+				// Add my own cab requests to elevator 
 				for floor := range config.NUM_FLOORS {
 					if msg.CabAssignments[floor] {
 						elevator_fsm.OnRequestButtonPress(floor, elevator.ButtonCab, doorOpenTimer)
@@ -197,6 +199,7 @@ func ElevatorProgram(
 			}
 
 		case <-time.Tick(config.ELEV_STATE_TRANSMIT_INTERVAL):
+			// Periodically send elevator state report to node 
 			elev := elevator_fsm.GetElevator()
 
 			elevatorStatesTx <- elevator.ElevatorStateReport{
@@ -256,7 +259,7 @@ func addNewHallAssignments(newHallAssignments [config.NUM_FLOORS][config.NUM_HAL
 	var addedHallAssignments [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	for floor := range config.NUM_FLOORS {
 		for btn := range config.NUM_HALL_BUTTONS {
-			if newHallAssignments[floor][btn] && !elevator_fsm.GetElevator().Requests[floor][btn] {
+			if newHallAssignments[floor][btn] && !elevator_fsm.GetElevator().Requests[floor][btn] { // If this assignment dont already exist in elevator requests add it as new hall assignment
 				addedHallAssignments[floor][btn] = true
 			}
 		}

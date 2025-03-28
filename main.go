@@ -7,7 +7,8 @@ import (
 )
 
 func main() {
-
+	
+	// Initialize node with a elevator port, broadcast port for transmitting and receiving, unique id for node
 	argsWithoutProg := os.Args[1:]
 	elevPort := "localhost:" + argsWithoutProg[0]
 	bcastPort, _ := strconv.Atoi(argsWithoutProg[1])

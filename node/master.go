@@ -22,6 +22,7 @@ type HRAresult struct {
 func MasterProgram(node *NodeData) nodestate {
 	fmt.Printf("Initiating master: Global requests: %v\n", node.GlobalHallRequests)
 
+	// Initialize master state: initialize map for connection requests from other nodes, hall assignments, and broadcast ticker.
 	activeConnReq := make(map[int]messages.ConnectionReq)
 	HallAssignmentsPerNodeMap := make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 	hallAssignmentCounter := 0
@@ -31,8 +32,8 @@ func MasterProgram(node *NodeData) nodestate {
 	// inform your own elevator of the lights
 	node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(node.GlobalHallRequests)
 
-	// enable the hall request transmitter
-	node.HallRequestTransmitterEnableTx <- true
+	// enable the hall assignment transmitter
+	node.HallAssignmentTransmitterEnableTx <- true
 
 	select {
 	case node.commandToServerTx <- "startConnectionTimeoutDetection":
@@ -46,6 +47,7 @@ ForLoop:
 		select {
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
+			// Checks if the elevator for master node is down
 			case singleelevator.ElevStatusUpdateEvent:
 				if elevMsg.ElevIsDown {
 					nextNodeState = Inactive
@@ -54,7 +56,7 @@ ForLoop:
 				break Select
 
 			case singleelevator.HallButtonEvent:
-
+				// If master recieves new hall request from its own elevator update global hall requests
 				newHallReq := makeNewHallReq(node.ID, elevMsg)
 				node.GlobalHallRequests = addNewHallRequest(node.GlobalHallRequests, newHallReq)
 
@@ -67,6 +69,7 @@ ForLoop:
 			}
 
 		case myElevStates := <-node.MyElevStatesRx:
+			// Master recieves the state of its own elevator and sends to server
 			node.NodeElevStatesTx <- messages.NodeElevState{
 				NodeID:    node.ID,
 				ElevState: myElevStates,
@@ -74,14 +77,15 @@ ForLoop:
 
 		case networkEvent := <-node.NetworkEventRx:
 			switch networkEvent {
-			case communication.NodeHasLostConnection:
+			case communication.NodeHasLostConnection: // If master has lost connection go disconnected
 
 				nextNodeState = Disconnected
 				break ForLoop
 
-			case communication.ActiveNodeCountChange:
+			case communication.ActiveNodeCountChange: // If a node has connected or disconnected to network redistribute hall requests
 
 				select {
+				// request the active elevator states from the server, to run the hall assignment algorithm
 				case node.commandToServerTx <- "getActiveElevStates":
 				default:
 					fmt.Printf("Warning: Command channel is full, command %s not sent\n", "getActiveElevStates")
@@ -122,6 +126,7 @@ ForLoop:
 				// increment the hall assignment counter
 				hallAssignmentCounter = util.IncrementIntCounter(hallAssignmentCounter)
 
+				// Run HRA algorithm to distribute hall requests
 				computationResult := computeHallAssignments(node.ID,
 					elevStatesUpdate,
 					node.GlobalHallRequests,
@@ -137,7 +142,7 @@ ForLoop:
 				// remember which node does what, used for clearing hall assignments
 				HallAssignmentsPerNodeMap = computationResult.NodeHallAssignments
 
-			case communication.AllElevStates:
+			case communication.AllElevStates: // Recieved all states of all known nodes to check if we have info about the nodes wanting to connect to the network
 				infoToNodes := makeConnectionRequestReplies(elevStatesUpdate, activeConnReq)
 				for _, infoMessage := range infoToNodes {
 					node.CabRequestInfoTx <- infoMessage
@@ -148,17 +153,19 @@ ForLoop:
 			}
 
 		case <-GlobalHallReqSendTicker.C:
+			// Periodically broadcast global hall requests
 			node.ContactCounter = util.IncrementCounterUint64(node.ContactCounter)
 			node.GlobalHallRequestTx <- makeGlobalHallRequestMessage(node.GlobalHallRequests, node.ContactCounter)
 
 		case <-node.HallAssignmentsRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
+			// read these to prevent blocking
 		}
 	}
 
-	// stop transmitters
-	node.HallRequestTransmitterEnableTx <- false
+	// stop transmitter
+	node.HallAssignmentTransmitterEnableTx <- false
 
 	select {
 	case node.commandToServerTx <- "stopConnectionTimeoutDetection":

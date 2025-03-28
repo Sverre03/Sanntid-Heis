@@ -42,7 +42,7 @@ ForLoop:
 			}
 
 		case myElevStates := <-node.MyElevStatesRx:
-			// Transmit elevator states to network
+			// Broadcast elevator states to network
 			node.NodeElevStatesTx <- messages.NodeElevState{
 				NodeID:    node.ID,
 				ElevState: myElevStates,
@@ -68,15 +68,18 @@ ForLoop:
 			}
 
 		case newGlobalHallReq := <-node.GlobalHallRequestRx:
+			// We received global hall requests from master which means master is alive, reset timer and update my contact counter
 			node.ContactCounter = newGlobalHallReq.CounterValue
 			masterConnectionTimeoutTimer.Reset(config.MASTER_CONNECTION_TIMEOUT)
-
+			
+			// If global hall requests has changed update lights
 			if hasChanged(node.GlobalHallRequests, newGlobalHallReq.HallRequests) {
 				node.GlobalHallRequests = newGlobalHallReq.HallRequests
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(newGlobalHallReq.HallRequests)
 			}
 
 		case <-masterConnectionTimeoutTimer.C:
+			// I havent received anything from master in a given time period, so change state to disconnected
 			nextNodeState = Disconnected
 			break ForLoop
 
@@ -84,6 +87,7 @@ ForLoop:
 		case <-node.ConnectionReqRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.NewHallReqRx:
+			// read these to prevent blocking
 		}
 
 	}

@@ -12,11 +12,13 @@ import (
 func DisconnectedProgram(node *NodeData) nodestate {
 	fmt.Printf("Node %d is now Disconnected\n", node.ID)
 
+	// Set up a connectiong request message that are sent to other nodes to make contact
 	myConnReq := messages.ConnectionReq{
 		ContactCounterValue: node.ContactCounter,
 		NodeID:              node.ID,
 	}
 
+	// Initializing a empty map with connection requests recieved from other nodes
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
 
 	var nextNodeState nodestate
@@ -36,21 +38,23 @@ ForLoop:
 			node.ConnectionReqTx <- myConnReq
 
 		case incomingConnReq := <-node.ConnectionReqRx:
-			if node.ID != incomingConnReq.NodeID {
+			if node.ID != incomingConnReq.NodeID { // Check if message is from other node
 				incomingConnRequests[incomingConnReq.NodeID] = incomingConnReq
 			}
 
-		case <-decisionTimer.C:
-			if !util.MapIsEmpty(incomingConnRequests) {
-				if ShouldBeMaster(node.ID, node.ContactCounter, incomingConnRequests) {
+		case <-decisionTimer.C: // Waits for the decision timer to run out
+			if !util.MapIsEmpty(incomingConnRequests) { // Checks if  there are incoming connection requests
+				if ShouldBeMaster(node.ID, node.ContactCounter, incomingConnRequests) { //  Check if this node should become the master
 					nextNodeState = Master
 					break ForLoop
 				}
 			}
+			// Otherwise, reset the decision timer for the next evaluation cycle
 			decisionTimer.Reset(config.STATE_TRANSITION_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:
 			switch elevMsg.EventType {
+			// Handle elevator status update; go Inactive if elevator is down.
 			case singleelevator.ElevStatusUpdateEvent:
 				if elevMsg.ElevIsDown {
 					nextNodeState = Inactive
@@ -63,7 +67,7 @@ ForLoop:
 				// if the message was for us, we have established contact with a master and may now become slave
 				// if we have never had any contact, we also restore cab orders from master
 				if node.ContactCounter == 0 {
-					node.ElevLightAndAssignmentUpdateTx <- makeCabOrderMessage(cabRequestInfo.CabRequest)
+					node.ElevLightAndAssignmentUpdateTx <- makeCabAssignmentMessage(cabRequestInfo.CabRequest)
 				}
 				nextNodeState = Slave
 				break ForLoop
@@ -81,7 +85,7 @@ ForLoop:
 		case <-node.NetworkEventRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.NewHallReqRx:
-
+			// read these to prevent blocking
 		}
 	}
 	return nextNodeState
@@ -104,11 +108,11 @@ func ShouldBeMaster(myID int, contactCounter uint64, connectionRequests map[int]
 	return true
 }
 
-func makeCabOrderMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.LightAndAssignmentUpdate {
+func makeCabAssignmentMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.LightAndAssignmentUpdate {
 	return singleelevator.LightAndAssignmentUpdate{
 		CabAssignments:  cabRequests,
 		LightStates:     [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool{},
-		OrderType:       singleelevator.CabOrder,
+		OrderType:       singleelevator.CabAssignment,
 		HallAssignments: [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool{},
 	}
 }

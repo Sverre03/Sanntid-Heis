@@ -56,7 +56,7 @@ type NodeData struct {
 	ElevatorEventRx                chan singleelevator.ElevatorEvent
 	MyElevStatesRx                 chan elevator.ElevatorStateReport
 
-	HallRequestTransmitterEnableTx chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
+	HallAssignmentTransmitterEnableTx chan bool // channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
 }
 
 // initialize a network node and return a nodedata obj, needed for communication with the processes it starts
@@ -73,7 +73,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 	node.NodeElevStatesTx = make(chan messages.NodeElevState)
 	node.ElevStateUpdatesFromServer = make(chan communication.ElevStateUpdate)
 
-	node.CabRequestInfoTx = make(chan messages.CabRequestInfo) //
+	node.CabRequestInfoTx = make(chan messages.CabRequestInfo)
 	node.CabRequestInfoRx = make(chan messages.CabRequestInfo)
 
 	node.ConnectionReqTx = make(chan messages.ConnectionReq)
@@ -84,7 +84,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 	node.NewHallReqRx = make(chan messages.NewHallReq)
 	node.NewHallReqTx = make(chan messages.NewHallReq)
 
-	node.HallRequestTransmitterEnableTx = make(chan bool)
+	node.HallAssignmentTransmitterEnableTx = make(chan bool)
 
 	node.HallAssignmentTx = make(chan messages.NewHallAssignments)
 	node.HallAssignmentsRx = make(chan messages.NewHallAssignments)
@@ -129,7 +129,7 @@ func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 		HAssignmentTransmitterToBcastTx,
 		node.HallAssignmentTx,
 		hallAssignmentsAckRx,
-		node.HallRequestTransmitterEnableTx)
+		node.HallAssignmentTransmitterEnableTx)
 
 	// the physical elevator program
 	go singleelevator.ElevatorProgram(portNum,
@@ -155,7 +155,7 @@ func makeHallAssignmentAndLightMessage(
 	var newMessage singleelevator.LightAndAssignmentUpdate
 	newMessage.HallAssignments = hallAssignments
 	newMessage.LightStates = globalHallReq
-	newMessage.OrderType = singleelevator.HallOrder
+	newMessage.OrderType = singleelevator.HallAssignment
 	newMessage.HallAssignmentCounterValue = hallAssignmentCounterValue
 	return newMessage
 }

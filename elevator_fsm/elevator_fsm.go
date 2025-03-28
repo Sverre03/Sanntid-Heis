@@ -66,13 +66,40 @@ func ResumeElevator() {
 	if (elev.Floor == 0 && pair.Dir == elevator.DirectionDown) ||
 		(elev.Floor == config.NUM_FLOORS-1 && pair.Dir == elevator.DirectionUp) {
 		fmt.Printf("Safety: Prevented invalid direction %d at floor %d\n", pair.Dir, elev.Floor)
-		pair.Dir = elevator.DirectionStop
-		pair.Behavior = elevator.Idle
+
+		// Check if there are any pending requests
+		if RequestsExist() {
+			// Recalculate direction based on floor position
+			if elev.Floor == 0 {
+				pair.Dir = elevator.DirectionUp
+				pair.Behavior = elevator.Moving
+			} else if elev.Floor == config.NUM_FLOORS-1 {
+				pair.Dir = elevator.DirectionDown
+				pair.Behavior = elevator.Moving
+			} else {
+				// This case shouldn't happen, but handle it anyway
+				pair.Dir = elevator.DirectionUp
+				pair.Behavior = elevator.Moving
+			}
+		} else {
+			pair.Dir = elevator.DirectionDown
+			pair.Behavior = elevator.Moving
+		}
+	}
+	if (pair.Dir == elevator.DirectionStop && pair.Behavior != elevator.DoorOpen) ||
+		(elev.Behavior == elevator.Idle && elev.Dir == elevator.DirectionStop) {
+		elev.Dir = elevator.DirectionDown
+		elev.Behavior = elevator.Moving
+	} else {
+		elev.Dir = pair.Dir
+		elev.Behavior = pair.Behavior
 	}
 
-	elev.Dir = pair.Dir
-	elev.Behavior = pair.Behavior
 	elevator.SetMotorDirection(elev.Dir)
+
+	// Add debug logging
+	fmt.Printf("Resuming elevator: Floor=%d, Dir=%d, Behavior=%d\n",
+		elev.Floor, elev.Dir, elev.Behavior)
 }
 
 func OnRequestButtonPress(btnFloor int, btnType elevator.ButtonType, doorOpenTimer *time.Timer) {
@@ -195,4 +222,16 @@ func OnDoorTimeout(doorOpenTimer, doorStuckTimer *time.Timer) {
 			}
 		}
 	}
+}
+
+// RequestsExist checks if there are any pending requests in the elevator
+func RequestsExist() bool {
+	for f := 0; f < config.NUM_FLOORS; f++ {
+		for b := 0; b < config.NUM_BUTTONS; b++ {
+			if elev.Requests[f][b] {
+				return true
+			}
+		}
+	}
+	return false
 }

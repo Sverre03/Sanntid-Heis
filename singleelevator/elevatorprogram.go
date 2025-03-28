@@ -110,8 +110,9 @@ func ElevatorProgram(
 				currentElevator := elevator_fsm.GetElevator()
 
 				if shouldStop && currentElevator.Behavior == elevator.Moving {
-
 					elevator_fsm.StopElevator()
+
+					currentElevator = elevator_fsm.GetElevator()
 
 					if hasAssignments(currentElevator.Requests) {
 						elevator_fsm.ResumeElevator()
@@ -172,7 +173,6 @@ func ElevatorProgram(
 				elevatorEventTx <- makeElevatorIsDownMessage(true)
 			}
 		case <-time.Tick(config.ELEV_STUCK_POLL_INTERVAL):
-
 			elev := elevator_fsm.GetElevator()
 
 			// If we're supposed to be moving but haven't changed floors in too long
@@ -187,6 +187,7 @@ func ElevatorProgram(
 				fmt.Println("Detected elevator stopped between floors with pending requests")
 				fmt.Println("Attempting to resume operation...")
 				elevator_fsm.ResumeElevator()
+				startStuckMonitoring()
 
 				// If it's still not moving after resume attempt, something is wrong
 				if elevator_fsm.GetElevator().Behavior != elevator.Moving {

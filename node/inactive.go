@@ -2,19 +2,20 @@ package node
 
 import (
 	"elev/singleelevator"
-	"fmt"
 )
 
-func InactiveProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %d is now Inactive\n", node.ID)
-	var nextNodeState nodestate
+// InactiveProgram runs when the elevator is unavailable or down.
+// It waits for the elevator to become operational before transitioning to Disconnected state.
+func InactiveProgram(node *NodeData) NodeState {
+	var nextNodeState NodeState
 ForLoop:
 	for {
 		select {
 
 		case elevMsg := <-node.ElevatorEventRx:
 
-			if !elevMsg.ElevIsDown && elevMsg.EventType == singleelevator.ElevStatusUpdateEvent { // If elevator is up , go to Disconnected state.
+			// If the elevator is operational, go to Disconnected state
+			if !elevMsg.ElevIsDown && elevMsg.EventType == singleelevator.ElevStatusUpdateEvent {
 				nextNodeState = Disconnected
 				break ForLoop
 			}

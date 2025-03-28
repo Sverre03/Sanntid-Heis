@@ -10,12 +10,12 @@ import (
 	"time"
 )
 
-func SlaveProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %d is now Slave\n", node.ID)
-
+// SlaveProgram runs when the node is connected to the master and is in Slave state.
+// It receives assignments from the master and monitors connection status.
+func SlaveProgram(node *NodeData) NodeState {
 	lastHallAssignmentMessageID := uint64(0)
 
-	var nextNodeState nodestate
+	var nextNodeState NodeState
 
 	masterConnectionTimeoutTimer := time.NewTimer(config.MASTER_CONNECTION_TIMEOUT)
 	masterConnectionTimeoutTimer.Stop()

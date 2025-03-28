@@ -15,10 +15,10 @@ import (
 // NodeData represents a node in the distributed elevator system.
 // It contains the node's state, communication channels and necessary data for the node to function.
 
-type nodestate int
+type NodeState int
 
 const (
-	Inactive nodestate = iota
+	Inactive NodeState = iota
 	Disconnected
 	Master
 	Slave
@@ -26,7 +26,7 @@ const (
 
 type NodeData struct {
 	ID                 int
-	State              nodestate
+	State              NodeState
 	GlobalHallRequests [config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool
 	ContactCounter     uint64 // Counter that is set at contact with master
 
@@ -59,7 +59,8 @@ type NodeData struct {
 	HallAssignmentTransmitterEnableTx chan bool // Channel that connects to HallAssignmentsTransmitter, should be enabled when node is master
 }
 
-// Initialize a network node and return a nodedata obj, needed for communication with the processes it starts
+// Initializes a new network node and returns a NodeData object
+// Creates all necessary communication channels and starts the necessary processes
 func MakeNode(id int, portNum string, bcastPort int) *NodeData {
 
 	node := &NodeData{

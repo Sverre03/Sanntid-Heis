@@ -19,14 +19,16 @@ type HRAresult struct {
 	OtherAssignments    map[int]messages.NewHallAssignments
 }
 
-func MasterProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %v is now Master\n", node.ID)
+// MasterProgram works similarly to the slave program, but also
+// - Manages global hall requests and distributes them to all connected nodes through periodic broadcasts.
+// - Manages connection requests from other nodes.
+func MasterProgram(node *NodeData) NodeState {
 
 	// Initialize master state: initialize map for connection requests from other nodes, hall assignments, and broadcast ticker.
 	activeConnReq := make(map[int]messages.ConnectionReq)
 	HallAssignmentsPerNodeMap := make(map[int][config.NUM_FLOORS][config.NUM_HALL_BUTTONS]bool)
 	hallAssignmentCounter := 0
-	var nextNodeState nodestate
+	var nextNodeState NodeState
 	GlobalHallReqSendTicker := time.NewTicker(config.MASTER_BROADCAST_INTERVAL)
 
 	// Inform your own elevator of the lights

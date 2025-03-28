@@ -5,12 +5,14 @@ import (
 	"elev/network/messages"
 	"elev/singleelevator"
 	"elev/util"
-	"fmt"
 	"time"
 )
 
-func DisconnectedProgram(node *NodeData) nodestate {
-	fmt.Printf("Node %d is now Disconnected\n", node.ID)
+// DisconnectedProgram runs when the node is searching for other nodes to connect to.
+// It broadcasts connection requests and determines if it should become master based on incoming connection requests.
+// In Disconnected state, the node operates as a standalone elevator.
+// It does not take new hall calls, but keeps track of its already existing hall assignments.
+func DisconnectedProgram(node *NodeData) NodeState {
 
 	// Set up a connectiong request message that are sent to other nodes to make contact
 	myConnReq := messages.ConnectionReq{
@@ -21,7 +23,7 @@ func DisconnectedProgram(node *NodeData) nodestate {
 	// Initializing a empty map with connection requests recieved from other nodes
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
 
-	var nextNodeState nodestate
+	var nextNodeState NodeState
 
 	// Set up heartbeat for connection requests
 	connRequestTicker := time.NewTicker(config.CONNECTION_REQ_INTERVAL)
@@ -91,7 +93,8 @@ ForLoop:
 	return nextNodeState
 }
 
-// Returns true if you have the most recent contact counter value, or you have an equivalent contact counter value to another node and the largest ID
+// Returns true if you have the most recent contact counter value,
+// or if you have an equivalent contact counter value to another node and the largest ID
 func ShouldBeMaster(myID int, contactCounter uint64, connectionRequests map[int]messages.ConnectionReq) bool {
 
 	for _, connReq := range connectionRequests {

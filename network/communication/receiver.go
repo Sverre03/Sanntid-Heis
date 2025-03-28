@@ -27,11 +27,11 @@ const (
 )
 
 type ElevStateUpdate struct {
-	NodeElevStatesMap map[int]elevator.ElevatorStateReport // map keyed by node id, holding ElevatorStates
+	NodeElevStatesMap map[int]elevator.ElevatorStateReport // map keyed by node id, holding ElevatorStateReport
 	DataType          UpdateType
 }
 
-// generates a message ID that corresponsds to the message type
+// generates a message ID 
 func GenerateMessageID() uint64 {
 	return uint64(rand.Int63n(int64(config.MSG_ID_PARTITION_SIZE)))
 }

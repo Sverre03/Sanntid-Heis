@@ -11,6 +11,7 @@ const NUM_HALL_BUTTONS = 2
 
 const HARDWARE_POLL_INTERVAL = 20 * time.Millisecond
 
+// Constant for generating message id
 const MSG_ID_PARTITION_SIZE = uint64(2 << 60)
 
 // Timing constants for the elevator program

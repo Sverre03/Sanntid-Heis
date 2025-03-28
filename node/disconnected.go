@@ -8,21 +8,19 @@ import (
 	"time"
 )
 
-// DisconnectedProgram runs when the node is searching for other nodes to connect to.
+// DisconnectedProgram searches for other nodes to connect with in the network.
+// It operates as a standalone elevator and does not take new hall calls, but keeps track of its existing hall assignments.
 // It broadcasts connection requests and determines if it should become master based on incoming connection requests.
-// In Disconnected state, the node operates as a standalone elevator.
-// It does not take new hall calls, but keeps track of its already existing hall assignments.
 func DisconnectedProgram(node *NodeData) NodeState {
 
-	// Set up a connectiong request message that are sent to other nodes to make contact
+	// Create connection request message with node's current state, to be sent to other nodes to make contact
 	myConnReq := messages.ConnectionReq{
 		ContactCounterValue: node.ContactCounter,
 		NodeID:              node.ID,
 	}
 
-	// Initializing a empty map with connection requests recieved from other nodes
+	// Track connection requests from other nodes
 	incomingConnRequests := make(map[int]messages.ConnectionReq)
-
 	var nextNodeState NodeState
 
 	// Set up heartbeat for connection requests
@@ -30,24 +28,24 @@ func DisconnectedProgram(node *NodeData) NodeState {
 	decisionTimer := time.NewTimer(config.STATE_TRANSITION_DECISION_INTERVAL)
 	defer connRequestTicker.Stop()
 
-	// Doing my own hall assignments
+	// Send initial hall assignments to elevator
 	node.ElevLightAndAssignmentUpdateTx <- makeHallAssignmentAndLightMessage(node.GlobalHallRequests, node.GlobalHallRequests, -1)
 
 MainLoop:
 	for {
 		select {
-		case <-connRequestTicker.C: // Send connection request periodically
+		case <-connRequestTicker.C: // Broadcast connection request periodically
 			node.ConnectionReqTx <- myConnReq
 
 		case incomingConnReq := <-node.ConnectionReqRx:
-			if node.ID != incomingConnReq.NodeID { // Check if message is from other node
+			if node.ID != incomingConnReq.NodeID { // Record incoming connection requests from other nodes
 				incomingConnRequests[incomingConnReq.NodeID] = incomingConnReq
 			}
 
-		case <-decisionTimer.C: // Waits for the decision timer to run out
-			if !util.MapIsEmpty(incomingConnRequests) { // Checks if  there are incoming connection requests
-				if ShouldBeMaster(node.ID, node.ContactCounter, incomingConnRequests) { //  Check if this node should become the master
-					nextNodeState = Master
+		case <-decisionTimer.C: // Evaluate if this node should become master
+			if !util.MapIsEmpty(incomingConnRequests) { // If we have received connection requests
+				if ShouldBeMaster(node.ID, node.ContactCounter, incomingConnRequests) {
+					nextNodeState = Master // Become master if we have the highest priority
 					break MainLoop
 				}
 			}
@@ -55,20 +53,17 @@ MainLoop:
 			decisionTimer.Reset(config.STATE_TRANSITION_DECISION_INTERVAL)
 
 		case elevMsg := <-node.ElevatorEventRx:
-			switch elevMsg.EventType {
-			// Handle elevator status update; go Inactive if elevator is down.
-			case singleelevator.ElevStatusUpdateEvent:
-				if elevMsg.ElevIsDown {
-					nextNodeState = Inactive
-					break MainLoop
-				}
-			} // Ignore hall button events, we do not take new calls when disc
+			// Check if elevator is no longer operational
+			if elevMsg.ElevIsDown && elevMsg.EventType == singleelevator.ElevStatusUpdateEvent {
+				nextNodeState = Inactive
+				break MainLoop
+			} // Ignore hall button events, we do not take new hall calls when Disconnected
 
 		case cabRequestInfo := <-node.CabRequestInfoRx:
+			// If the message was for us, we have established contact with a Master and may now become Slave
 			if cabRequestInfo.ReceiverNodeID == node.ID {
-				// If the message was for us, we have established contact with a master and may now become slave
-				// If we have never had any contact, we also restore cab orders from master
 				if node.ContactCounter == 0 {
+					// First contact: restore cab assignments from Master
 					node.ElevLightAndAssignmentUpdateTx <- makeCabAssignmentMessage(cabRequestInfo.CabRequest)
 				}
 				nextNodeState = Slave
@@ -76,27 +71,25 @@ MainLoop:
 			}
 
 		case elevStates := <-node.MyElevStatesRx:
-
 			if util.HallAssignmentIsRemoved(node.GlobalHallRequests, elevStates.MyHallAssignments) {
 				node.ElevLightAndAssignmentUpdateTx <- makeLightMessage(elevStates.MyHallAssignments)
 			}
 			node.GlobalHallRequests = elevStates.MyHallAssignments
 
+		// Drain channels to prevent blocking
 		case <-node.HallAssignmentsRx:
 		case <-node.ElevStateUpdatesFromServer:
 		case <-node.NetworkEventRx:
 		case <-node.GlobalHallRequestRx:
 		case <-node.NewHallReqRx:
-			// Read these to prevent blocking
 		}
 	}
 	return nextNodeState
 }
 
-// Returns true if you have the most recent contact counter value,
-// or if you have an equivalent contact counter value to another node and the largest ID
+// ShouldBeMaster determines if this node should assume the master role
+// based on having the highest contact counter or the highest ID when counters match.
 func ShouldBeMaster(myID int, contactCounter uint64, connectionRequests map[int]messages.ConnectionReq) bool {
-
 	for _, connReq := range connectionRequests {
 		if util.MyCounterIsSmaller(contactCounter, connReq.ContactCounterValue) {
 			return false
@@ -107,10 +100,10 @@ func ShouldBeMaster(myID int, contactCounter uint64, connectionRequests map[int]
 			}
 		}
 	}
-
 	return true
 }
 
+// makeCabAssignmentMessage creates a message to update cab assignments.
 func makeCabAssignmentMessage(cabRequests [config.NUM_FLOORS]bool) singleelevator.LightAndAssignmentUpdate {
 	return singleelevator.LightAndAssignmentUpdate{
 		CabAssignments:  cabRequests,

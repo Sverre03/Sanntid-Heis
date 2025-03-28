@@ -18,6 +18,7 @@ MainLoop:
 				break MainLoop
 			}
 
+		// Drain all other channels to prevent blocking
 		case <-node.HallAssignmentsRx:
 		case <-node.CabRequestInfoRx:
 		case <-node.GlobalHallRequestRx:
@@ -25,7 +26,6 @@ MainLoop:
 		case <-node.ElevStateUpdatesFromServer:
 		case <-node.NetworkEventRx:
 		case <-node.MyElevStatesRx:
-			// Drain all other channels to prevent blocking
 		}
 	}
 	return nextNodeState
